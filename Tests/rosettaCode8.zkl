@@ -1,0 +1,1330 @@
+//-*-c-*-
+// Test solutions posted to Rosetta Code
+// http://rosettacode.org/wiki/Category:Zkl
+
+var [const] tester = TheVault.Test.UnitTester.UnitTester(__FILE__);
+
+try{ var [const] BI=Import.lib("zklBigNum") } catch{}
+
+
+
+{		///////////////////////////////////// Approximate Equality
+#<<<# 
+Floats are 64 bit and have the closeTo method, which takes a comparison value
+and tolerance. If the tolerance is >=0, comparison is absolute.
+If tolerance is <0 (and x!=0 and y!=0), the comparison is relative..
+#<<<# 
+testValues:=T( 
+   T(100000000000000.01,100000000000000.011),
+   T(100.01, 100.011),
+   T(10000000000000.001 / 10000.0, 1000000000.0000001),
+   T(0.001, 0.0010000001),
+   T(0.00000000000000000101, 0.0),
+   T(  (2.0).sqrt()*(2.0).sqrt(),  2.0),
+   T( -(2.0).sqrt()*(2.0).sqrt(), -2.0),
+   T(100000000000000003.0, 100000000000000004.0),
+   T(3.14159265358979323846, 3.14159265358979324) 
+);
+ 
+tolerance:=-1e-9;	// <0 for relative comparison
+foreach x,y in (testValues){
+   maybeNot:=( if(x.closeTo(y,tolerance)) " \u2248" else "!\u2248" );
+   println("% 25.19g %s %- 25.19g  %g".fmt(x,maybeNot,y, (x-y).abs()));
+}
+
+fcn aeText(testValues,tolerance)
+   { testValues.pump(List,'wrap([(x,y)]){ x.closeTo(y,tolerance) }) }
+
+tester.testRun(aeText.fp(testValues,tolerance),Void,
+   T(True,False,True,False,False,True,True,True,True),__LINE__);
+tester.testRun(aeText.fp(testValues,-tolerance),Void,
+   T(True,False,False,True,True,True,True,True,True),__LINE__);
+}
+
+
+
+{		//////////////////////////////// Associative array/Merging
+base:=Dictionary(
+   "name", 	"Rocket Skates",
+   "price", 	12.75,
+   "color", 	"yellow",);
+update:=Dictionary(
+   "price", 	15.25,
+   "color", 	"red",
+   "year", 	1974,);
+
+update.pump( new:=base.copy() );
+
+new.pump(Void,fcn([(k,v)]){ println("%s\t%s".fmt(k,v)) });
+
+tester.testRun(new.keys.len,Void,4,__LINE__);
+tester.testRun(new.get.fp("name"),Void,"Rocket Skates",__LINE__);
+tester.testRun(new.get.fp("price"),Void,15.25,__LINE__);
+tester.testRun(new.get.fp("color"),Void,"red",__LINE__);
+tester.testRun(new.get.fp("year"),Void,1974,__LINE__);
+}
+		
+
+
+
+{		////////////////////////////////////// De Bruijn sequences
+//{{trans|Perl6}}
+dbSeq:=Data();	// a byte/character buffer
+foreach n in (100){
+   a,a01,a11 := "%02d".fmt(n), a[0,1], a[1,1];
+   if(a11<a01) continue;
+   dbSeq.append( if(a01==a11) a01 else a );
+   foreach m in ([n+1 .. 99]){
+      if("%02d".fmt(m)[1,1] <= a01) continue;
+      dbSeq.append("%s%02d".fmt(a,m));
+   }
+}
+dbSeq.append("000");
+
+
+seqText:=dbSeq.text;
+println("de Bruijn sequence length: ",dbSeq.len());
+
+println("\nFirst 130 characters:\n",seqText[0,130]);
+println("\nLast 130 characters:\n", seqText[-130,*]);
+
+     tester.testRun(seqText.get.fp(0,130),Void,"0000100020003000400050006000700080009001100120013001400150016001700180019002100220023002400250026002700280029003100320033003400350",__LINE__);
+     tester.testRun(seqText.get.fp(-130,*),Void,"6898689969697769786979698769886989699769986999777787779778877897798779978787978887889789878997979887989799879998888988998989999000",__LINE__);
+
+fcn chk(seqText){
+   chk:=Dictionary();
+   foreach n in ([0..seqText.len()-1]){ chk[seqText[n,4]]=True }
+   (9999).pump(List,"%04d".fmt,'wrap(k){ if(chk.holds(k)) Void.Skip else k })
+//   (9999).pump(List,"%04d".fmt, chk.holds, '!, Void.Filter)  // no leading 0s
+}
+//println("\nMissing 4 digit PINs in this sequence: ", chk(seqText).concat(" "));
+    	tester.testRun(chk.fp(seqText),Void,T,__LINE__);    
+//print("Missing 4 digit PINs in the reversed sequence: ",chk(seqText.reverse()).concat(" "));
+    	tester.testRun('wrap{ chk(seqText.reverse()) },Void,T,__LINE__);    
+
+println("\n4444th digit in the sequence: ", seqText[4443]);
+dbSeq[4443]=".";
+//println("Setting the 4444th digit and reruning checks: ",chk(dbSeq.text).concat(" "));
+	tester.testRun(chk.fp(dbSeq.text),Void,T("1459","4591","5814","8145"),__LINE__);
+}
+
+
+
+{	/////////////////////////////// Determine if a string is collapsible
+fcn collapsible(str){			// no Unicode
+   sink:=Sink(String);
+   str.reduce('wrap(c1,c2){ if(c1!=c2) sink.write(c2); c2 },"");  // prime with \0
+   cstr:=sink.close();
+   return(str.len()!=cstr.len(), cstr);
+}
+
+strings:=
+#<<<"
+
+\"If I were two-faced, would I be wearing this one?\" --- Abraham Lincoln 
+..1111111111111111111111111111111111111111111111111111111111111117777888
+I never give 'em hell, I just tell the truth, and they think it's hell. 
+                                                    --- Harry S Truman  
+The American people have a right to know if their president is a crook. 
+                                                    --- Richard Nixon   
+The better the 4-wheel drive, the further you'll be from help when ya get stuck!
+headmistressship
+aardvark"
+.split("\n");
+#<<<
+
+foreach s in (strings){
+   println("Before: %3d >>>%s<<<".fmt(s.len(),s));
+   _,cstr:=collapsible(s);
+   println("After:  %3d >>>%s<<<\n".fmt(cstr.len(),cstr));
+}
+
+answers:=
+#<<<
+0'^F|
+T"If I were two-faced, would I be wearing this one?" - Abraham Lincoln |
+T.178|
+TI never give 'em hel, I just tel the truth, and they think it's hel. |
+T - Hary S Truman |
+TThe American people have a right to know if their president is a crok. |
+T - Richard Nixon |
+TThe beter the 4-whel drive, the further you'l be from help when ya get stuck!|
+Theadmistreship|
+Tardvark|^
+.split("\n");
+#<<<
+  
+fcn(qs,as){
+   as=as.apply(fcn(s){ b:=(s[0]=="T"); c:=s[1,-1]; T(b,c) });
+   foreach q,a in (qs.zip(as))
+      { tester.testRun(collapsible.fp(q),Void,a,__LINE__) }
+}(strings,answers);
+
+}
+
+
+
+{		///////////////////////// Determine if a string is squeezable
+fcn squeeze(c,str){	// Works with UTF-8
+#if 0
+   cc,sz := String(c,c), c.len();
+   while(Void != (n:=str.find(cc))){ str=str.del(n,sz) }
+   str
+#else
+   s,cc,sz,n := Data(Void,str), String(c,c), c.len(), 0; // byte buffer in case of LOTs of deletes
+   while(Void != (n=s.find(cc,n))){ str=s.del(n,sz) }  // and searching is faster for big strings
+   s.text
+#endif
+}
+
+strings:=T(
+T("",""),
+T("-","\"If I were two-faced, would I be wearing this one?\" --- Abraham Lincoln "),
+T("7","..1111111111111111111111111111111111111111111111111111111111111117777888"),
+T(" ","I never give 'em hell, I just tell the truth, and they think it's hell. "),
+T(" ","                                                    --- Harry S Truman  "),
+T("-","                                                    --- Harry S Truman  "),
+T("r","                                                   ---  Harry S Truman  "),
+T("e","The better the 4-wheel drive, the further you'll be from help when ya get stuck!"),
+T("s","headmistressship"),
+T("\Ubd;","\Ubc;\Ubd;\Ubd;\Ube;"),
+);
+
+foreach c,s in (strings){
+   println("Squeeze: \"",c,"\"");
+   println("Before: %2d <<<%s>>>".fmt(s.len(-8),s));
+   sstr:=squeeze(c,s);
+   println("After:  %2d <<<%s>>>\n".fmt(sstr.len(-8),sstr));
+}
+
+answers:=
+#<<<"
+
+\"If I were two-faced, would I be wearing this one?\" - Abraham Lincoln 
+..1111111111111111111111111111111111111111111111111111111111111117888
+I never give 'em hell, I just tell the truth, and they think it's hell. 
+ --- Harry S Truman 
+                                                    - Harry S Truman  
+                                                   ---  Hary S Truman  
+The better the 4-whel drive, the further you'll be from help when ya get stuck!
+headmistreship
+\Ubc;\Ubd;\Ube;"
+.split("\n");
+#<<<
+  
+fcn(qs,as){
+   foreach q,a in (qs.zip(as))
+      { tester.testRun(squeeze.fp(q.xplode()),Void,a,__LINE__) }
+}(strings,answers);
+
+}
+
+
+
+{		////////////////////////////// Elliptic curve arithmetic
+//{trans|C} 
+const C=7, INFINITY=(0.0).inf;
+
+fcn zero{ T(INFINITY, INFINITY) }
+
+// should be INFINITY, but numeric precision is very much in the way
+fcn is_zero(p){ x,_:=p; (x < -1e20 or x > 1e20) }
+
+fcn neg(p){ return(p[0], -p[1]) }
+fcn dbl(p){
+   if(is_zero(p)) return(p);
+
+   px,py := p;
+   L:=(3.0 * px * px) / (2.0 * py);
+   rx,ry := L * L - 2.0 * px, L * (px - rx) - py;
+   return(rx,ry);
+}
+ 
+fcn add(p,q){
+   px,py := p;
+   qx,qy := q;
+   if(px == qx and py == qy) return(dbl(p));
+   if(is_zero(p)) return(q);
+   if(is_zero(q)) return(p);
+ 
+   L := (qy - py) / (qx - px);
+   rx,ry := L * L - px - qx, L * (px - rx) - py;
+   return(rx,ry);
+}
+ 
+fcn mul(p,n){
+   r := zero();
+ 
+   i:=1; while(i <= n){
+      if(i.bitAnd(n)) r = add(r,p);
+      p = dbl(p);
+      i*=2;
+   }
+   r
+}
+ 
+fcn show(str,p)
+   { println(str, is_zero(p) and "Zero" or "(%.3f, %.3f)".fmt(p.xplode())) }
+ 
+fcn from_y(y){ 
+   y3:=y * y - C;  // cube root of -6 --> -1.817
+   return(y3.abs().pow(1.0/3) * y3.sign, y) 
+}
+ 
+a,b := from_y(1.0), from_y(2.0);
+show("a = ", a);
+show("b = ", b);
+show("c = a + b = ", c := add(a, b));
+show("d = -c = ",    d := neg(c));
+show("c + d = ",     add(c, d));
+show("a + b + d = ", add(a, add(b, d)));
+show("a * 12345 = ", mul(a, 12345.0));
+
+
+testp:=fcn(p, a,b){
+   x,y := p;
+   r:=(x.closeTo(a,0.001) and y.closeTo(b,0.001));
+   if(not r) println(a - x,"   ",b - y);
+   r
+};
+
+tester.testRun(testp.fp(c, 10.375, -33.525), Void,True,__LINE__);
+tester.testRun(testp.fp(d, 10.375, 33.525), Void,True,__LINE__);
+tester.testRun('wrap{ add(c,d) : is_zero(_) }, Void,True,__LINE__);
+tester.testRun('wrap{ add(a, add(b, d)) : is_zero(_) }, Void,True,__LINE__);
+tester.testRun(testp.fp(mul(a, 12345.0), 10.759, 35.387), Void,True,__LINE__);
+}
+
+
+
+{		/////////////////////////////////////// Faces from a mesh
+//{{trans|Python}}
+fcn perimSame(p1, p2){
+   if(p1.len() != p2.len()) return(False);
+   False == p1.filter1('wrap(p){ (not p2.holds(p)) })
+}
+
+fcn edge_to_periphery(faces){
+   edges:=faces.copy().sort(fcn(a,b){ if(a[0]!=b[0]) a[0]<b[0] else a[1]<b[1] });
+   p,last := ( if(edges) edges.pop(0).copy() else T ), ( p and p[-1] or Void );
+   while(edges){
+      foreach i,j in (edges){
+         if     (i==last){ p.append( last=j ); edges.del(__iWalker.idx); break; }
+         else if(j==last){ p.append( last=i ); edges.del(__iWalker.idx); break; }
+      }
+      fallthrough{ return(">>>Error! Invalid edge format<<<") }
+   }
+   p[0,-1]	// last element not part of result
+}
+
+println("Perimeter format equality checks:");
+ps:=T( T( T(8,1,3), T(1,3,8) ), 
+       T( T(18, 8, 14, 10, 12, 17, 19), T(8, 14, 10, 12, 17, 19, 18) ) );
+foreach p1,p2 in (ps)
+   { println(pp(p1), "  equivalent to  ", pp(p2), "? ", perimSame(p1,p2)) }
+
+println("\nEdge to perimeter format translations:");
+edge_d:=T(
+        T(T( 1, 11), T( 7, 11), T( 1,  7) ),
+        T(T(11, 23), T( 1, 17), T(17, 23), T( 1, 11) ),
+        T(T( 8, 14), T(17, 19), T(10, 12), T(10, 14), T(12, 17), T(8, 18), T(18, 19) ),
+        T(T( 1,  3), T( 9, 11), T( 3, 11), T( 1, 11) ),
+        );
+foreach  edges in (edge_d)
+   { println(ppp(edges), "  --> ", edge_to_periphery(edges)) }
+
+fcn pp(a){ a.concat(", ","(",")") }
+fcn ppp(edges){ pp(edges.apply(pp)) }
+
+
+///////////test
+
+tester.testRun(perimSame.fp(ps[0].xplode()),Void,True,__LINE__);
+tester.testRun(perimSame.fp(ps[1].xplode()),Void,True,__LINE__);
+
+tester.testRun(perimSame.fp(edge_d[0],edge_d[1]),Void,False,__LINE__);
+
+
+tester.testRun(edge_to_periphery.fp(edge_d[0]),Void,T(1, 7, 11),__LINE__);
+tester.testRun(edge_to_periphery.fp(edge_d[1]),Void,T(1, 11, 23, 17),__LINE__);
+tester.testRun(edge_to_periphery.fp(edge_d[2]),Void,T(8, 14, 10, 12, 17, 19, 18),__LINE__);
+tester.testRun(edge_to_periphery.fp(edge_d[3]),Void,">>>Error! Invalid edge format<<<",__LINE__);
+}
+
+
+
+{		///////////////////////////// Fairshare between two and more
+fcn fairShare(n,b){	// b<=36
+   n.pump(List,'wrap(n){ n.toString(b).split("").apply("toInt",b).sum(0)%b })
+}
+foreach b in (T(2,3,5,11)){
+   println("%2d: %s".fmt(b,fairShare(25,b).pump(String,"%2d ".fmt)));
+}
+
+tester.testRun(fairShare.fp(25,2),Void,T(0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0),__LINE__);
+tester.testRun(fairShare.fp(25,3),Void,T(0, 1, 2, 1, 2, 0, 2, 0, 1, 1, 2, 0, 2, 0, 1, 0, 1, 2, 2, 0, 1, 0, 1, 2, 1),__LINE__);
+tester.testRun(fairShare.fp(25,5),Void,T(0, 1, 2, 3, 4, 1, 2, 3, 4, 0, 2, 3, 4, 0, 1, 3, 4, 0, 1, 2, 4, 0, 1, 2, 3),__LINE__);
+tester.testRun(fairShare.fp(25,11),Void,T(0,1, 2, 3, 4, 5, 6, 7, 8, 9,10, 1, 2, 3, 4, 5, 6, 7, 8, 9,10, 0, 2, 3, 4),__LINE__);
+
+fcn fairShareW(b){	// b<=36
+   [0..].tweak('wrap(n){ n.toString(b).split("").apply("toInt",b).sum(0)%b })
+}
+test:=fcn(n,b){ fairShareW(b).walk(n) };
+tester.testRun(test.fp(25,11),Void,T(0,1, 2, 3, 4, 5, 6, 7, 8, 9,10, 1, 2, 3, 4, 5, 6, 7, 8, 9,10, 0, 2, 3, 4),__LINE__);
+
+fcn fairShareW2(b){
+   [0..].tweak('wrap(n){ 
+      sum,d := 0,0; while(n){ n,d = n.divr(b); sum+=d }
+      sum%b
+   })
+}
+test:=fcn(n,b){ fairShareW2(b).walk(n) };
+tester.testRun(test.fp(25,11),Void,T(0,1, 2, 3, 4, 5, 6, 7, 8, 9,10, 1, 2, 3, 4, 5, 6, 7, 8, 9,10, 0, 2, 3, 4),__LINE__);
+}
+
+
+
+
+{      //////////// First power of 2 that has leading decimal digits of 12
+//{{trans|Pascal}}
+//Lots of floats are slow so I've restricted the tests.
+
+// float*int --> float and int*float --> int
+fcn p(L,nth){   // 2^j = <L><digits>
+   var [const] ln10=(10.0).log(), ld10=(2.0).log() / ln10;
+   digits := (10).pow(L.numDigits - 1);
+   foreach i in ([1..]){
+      z:=ld10*i;
+      if(L == ( ln10 * (z - z.toInt()) ).exp()*digits and (nth-=1) <= 0)
+	 return(i);
+   }
+}
+
+#if 0	// just for me
+fcn pW(L){   // 2^j = <L><digits>
+   var [const] ln10=(10.0).log(), ld10=(2.0).log() / ln10;
+   Walker.zero().tweak(fcn(L,digits,ri){
+      foreach i in ([ri.value..]){
+         z:=ld10*i;
+	 if(L == ( ln10 * (z - z.floor()) ).exp()*digits){
+	    ri.set(i+1);
+	    return(i);
+	  }
+      }
+   }.fp(L,(10).pow(L.numDigits - 1),Ref(1)));
+}
+pw:=pW(12); pw.drop(2);
+println(pw.n,"  ",pw.value);
+#endif
+
+#<<<#
+{{libheader|GMP}} GNU Multiple Precision Arithmetic Library
+GMP is just used to give some context on the size of the numbers we
+are dealing with.
+#<<<#
+
+//var [const] BI=Import("zklBigNum");  // libGMP
+tests:=T( T(12,1),T(12,2), T(123,45),T(123,12345), );
+#if 0
+foreach L,nth in (tests){
+   n:=p(L,nth);
+   println("2^%-10,d is occurance %,d of 2^n == '%d<abc>' (%,d digits)"
+      .fmt(n,nth,L,BI(2).pow(n).len()));
+}
+#endif
+
+tester.testRun(p.fp(12,1),Void,7,__LINE__);
+tester.testRun(p.fp(12,2),Void,80,__LINE__);
+tester.testRun(p.fp(123,45),Void,12_710,__LINE__);
+}
+
+
+
+
+{			/////////////////////////////////// Gapful numbers
+fcn gapfulW(start){	//--> iterator
+   [start..].tweak(
+      fcn(n){ if(n % (10*n.toString()[0] + n%10)) Void.Skip else n })
+//      fcn(n){ if(n % (10*n.split()[0] + n%10)) Void.Skip else n })
+}
+foreach n,z in 
+       ( T( T(100, 30), T(1_000_000, 15), T(1_000_000_000, 10), T(7_123,25) )){
+   println("First %d gapful numbers starting at %,d:".fmt(z,n));
+   gapfulW(n).walk(z).concat(", ").println("\n");
+}
+
+tester.testRun(gapfulW(100).walk.fp(30),Void,T(100, 105, 108, 110, 120, 121, 130, 132, 135, 140, 143, 150, 154, 160, 165, 170, 176, 180, 187, 190, 192, 195, 198, 200, 220, 225, 231, 240, 242, 253),__LINE__);
+tester.testRun(gapfulW(1_000_000).walk.fp(15),Void,T(1000000, 1000005, 1000008, 1000010, 1000016, 1000020, 1000021, 1000030, 1000032, 1000034, 1000035, 1000040, 1000050, 1000060, 1000065),__LINE__);
+tester.testRun(gapfulW(10_000_000).walk.fp(15),Void,T(10000000,10000001,10000003,10000004,10000005,10000008,10000010,10000016,10000020,10000030,10000032,10000035,10000040,10000050,10000060),__LINE__);
+tester.testRun(gapfulW(1_000_000_000).walk.fp(10),Void,T(1000000000, 1000000001, 1000000005, 1000000008, 1000000010, 1000000016, 1000000020, 1000000027, 1000000030, 1000000032),__LINE__);
+tester.testRun(gapfulW(7_123).walk.fp(25),Void,T(7125,7140,7171,7189,7210,7272,7275,7280,7296,7350,7373,7420,7425,7474,7488,7490,7560,7575,7630,7632,7676,7700,7725,7770,7777),__LINE__);
+}
+
+
+
+
+{				/////////////// Intersecting Number Wheels
+fcn intersectingNumberWheelsW(wheels){ // ("A":(a,b,"C"), "C":(d,e) ...)
+   ws:=wheels.pump(Dictionary(),fcn([(k,v)]){ return(k,Walker.cycle(v)) });  // new Dictionary
+   Walker.zero().tweak(fcn(w,wheels){
+      while(1){
+	 w=wheels[w].next();	// increment wheel w
+	 if(Int.isType(w)) return(w);
+      }      
+   }.fp("A",ws))	// assume wheel A exists and is always first
+}
+
+wheelSets:=T( Dictionary("A",T(1,2,3)),
+	      Dictionary("A",T(1,"B",2),   "B",T(3,4)),
+	      Dictionary("A",T(1,"D","D"), "D",T(6,7,8)),
+	      Dictionary("A",T(1,"B","C"), "C",T(5,"B"),  "B",T(3,4)) );
+foreach ws in (wheelSets){
+   println("Wheel set:");
+   ws.pump(String,fcn([(k,v)]){ "  %s: %s\n".fmt(k,v.concat(" ")) }).print();
+   println("-->",intersectingNumberWheelsW(ws).walk(20).concat(" "));
+}
+
+fcn inwTest(ws){ intersectingNumberWheelsW(ws).walk(20) }
+tester.testRun(inwTest.fp(wheelSets[0]),Void,T(1,2,3,1,2,3,1,2,3,1,2,3,1,2,3,1,2,3,1,2),__LINE__);
+tester.testRun(inwTest.fp(wheelSets[1]),Void,T(1,3,2,1,4,2,1,3,2,1,4,2,1,3,2,1,4,2,1,3),__LINE__);
+tester.testRun(inwTest.fp(wheelSets[2]),Void,T(1,6,7,1,8,6,1,7,8,1,6,7,1,8,6,1,7,8,1,6),__LINE__);
+tester.testRun(inwTest.fp(wheelSets[3]),Void,T(1,3,5,1,4,3,1,4,5,1,3,4,1,3,5,1,4,3,1,4),__LINE__);
+}
+
+
+
+{		//////////////////////////////////// ISBN13 check digit
+fcn ISBN13_check(isbn){  // "978-1734314502", throws on invalid digits
+   var [const] one3=("13"*6 + 1).split("").apply("toInt"); // examine 13 digits
+   // one3=("13"*6) if you want to calculate what the check digit should be
+   one3.zipWith('*,isbn - " -").sum(0) % 10 == 0
+}
+isbns:=
+#<<<"
+    978-1734314502
+    978-1734314509
+    978-1788399081
+    978-1788399083
+    978-2-74839-908-0
+    978-2-74839-908-5".split("\n");
+#<<<
+foreach isbn in (isbns)
+   { println(isbn.strip(),"  ",ISBN13_check(isbn) and " Good" or " Bad") }
+
+
+tester.testRun(isbns.apply.fp(ISBN13_check),Void,T(True,False,True,False,True,False),__LINE__);
+}
+
+
+
+
+
+
+{			////////////////////////////////// Jacobi symbol
+fcn jacobi(a,n){
+   if(n.isEven or n<1) 
+      throw(Exception.ValueError("'n' must be a positive odd integer"));
+   a=a%n;   result,t := 1,0;
+   while(a!=0){
+      while(a.isEven){
+	 a/=2;   n_mod_8:=n%8;
+	 if(n_mod_8==3 or n_mod_8==5) result=-result;
+      }
+      t,a,n = a,n,t;
+      if(a%4==3 and n%4==3) result=-result;
+      a=a%n;
+   }
+   if(n==1) result else 0
+}
+
+println("Using hand-coded version:");
+println("n/a  0  1  2  3  4  5  6  7  8  9");
+println("---------------------------------");
+foreach n in ([1..17,2]){
+   print("%2d ".fmt(n));
+   foreach a in (10){ print(" % d".fmt(jacobi(a,n))) }
+   println();
+}
+
+tester.testRun(fcn{ [0..9].apply(jacobi.fp1(1)) },Void,L(1,1,1,1,1,1,1,1,1,1), __LINE__);
+tester.testRun(fcn{ [0..9].apply(jacobi.fp1(3)) },Void,L(0,1, -1,0,1, -1,0,1, -1,0), __LINE__);
+tester.testRun(fcn{ [0..9].apply(jacobi.fp1(7)) },Void,L(0,1,1, -1,1, -1, -1,0,1,1), __LINE__);
+tester.testRun(fcn{ [0..9].apply(jacobi.fp1(11)) },Void,L(0, 1,-1, 1, 1, 1,-1,-1,-1, 1), __LINE__);
+tester.testRun(fcn{ [0..9].apply(jacobi.fp1(15)) },Void,L(0, 1, 1, 0, 1, 0, 0,-1, 1, 0), __LINE__);
+}
+
+
+
+
+
+{		//////////////////////////////////////// Lah numbers
+fcn lah(n,k,fact=fcn(n){ [1..n].reduce('*,1) }){
+   if(n==k)	  return(1);
+   if(k==1)	  return(fact(n));
+   if(n<1 or k<1) return(0);
+   (fact(n)*fact(n - 1)) /(fact(k)*fact(k - 1)) /fact(n - k)
+}
+
+// calculate entire table (quick), find max, find num digits in max
+N,mx := 12, [1..N].apply(fcn(n){ [1..n].apply(lah.fp(n)) }).flatten() : (0).max(_);
+fmt:="%%%dd".fmt("%d".fmt(mx.numDigits + 1)).fmt;  // "%9d".fmt
+println("Unsigned Lah numbers: L(n,k):");
+println("n\\k",[0..N].pump(String,fmt));
+foreach row in ([0..N]){
+//   println("%3d".fmt(row), [0..row].pump(String, lah.fp(row), fmt));
+}
+
+tester.testRun(lah.fp(0,0),Void,1,__LINE__);
+tester.testRun(fcn{ [0..9].apply(lah.fp(9)) },Void,
+   L(0,362880,1451520,1693440,846720,211680,28224,2016,72,1), __LINE__);
+
+
+
+if(BI){
+#<<<#
+{{libheader|GMP}} GNU Multiple Precision Arithmetic Library
+#<<<#
+//var [const] BI=Import("zklBigNum");  // libGMP
+N=100;
+L100:=[1..N].apply(lah.fpM("101",BI(N),fcn(n){ BI(n).factorial() }))
+       .reduce(fcn(m,n){ m.max(n) });
+println("Maximum value from the L(%d,*) row (%d digits):".fmt(N,L100.numDigits));
+println(L100);
+
+
+tester.testRun(L100.toString,Void,
+  "44519005448993144810881324947684737529186447692709328597242209638906324913313742508392928375354932241404408343800007105650554669129521241784320000000000000000000000",
+   __LINE__);
+}
+}
+
+
+{				////////////////////////// Long year?
+fcn isLongYear(y){ Time.Date.weeksInYear(y)==53 }
+foreach nm,y in (T(T("20th",1900), T("21st",2000), T("22nd",2100))){
+   println("\nLong years in the %s century:\n%s".fmt(nm,
+      [y..y+99].filter(isLongYear).concat(" ")));
+}
+
+tester.testRun([1900..1999].filter.fp(isLongYear),Void,T(1903,1908,1914,1920,1925,1931,1936,1942,1948,1953,1959,1964,1970,1976,1981,1987,1992,1998),__LINE__);
+tester.testRun([2000..2099].filter.fp(isLongYear),Void,T(2004,2009,2015,2020,2026,2032,2037,2043,2048,2054,2060,2065,2071,2076,2082,2088,2093,2099),__LINE__);
+tester.testRun([2100..2199].filter.fp(isLongYear),Void,T(2105,2111,2116,2122,2128,2133,2139,2144,2150,2156,2161,2167,2172,2178,2184,2189,2195),__LINE__);
+}
+
+
+
+{	///////////////////////////////////////////// Mertens function
+fcn mertensW(n){
+   [1..].tweak(fcn(n,pm){
+      pm.incN(mobius(n));
+      pm.value
+   }.fp1(Ref(0)))
+}
+#if 0
+fcn mobius(n){
+   pf:=primeFactors(n);
+   sq:=pf.filter1('wrap(f){ (n % (f*f))==0 });  // False if square free
+   if(sq==False){ if(pf.len().isEven) 1 else -1 }
+   else 0
+}
+fcn primeFactors(n){  // Return a list of prime factors of n
+   acc:=fcn(n,k,acc,maxD){  // k is 2,3,5,7,9,... not optimum
+      if(n==1 or k>maxD) acc.close();
+      else{
+	 q,r:=n.divr(k);   // divr-->(quotient,remainder)
+	 if(r==0) return(self.fcn(q,k,acc.write(k),q.toFloat().sqrt()));
+	 return(self.fcn(n,k+1+k.isOdd,acc,maxD))  # both are tail recursion
+      }
+   }(n,2,Sink(List),n.toFloat().sqrt());
+   m:=acc.reduce('*,1);      // mulitply factors
+   if(n!=m) acc.append(n/m); // opps, missed last factor
+   else acc;
+}
+#endif
+
+mertensW().walk(199)
+.pump(Console.println, T(Void.Read,19,False),
+	fcn{ vm.arglist.pump(String,"%3d".fmt) });
+
+println("\nIn the first 1,000 terms of the Mertens sequence there are:");
+otm:=mertensW().pump(1_000,List);
+//otm.reduce(fcn(s,m){ s + (m==0) },0) : println(_," zeros");
+   (a:=otm.reduce(fcn(s,m){ s + (m==0) },0)) : println(_," zeros");
+otm.reduce(fcn(p,m,rs){ rs.incN(m==0 and p!=0); m }.fp2( s:=Ref(0) ));
+println(s.value," zero crossings");
+   
+
+tester.testRun(mertensW().walk.fp(199),Void,
+T(
+      1,  0, -1, -1, -2, -1, -2, -2, -2, -1, -2, -2, -3, -2, -1, -1, -2, -2, -3,
+ -3, -2, -1, -2, -2, -2, -1, -1, -1, -2, -3, -4, -4, -3, -2, -1, -1, -2, -1,  0,
+  0, -1, -2, -3, -3, -3, -2, -3, -3, -3, -3, -2, -2, -3, -3, -2, -2, -1,  0, -1,
+ -1, -2, -1, -1, -1,  0, -1, -2, -2, -1, -2, -3, -3, -4, -3, -3, -3, -2, -3, -4,
+ -4, -4, -3, -4, -4, -3, -2, -1, -1, -2, -2, -1, -1,  0,  1,  2,  2,  1,  1,  1,
+  1,  0, -1, -2, -2, -3, -2, -3, -3, -4, -5, -4, -4, -5, -6, -5, -5, -5, -4, -3,
+ -3, -3, -2, -1, -1, -1, -1, -2, -2, -1, -2, -3, -3, -2, -1, -1, -1, -2, -3, -4,
+ -4, -3, -2, -1, -1,  0,  1,  1,  1,  0,  0, -1, -1, -1, -2, -1, -1, -2, -1,  0,
+  0,  1,  1,  0,  0, -1,  0, -1, -1, -1, -2, -2, -2, -3, -4, -4, -4, -3, -2, -3,
+ -3, -4, -5, -4, -4, -3, -4, -3, -3, -3, -4, -5, -5, -6, -5, -6, -6, -7, -7, -8
+),__LINE__);
+
+tester.testRun(a.noop,Void,92,__LINE__);
+tester.testRun(s.value.noop,Void,59,__LINE__);
+}
+
+
+
+if(BI){		////////////////////////////////////////// Metallic ratios
+#<<<#
+{{libheader|GMP}} GNU Multiple Precision Arithmetic Library
+#<<<#
+//var [const] BI=Import("zklBigNum");  // libGMP
+fcn lucasSeq(b){
+   Walker.zero().tweak('wrap(xs){
+      xm2,xm1 := xs;	// x[n-2], x[n-1]
+      xn:=xm1*b + xm2;
+      xs.append(xn).del(0);
+      xn
+   }.fp(L(BI(1),BI(1)))).push(1,1)  // xn can get big so use BigInts
+}
+fcn metallicRatio(lucasSeq,digits=32,roundup=True){ #-->(String,num iterations)
+   bige:=BI("1e"+(digits+1));  // x[n-1]*bige*b / x[n-2] to get our digits from Ints
+   a,b,mr := lucasSeq.next(), lucasSeq.next(), (bige*b).div(a);
+   do(20_000){	// limit iterations
+      c,mr2 := lucasSeq.next(), (bige*c).div(b);
+      if(mr==mr2){
+	 mr=mr2.add(5*roundup).div(10).toString();
+	 return(String(mr[0],".",mr.del(0)),
+	    lucasSeq.idx); // idx ignores push(), ie first 2 terms
+      }
+      b,mr = c,mr2;
+   }
+}
+
+#if 0
+metals:="Platinum Golden Silver Bronze Copper Nickel Aluminum Iron Tin Lead";
+foreach metal in (metals.split(" ")){ n:=__metalWalker.idx;
+   println("\nLucas sequence for %s ratio; where b = %d:".fmt(metal,n));
+   println("First 15 elements: ",lucasSeq(n).walk(15).concat(" "));
+   mr,i := metallicRatio(lucasSeq(n));
+   println("Approximated value: %s - Reached after ~%d iterations.".fmt(mr,i));
+}
+
+println("\n\n");
+println("Golden ratio (b==1) to 256 digits:");
+mr,i := metallicRatio(lucasSeq(1),256);
+println("Approximated value: %s\nReached after ~%d iterations.".fmt(mr,i));
+#endif
+
+
+testMR:=fcn(b,digits=32)
+   { mr,i := metallicRatio(lucasSeq(b),digits); return(mr,i) };
+
+tester.testRun(lucasSeq(0).walk.fp(15),Void,T(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),__LINE__);
+
+tester.testRun(lucasSeq(1).walk.fp(15),Void,T(1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610),__LINE__);
+tester.testRun(testMR.fp(1),Void,T("1.61803398874989484820458683436564",81),__LINE__);
+
+tester.testRun(lucasSeq(2).walk.fp(15),Void,T(1, 1, 3, 7, 17, 41, 99, 239, 577, 1393, 3363, 8119, 19601, 47321, 114243),__LINE__);
+tester.testRun(testMR.fp(2),Void,T("2.41421356237309504880168872420970",45),__LINE__);
+tester.testRun(fcn{ metallicRatio(lucasSeq(2),32,False) },Void,T("2.41421356237309504880168872420969",45),__LINE__);
+
+tester.testRun(lucasSeq(4).walk.fp(15),Void,T(1, 1, 5, 21, 89, 377, 1597, 6765, 28657, 121393, 514229, 2178309, 9227465, 39088169, 165580141),__LINE__);
+tester.testRun(testMR.fp(4),Void,T("4.23606797749978969640917366873128",28),__LINE__);
+
+tester.testRun(lucasSeq(7).walk.fp(15),Void,T(1, 1, 8, 57, 407, 2906, 20749, 148149, 1057792, 7552693, 53926643, 385039194, 2749201001, 19629446201, 140155324408),__LINE__);
+tester.testRun(testMR.fp(7),Void,T("7.14005494464025913554865124576352",21),__LINE__);
+
+tester.testRun(lucasSeq(9).walk.fp(15),Void,T(1, 1, 10, 91, 829, 7552, 68797, 626725, 5709322, 52010623, 473804929, 4316254984, 39320099785, 358197153049, 3263094477226),__LINE__);
+tester.testRun(testMR.fp(9),Void,T("9.10977222864644365500113714088140",19),__LINE__);
+
+tester.testRun(testMR.fp(1,256),Void,T("1.6180339887498948482045868343656381177203091798057628621354486227052604628189024497072072041893911374847540880753868917521266338622235369317931800607667263544333890865959395829056383226613199282902678806752087668925017116962070322210432162695486262963136144",616),__LINE__);
+}
+
+
+
+
+{			//////////////////////////// Minimal steps down to 1
+var minCache;  // (val:(newVal,op,steps))
+fcn buildCache(N,D,S){
+   minCache=Dictionary(1,T(1,"",0));
+   foreach n in ([2..N]){
+      ops:=List();
+      foreach d in (D){ if(n%d==0) ops.append(T(n/d,  String("/",d))) }
+      foreach s in (S){ if(n>s)    ops.append(T(n - s,String("-",s))) }
+      mcv:=fcn(op){ minCache[op[0]][2] };	// !ACK!, dig out steps
+      v,op := ops.reduce(			// find min steps to get to op
+	 'wrap(vo1,vo2){ if(mcv(vo1)<mcv(vo2)) vo1 else vo2 });
+      minCache[n]=T(v, op, 1 + minCache[v][2])  // this many steps to get to n
+   }
+}
+fcn stepsToOne(N){	// D & S are determined by minCache
+   ops,steps := Sink(String).write(N), minCache[N][2];
+   do(steps){ v,o,s := minCache[N]; ops.write(" ",o,"-->",N=v); }
+   return(steps,ops.close())
+}
+
+MAX, D,S := 50_000, T(2,3), T(1);
+#if 0
+buildCache(MAX,D,S);
+
+do(2){
+   println("\nDivisors: %s, subtracters: %s".fmt(D.concat(","), S.concat(",")));
+   foreach n in ([1..10]){ println("%2d: %d steps: %s".fmt(n,stepsToOne(n).xplode())) }
+
+#if 0	// ever so slightly faster
+   maxSteps:=minCache.reduce(fcn(mkv,kv){ if(mkv[1][2]>kv[1][2]) mkv else kv })[1][2];
+#else
+   maxSteps:=minCache.pump(List,fcn(kv){ kv[1][2] }) : (0).max(_);
+#endif
+   biggies :=minCache.filter('wrap(kv){ kv[1][2]==maxSteps }).pump(List,fcn(kv){ kv[0].toInt() }).sort();
+   println("\nBelow %,d, found %d numbers that require %d steps (the mostest)."
+      .fmt(MAX,biggies.len(),maxSteps));
+   foreach n in (biggies){ println("%,6d: %d steps: %s".fmt(n,stepsToOne(n).xplode())) }
+
+   S=T(2); buildCache(MAX,D,S);
+}
+#endif
+
+////////////////////////
+MAX,S = 2_000, T(1); buildCache(MAX,D,S);
+tester.testRun(minCache.get.fp(2), Void,L(1,"-1",1),__LINE__);
+tester.testRun(minCache.get.fp(3), Void,L(1,"/3",1),__LINE__);
+tester.testRun(minCache.get.fp(4), Void,L(3,"-1",2),__LINE__);
+tester.testRun(minCache.get.fp(5), Void,L(4,"-1",3),__LINE__);
+tester.testRun(minCache.get.fp(6), Void,L(2,"/3",2),__LINE__);
+tester.testRun(minCache.get.fp(7), Void,L(6,"-1",3),__LINE__);
+tester.testRun(minCache.get.fp(8), Void,L(4,"/2",3),__LINE__);
+tester.testRun(minCache.get.fp(9), Void,L(3,"/3",2),__LINE__);
+tester.testRun(minCache.get.fp(10),Void,L(9,"-1",3),__LINE__);
+
+biggies:=minCache.filter('wrap(kv){ kv[1][2]==14 }).pump(List,fcn(kv){ kv[0].toInt() }).sort();
+tester.testRun(biggies.noop,Void,T(863,1079,1295,1439,1511,1583,1607,1619,1691,1727,1823,1871,1895,1907,1919,1943),__LINE__);
+
+S=T(2); minCache=Dictionary(1,T(1,"",0)); buildCache(MAX,D,S);
+tester.testRun(minCache.get.fp(2), Void,L(1,"/2",1),__LINE__);
+tester.testRun(minCache.get.fp(3), Void,L(1,"-2",1),__LINE__);
+tester.testRun(minCache.get.fp(4), Void,L(2,"-2",2),__LINE__);
+tester.testRun(minCache.get.fp(5), Void,L(3,"-2",2),__LINE__);
+tester.testRun(minCache.get.fp(6), Void,L(2,"/3",2),__LINE__);
+tester.testRun(minCache.get.fp(7), Void,L(5,"-2",3),__LINE__);
+tester.testRun(minCache.get.fp(8), Void,L(6,"-2",3),__LINE__);
+tester.testRun(minCache.get.fp(9), Void,L(3,"/3",2),__LINE__);
+tester.testRun(minCache.get.fp(10),Void,L(5,"/2",3),__LINE__);
+}
+
+
+
+
+{		//////////////////////////////////// Möbius function
+fcn mobius(n){
+   pf:=primeFactors(n);
+   sq:=pf.filter1('wrap(f){ (n % (f*f))==0 });  // False if square free
+   if(sq==False){ if(pf.len().isEven) 1 else -1 }
+   else 0
+}
+fcn primeFactors(n){  // Return a list of prime factors of n
+   acc:=fcn(n,k,acc,maxD){  // k is 2,3,5,7,9,... not optimum
+      if(n==1 or k>maxD) acc.close();
+      else{
+	 q,r:=n.divr(k);   // divr-->(quotient,remainder)
+	 if(r==0) return(self.fcn(q,k,acc.write(k),q.toFloat().sqrt()));
+	 return(self.fcn(n,k+1+k.isOdd,acc,maxD))  # both are tail recursion
+      }
+   }(n,2,Sink(List),n.toFloat().sqrt());
+   m:=acc.reduce('*,1);      // mulitply factors
+   if(n!=m) acc.append(n/m); // opps, missed last factor
+   else acc;
+}
+
+[1..199].apply(mobius)
+.pump(Console.println, T(Void.Read,19,False),
+	fcn{ vm.arglist.pump(String,"%3d".fmt) });
+
+
+tester.testRun([1..199].apply.fp(mobius),Void,
+T(
+      1, -1, -1,  0, -1,  1, -1,  0,  0,  1, -1,  0, -1,  1,  1,  0, -1,  0, -1,
+  0,  1,  1, -1,  0,  0,  1,  0,  0, -1, -1, -1,  0,  1,  1,  1,  0, -1,  1,  1,
+  0, -1, -1, -1,  0,  0,  1, -1,  0,  0,  0,  1,  0, -1,  0,  1,  0,  1,  1, -1,
+  0, -1,  1,  0,  0,  1, -1, -1,  0,  1, -1, -1,  0, -1,  1,  0,  0,  1, -1, -1,
+  0,  0,  1, -1,  0,  1,  1,  1,  0, -1,  0,  1,  0,  1,  1,  1,  0, -1,  0,  0,
+  0, -1, -1, -1,  0, -1,  1, -1,  0, -1, -1,  1,  0, -1, -1,  1,  0,  0,  1,  1,
+  0,  0,  1,  1,  0,  0,  0, -1,  0,  1, -1, -1,  0,  1,  1,  0,  0, -1, -1, -1,
+  0,  1,  1,  1,  0,  1,  1,  0,  0, -1,  0, -1,  0,  0, -1,  1,  0, -1,  1,  1,
+  0,  1,  0, -1,  0, -1,  1, -1,  0,  0, -1,  0,  0, -1, -1,  0,  0,  1,  1, -1,
+  0, -1, -1,  1,  0,  1, -1,  1,  0,  0, -1, -1,  0, -1,  1, -1,  0, -1,  0, -1,
+),__LINE__);
+}
+
+
+
+{	//////////////////////////////////////////////////// Palindrome dates
+	   test:=List();
+TD,date,n := Time.Date, T(2020,02,02), 15;
+while(n){
+   ds:=TD.toYMDString(date.xplode()) - "-";
+//   if(ds==ds.reverse()){ n-=1; println(TD.toYMDString(date.xplode())); }
+if(ds==ds.reverse()){ n-=1; test.append(println(TD.toYMDString(date.xplode()))) }
+   date=TD.addYMD(date,0,0,1);
+}
+
+tester.testRun(test.noop,Void,
+T(
+"2020-02-02",
+"2021-12-02",
+"2030-03-02",
+"2040-04-02",
+"2050-05-02",
+"2060-06-02",
+"2070-07-02",
+"2080-08-02",
+"2090-09-02",
+"2101-10-12",
+"2110-01-12",
+"2111-11-12",
+"2120-02-12",
+"2121-12-12",
+"2130-03-12",
+),__LINE__);
+}
+
+
+
+
+{		//////////////////////////////// Palindromic gapful numbers
+// Using ideas from the Factor entry
+
+// 10,True  --> 101,111,121,131,141,151,161,171,181,191,202, ..
+// 10,False --> 1001,1111,1221,1331,1441,1551,1661,1771,1881, ..
+fcn createPalindromeW(start,oddLength){	//--> iterator
+   [start..].tweak('wrap(z){
+      p,n := z,z;
+      if(oddLength) n/=10;
+      while(n>0){ p,n = p*10 + (n%10), n/10; }
+      p
+   })
+}   
+fcn palindromicGapfulW(endsWith){	//--> iterator
+   po,pe := createPalindromeW(10,True), createPalindromeW(10,False);
+   div:=endsWith*10 + endsWith;
+   Walker.zero().tweak('wrap{
+      p:=( if(pe.peek()<po.peek()) pe.next() else po.next() );
+      if(p%10==endsWith and (p%div)==0) p else Void.Skip 
+   })
+}
+
+#if 0
+println("First 20 palindromic gapful numbers:");
+[1..9].apply(palindromicGapfulW).apply("walk",20) : pgpp(_);
+
+foreach N,sz in (T( T(100,15), T(1_000,10), )){
+   println("\nLast %d of %,d palindromic gapful numbers:".fmt(sz,N));
+   [1..9].apply('wrap(n){ palindromicGapfulW(n).drop(N-sz).walk(sz) }) : pgpp(_);
+}
+
+fcn pgpp(table){  // pretty print ( (numbers),(numbers) )
+   m,fmt := (0).max(table.apply((0).max)).numDigits, "%%%dd ".fmt(m).fmt;
+   foreach d,row in ([1..].zip(table)){ println(d,": ",row.pump(String,fmt)) }
+}
+
+/* We can also thread the whole mess, which for this case, is a 3.75x speed up
+ *   (3 min to 48 sec) with 8 cores (Linux Intel 4/4).
+ */
+fcn palGT(n,N,sz){ palindromicGapfulW(n).drop(N-sz).walk(sz) } // worker thread
+foreach N,sz in (T( T(100_000,1) )){
+   println("\nLast %d of %,d palindromic gapful numbers:".fmt(sz,N));
+   [1..9].apply('wrap(n){ palGT.future(n,N,sz) })  // create threads
+      .apply("noop")		// wait for threads to finish and get result
+   : pgpp(_);
+}
+#endif
+
+tester.testRun(palindromicGapfulW(1).walk.fp(10),Void,T(121,1001,1111,1221,1331,1441,1551,1661,1771,1881),__LINE__);
+tester.testRun(palindromicGapfulW(9).walk.fp(10),Void,T(9009,9999,94149,99099,900009,909909,918819,927729,936639,945549),__LINE__);
+
+test:=fcn(n,a,b){ palindromicGapfulW(n).drop(a-b).walk(b) };
+tester.testRun(test.fp(1,100,15),Void,T(165561,166661,167761,168861,169961,170071,171171,172271,173371,174471,175571,176671,177771,178871,179971),__LINE__);
+tester.testRun(test.fp(9,100,15),Void,T(95311359,95400459,95499459,95588559,95677659,95766759,95855859,95944959,96033069,96122169,96211269,96300369,96399369,96488469,96577569),__LINE__);
+}
+
+
+
+		/////////////////////////////////////////////// Safe mode
+#<<<#
+zkl is unsafe.  Any program can access any method and many methods access
+the system.  Additionally, any program can load a program or 
+eval (compile and run) text.
+#<<<#
+
+
+
+{			////////////////// Stirling numbers of the first kind
+//{{trans|Perl6}}
+fcn stirling1(n,k){
+   var seen=Dictionary();	// cache for recursion
+   if(n==k==0)      return(1);
+   if(n==0 or k==0) return(0);
+   
+   z1,z2 := "%d,%d".fmt(n-1,k-1), "%d,%d".fmt(n-1,k);
+   if(Void==(s1 := seen.find(z1))){ s1 = seen[z1] = stirling1(n - 1, k - 1) }
+   if(Void==(s2 := seen.find(z2))){ s2 = seen[z2] = stirling1(n - 1, k)     }
+   (n - 1)*s2 + s1;   // n is first to cast to BigInt (if using BigInts)
+}
+
+// calculate entire table (cached), find max, find num digits in max
+//N,mx := 12, [1..N].apply(fcn(n){ [1..n].apply(stirling1.fp(n)) : (0).max(_) }) : (0).max(_);
+N,mx := 12, [1..N].apply(fcn(n){ [1..n].apply(stirling1.fp(n)) }).flatten() : (0).max(_);
+fmt:="%%%dd".fmt("%d".fmt(mx.numDigits + 1)).fmt;  // "%9d".fmt
+println("Unsigned Stirling numbers of the first kind: S1(n,k):");
+println("n\\k",[0..N].pump(String,fmt));
+foreach row in ([0..N]){
+//   println("%3d".fmt(row), [0..row].pump(String, stirling1.fp(row), fmt));
+}
+
+tester.testRun(stirling1.fp(0,0),Void,1,__LINE__);
+tester.testRun(fcn{ [0..9].apply(stirling1.fp(9)) },Void,
+   L(0,40320,109584,118124,67284,22449,4536,546,36,1), __LINE__);
+
+
+if(BI){
+#<<<#
+{{libheader|GMP}} GNU Multiple Precision Arithmetic Library
+#<<<#
+//var [const] BI=Import("zklBigNum");  // libGMP
+N=100; 
+println("Maximum value from the S1(%d,*) row:".fmt(N));
+          S1100:=
+[1..N].apply(stirling1.fp(BI(N)))
+  .reduce(fcn(m,n){ m.max(n) }).println();
+
+tester.testRun(S1100.noop,Void,
+  "19710908747055261109287881673376044669240511161402863823515728791076863288440277983854056472903481625299174865860036734731122707870406148096000000000000000000",
+   __LINE__);
+}
+
+}
+
+
+
+{			////////////////// Stirling numbers of the second kind
+fcn stirling2(n,k){
+   var seen=Dictionary();	// cache for recursion
+   if(n==k)       return(1);	// (0.0)==1
+   if(n<1 or k<1) return(0);
+   z1,z2 := "%d,%d".fmt(n-1,k), "%d,%d".fmt(n-1,k-1);
+   if(Void==(s1 := seen.find(z1))){ s1 = seen[z1] = stirling2(n-1,k)   }
+   if(Void==(s2 := seen.find(z2))){ s2 = seen[z2] = stirling2(n-1,k-1) }
+   k*s1 + s2;   // k is first to cast to BigInt (if using BigInts)
+}
+
+
+// calculate entire table (cached), find max, find num digits in max
+N,mx := 12, [1..N].apply(fcn(n){ [1..n].apply(stirling2.fp(n)) }).flatten() : (0).max(_);
+fmt:="%%%dd".fmt("%d".fmt(mx.numDigits + 1)).fmt;  // "%9d".fmt
+println("Stirling numbers of the second kind: S2(n,k):");
+println("n\\k",[0..N].pump(String,fmt));
+foreach row in ([0..N]){
+//   println("%3d".fmt(row), [0..row].pump(String, stirling2.fp(row), fmt));
+}
+
+tester.testRun(stirling2.fp(0,0),Void,1,__LINE__);
+tester.testRun(fcn{ [0..9].apply(stirling2.fp(9)) },Void,
+   L(0,1,255,3025,7770,6951,2646,462,36,1), __LINE__);
+
+
+if(BI){
+#<<<#
+{{libheader|GMP}} GNU Multiple Precision Arithmetic Library
+#<<<#
+//var [const] BI=Import("zklBigNum");  // libGMP
+N=100;
+S2100:=[BI(2)..N].apply(stirling2.fp(BI(N))).reduce(fcn(m,n){ m.max(n) });
+println("Maximum value from the S2(%d,*) row (%d digits):".fmt(N,S2100.numDigits));
+println(S2100);
+
+tester.testRun(S2100.toString,Void,
+  "7769730053598745155212806612787584787397878128370115840974992570102386086289805848025074822404843545178960761551674",
+   __LINE__);
+}
+
+}
+
+
+if(BI){	///////////////////////////////////////////////// Super-d numbers
+#<<<#
+{{libheader|GMP}} GNU Multiple Precision Arithmetic Library
+#<<<#
+//var [const] BI=Import("zklBigNum");  // libGMP
+
+fcn superDW(d){
+   digits:=d.toString()*d;
+   [2..].tweak('wrap(n)
+      { BI(n).pow(d).mul(d).toString().holds(digits) and n or Void.Skip });
+}
+//foreach d in ([2..8]){ println(d," : ",super(d).walk(10).concat(" ")) }
+
+testSD:=fcn(d){ superDW(d).walk(10) };
+tester.testRun(testSD.fp(2),Void,T(19,31,69,81,105,106,107,119,127,131),__LINE__);
+tester.testRun(testSD.fp(3),Void,T(261,462,471,481,558,753,1036,1046,1471,1645),__LINE__);
+tester.testRun(testSD.fp(4),Void,T(1168,4972,7423,7752,8431,10267,11317,11487,11549,11680),__LINE__);
+}
+
+
+
+{			///////////////////////////////////////// UPC
+var lhd=Dictionary(), rhd=Dictionary();
+[0..].zip(List(
+    "0 0 0 1 1 0 1", //--> "___##_#":0   "###__#_":0
+    "0 0 1 1 0 0 1", 
+    "0 0 1 0 0 1 1",
+    "0 1 1 1 1 0 1",
+    "0 1 0 0 0 1 1",
+    "0 1 1 0 0 0 1",
+    "0 1 0 1 1 1 1",
+    "0 1 1 1 0 1 1",
+    "0 1 1 0 1 1 1",
+    "0 0 0 1 0 1 1") //--> "___#_##":9    "###_#__":9
+).pump(Void,fcn([(n,bs)]){
+   bs-=" ";
+   lhd[bs.translate("01","_#")]=n;
+   rhd[bs.translate("10","_#")]=n;
+});
+
+fcn parseBarCode(barcode, one=True){	// --> 12 digits
+   upsideDown:='wrap{	// was I looking at this bar code upside down?
+      if(one and (r:=parseBarCode(barcode.reverse(),False))) return(r);
+      return(False);
+   };
+
+   var [const] start=RegExp(String("_"*9, "+#_#")), tail="_"*7;
+   if(not start.search(barcode)) return(upsideDown());
+   r,idx,d,mark := List(), start.matched[0][1], lhd, "_#_#_";
+   do(2){
+      do(6){
+	 if(Void==(z:=d.find(barcode[idx,7]))) return(upsideDown());
+	 r.append(z);
+	 idx+=7;
+      }
+      if(barcode[idx,5] != mark) return(Void);
+      d,idx,mark = rhd, idx+5, "#_#__";
+   }
+   if(tail!=barcode[idx,7]) return(Void);  // 9 trailing blanks? two checked above
+   r
+}
+
+// Or, if you like way too long regular expressions:
+var upcRE = RegExp(String("_"*9, "+#_#",
+	lhd.keys.concat("|","(",")")*6, "_#_#_",
+	rhd.keys.concat("|","(",")")*6, "#_#", "_"*9)),
+    digits=lhd.copy().extend(rhd);
+
+fcn parseBarCode2(barcode){	// --> 12 digits
+   if(not (upcRE.search(barcode) or upcRE.search(barcode.reverse()))) return(False);
+   upcRE.matched[1,*] // ( (a,b), "_#_####","_##___#", 10 more digit patterns )
+   .apply(digits.get)
+}
+
+barcodes:=
+#<<<"
+_________#_#___#_##__#__##_#___##_###_##_###_##_####_#_#_#_##_##__#___#__##__##_###__#_##__##_###_#__#_#_________
+_________#_#_#___##___##_#_####_#___#_##_#___##_#___##_#_#_#_###__#_###__##__##_###__#_#__###_###__#_#_#_________
+_________#_#____#_#_#__###__#___#____#_#__#___#____#_#_#_#_##_#___##_#___##_#___##___#_#_####_###_##_#_#_________
+_________#_#_##__##_##__##___#__#___#__#_###__#_##__##_#_#_#___##_##__#__###_##_##_#___#_####_##_#___#_#_________
+_________#_#_###_##_#___##_##_###__##__#_##___#___#_##_#_#_###_#__##_##__#____#_###_#__##_##__#______#_#__________
+__________#_#__#___#_##__##__#___#___#__#_##__##__#___#_#_#_#_####_#__##__#_####_####_#_#__##__#_####_#_#____________
+_________#_#__#__##__##__#_#___##_##___#_###_##_##___#_#_#_#__#___#___#__#__###_#_#____###__#_#__#___#_#_________
+_________#_#_#____#_##__##___#__#_##__##__###_#___#__#_#_#_###_##_##_###_##_###_###_##_#__##__###_##_#_#__________
+_________#_#_###_##___##_#_#_####_#___##_#_####_#_####_#_#_#___#__#_###__#____#_###__#_#____#_###__#_#_#_________
+_______________#_#_#_####_##___#_####_#_#___##_##_###_####_#_#_#_#__###_#_###__###__#_#_###__#____#_#__###_#_#_________"
+.split("\n");
+#<<<
+
+foreach n,barcode in ([1..].zip(barcodes)){
+   bc:=parseBarCode(barcode);
+   println("%2d: [%s]".fmt(n,bc and bc.concat(" ") or "Not valid"));
+}
+
+
+//------------------------ test
+
+answers:=T(
+T(9,2,4,7,7,3,2,7,1,0,1,9),
+T(4,0,3,9,4,4,4,4,1,0,5,0),
+T(8,3,4,9,9,9,6,7,6,7,0,6),
+T(9,3,9,8,2,5,1,5,8,8,1,1),
+False,
+T(3,1,6,3,1,3,7,1,8,7,1,7),
+T(2,1,4,5,7,5,8,7,5,6,0,8),
+T(8,1,8,7,7,8,8,4,1,8,1,3),
+T(7,0,6,4,6,6,7,4,3,0,3,0),
+T(6,5,3,4,8,3,5,4,0,4,3,5),
+);
+
+testBC:=fcn(f,qs,as){
+   foreach bc,a in (qs.zip(as))
+      { tester.testRun(parseBarCode.fp(bc),Void,a,__LINE__) }
+};
+testBC(parseBarCode,barcodes,answers);
+testBC(parseBarCode2,barcodes,answers);
+}
+
+
+
+if(BI){		///////////////////////////////////// Unprimeable numbers
+#<<<#
+{{libheader|GMP}} GNU Multiple Precision Arithmetic Library and fast prime checking
+#<<<#
+//var [const] BI=Import("zklBigNum");  // libGMP
+
+#if 0	// brute
+fcn isUnprimeableW{	// --> iterator
+   Walker.zero().tweak(fcn(rn){ 
+      foreach n in ([rn.value..]){
+         bn,pow,m := BI(n),1,n;
+         if(bn.probablyPrime()) continue;
+	 while(m){
+	    z:=(m%10)*pow;	// extact digit from n, 123:1 --> 20
+	    foreach dgt in ([0..9])  // and out z, or in dgt
+	       { if(bn.set(n - z + dgt*pow).probablyPrime()) continue(3) }
+	    pow,m = pow*10,m/10;
+	 }
+	 rn.set(n+1);
+	 return(n)
+      }
+   }.fp(Ref(100)))
+}
+#else   // much faster
+//{{trans|Sidef}}
+fcn isUnprimeable(n){  //--> n (!0) or Void, a filter
+   bn,t := BI(0),n/10*10;
+   foreach k in ([t+1..t+9,2]){ if(bn.set(k).probablyPrime()) return(Void.Skip) }
+   if(n==n/2*2 or n==n/5*5){
+      if(not bn.set(n%10).probablyPrime())          return(n);
+      if( (n % (10).pow(n.toFloat().log10()) ) > 9) return(n);
+   }
+   foreach k in ([1 .. n.toFloat().log10()]){
+      u,v := (10).pow(k), (n - (u * ((n/u) % 10)));
+      foreach d in (10){ if(bn.set(v + d*u).probablyPrime()) return(Void.Skip); }
+   }
+   n
+}
+fcn isUnprimeableW{ [100..].tweak(isUnprimeable) }	// --> iterator
+#endif
+
+isUnprimeableW().walk(35).concat(" ").println();
+println("The 600th unprimeable number is: %,d".fmt(isUnprimeableW().drop(600).value));
+
+s,ups := 10, List.createLong(10,0);
+
+s=6;
+
+foreach up in (isUnprimeableW())
+   { d:=up%10; if(ups[d]==0){ ups[d]=up; if((s-=1)<=0) break; } }
+println("The first unprimeable number that ends in:");
+foreach n in (10){ println("%d is %8,d".fmt(n,ups[n])) }
+
+
+tester.testRun(fcn{ isUnprimeableW().walk(35) },Void,T(200,204,206,208,320,322,324,325,326,328,510,512,514,515,516,518,530,532,534,535,536,538,620,622,624,625,626,628,840,842,844,845,846,848,890),__LINE__);
+tester.testRun(fcn{ isUnprimeableW().drop(600).value },Void,5242,__LINE__);
+tester.testRun(ups.noop,Void,T(200,0,322,0,204,325,206,0,208,0),__LINE__);
+}
+
+
+if(BI){	// Primalty by Wilson's theorem
+#<<<#
+{{libheader|GMP}} GNU Multiple Precision Arithmetic Library and primes
+#<<<#
+//var [const] BI=Import("zklBigNum");  // libGMP
+fcn isWilsonPrime(p){
+   if(p<=1 or (p%2==0 and p!=2)) return(False);
+   BI(p-1).factorial().add(1).mod(p) == 0
+}
+fcn wPrimesW{ [2..].tweak(fcn(n){ isWilsonPrime(n) and n or Void.Skip }) }
+
+numbers:=T(2, 3, 9, 15, 29, 37, 47, 57, 67, 77, 87, 97, 237, 409, 659);
+println("  n  prime");
+println("---  -----");
+foreach n in (numbers){ println("%3d  %s".fmt(n, isWilsonPrime(n))) }
+
+println("\nFirst 120 primes via Wilson's theorem:");
+wPrimesW().walk(120).pump(Void, T(Void.Read,15,False), 
+  fcn(ns){ vm.arglist.apply("%4d".fmt).concat(" ").println() });
+
+tester.testRun(wPrimesW().walk.fp(120),  Void,
+T(2,  3,  5,  7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71,
+ 73, 79, 83, 89, 97,101,103,107,109,113,127,131,137,139,149,151,157,163,167,173,
+179,181,191,193,197,199,211,223,227,229,233,239,241,251,257,263,269,271,277,281,
+283,293,307,311,313,317,331,337,347,349,353,359,367,373,379,383,389,397,401,409,
+419,421,431,433,439,443,449,457,461,463,467,479,487,491,499,503,509,521,523,541,
+547,557,563,569,571,577,587,593,599,601,607,613,617,619,631,641,643,647,653,659),__LINE__);
+ 
+
+#if 0
+println("\nThe 1,000th to 1,015th prime numbers are:");
+wPrimesW().drop(999).walk(15).concat(" ").println();
+#endif
+
+tester.testRun(fcn{ wPrimesW().drop(999).walk(3) },Void, T(7919, 7927, 7933),__LINE__);
+}
+
+
+
+{				//////////////////////////// Weird numbers
+//{{trans|Go}}
+fcn properDivs(n){ 
+   if(n==1) return(T);
+   ( pd:=[1..(n).toFloat().sqrt()].filter('wrap(x){ n%x==0 }) )
+   .pump(pd,'wrap(pd){ if(pd!=1 and (y:=n/pd)!=pd ) y else Void.Skip })
+}
+fcn abundant(n,divs){ divs.sum(0) > n }
+fcn semiperfect(n,divs){
+   if(divs){
+      h,t := divs[0], divs[1,*];
+      if(n<h) return(semiperfect(n,t));
+      return((n==h) or semiperfect(n - h, t) or semiperfect(n, t));
+   }
+   False
+} 
+fcn sieve(limit){
+   // False denotes abundant and not semi-perfect.
+   // Only interested in even numbers >= 2
+   w:=List.createLong(limit,False);
+   foreach i in ([2..limit - 1, 2]){
+      if(w[i]) continue;
+      divs:=properDivs(i);
+      if(not abundant(i,divs)) w[i]=True;
+      else if(semiperfect(i,divs))
+	 { foreach j in ([i..limit - 1, i]){ w[j]=True; } }
+   }
+   w
+}
+ 
+#if 0
+w,count,max := sieve(17_000), 0, 25;
+println("The first 25 weird numbers are:");
+foreach n in ([2..* ,2]){
+   if(not w[n]){ print("%d ".fmt(n)); count+=1; }
+   if(count>=max) break;
+}
+println();
+#endif
+
+
+
+w,count,max,sink := sieve(11_000), 0, 10, List();
+foreach n in ([2..* ,2]){
+   if(not w[n]){ sink.append(n); count+=1 }
+   if(count>=max) break;
+}
+// 70,836,4030,5830,7192,7912,9272,10430,10570,10792,10990,11410,11690,12110,12530,12670,13370,13510,13790,13930,14770,15610,15890,16030,16310 
+tester.testRun(sink.noop,Void, T(70,836,4030,5830,7192,7912,9272,10430,10570,10792,),__LINE__);
+}
+
+
+
+
+
+tester.stats();
+returnClass(tester);
+

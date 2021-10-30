@@ -1,0 +1,305 @@
+// -*-c-*-
+// test the helpers
+
+tester := TheVault.Test.UnitTester.UnitTester(__FILE__);
+
+
+	///////////////////////////////// .commaize
+tester.testSrc("var R=Utils.Helpers.commaize(1)",Void,Void,"1",__LINE__);
+tester.testSrc("var R=Utils.Helpers.commaize(123)",Void,Void,"123",__LINE__);
+tester.testSrc("var R=Utils.Helpers.commaize(1234)",Void,Void,"1,234",__LINE__);
+tester.testSrc("var R=Utils.Helpers.commaize(10000000)",Void,Void,"10,000,000",__LINE__);
+tester.testSrc("var R=Utils.Helpers.commaize(1234567890)",
+    Void,Void,"1,234,567,890",__LINE__);
+tester.testSrc("var R=Utils.Helpers.commaize(-123)",Void,Void,"-123",__LINE__);
+tester.testSrc("var R=Utils.Helpers.commaize(-1234567890)",
+    Void,Void,"-1,234,567,890",__LINE__);
+
+
+	///////////////////////////////////////// .cycle
+tester.testSrc(0'|var R=Utils.cycle(T(1,"two",3)).walk(7);|,
+    Void,Void,T(1,"two",3,1,"two",3,1),__LINE__);
+tester.testSrc(0'|var R=Utils.cycle("FOE").walk(4);|,
+    Void,Void,T("F","O","E","F"),__LINE__);
+tester.testSrc(0'|var R=Utils.cycle([5..7]).walk(4);|,
+    Void,Void,T(5,6,7,5),__LINE__);
+tester.testSrc(0'|var R=Utils.cycle(1,2,3).walk(4);|,
+    Void,Void,T(1,2,3,1),__LINE__);
+tester.testSrc(0'|var R=Utils.cycle(T(666)).walk(2);|,
+    Void,Void,T(666,666),__LINE__);
+tester.testSrc(0'|var R=Utils.cycle(T).walk(2);|,
+    Void,"TheEnd",Void,__LINE__);
+tester.testSrc(0'|var R=Utils.cycle([1..0]).walk(2);|,
+    Void,"TheEnd",Void,__LINE__);
+
+tester.testSrc(0'|var R=Utils.cycle( T(0,1),T(-1,0),T(0,-1),T(1,0) ).walk(18);|,
+    Void,Void,T(T(0,1),T(-1,0),T(0,-1),T(1,0), 
+		T(0,1),T(-1,0),T(0,-1),T(1,0), 
+		T(0,1),T(-1,0),T(0,-1),T(1,0), 
+		T(0,1),T(-1,0),T(0,-1),T(1,0), 
+		T(0,1),T(-1,0) ), __LINE__);
+
+tester.testSrc(0'|var R=Utils.cycle( 1,2,3 ).peekN(3);|,
+    Void,Void,1,__LINE__);
+tester.testSrc(0'|var R=Utils.cycle( 1,2,3 ).peekN(7);|,
+    Void,Void,2,__LINE__);
+tester.testSrc(0'|var R=Utils.cycle( 1,2,3 ); R.peekN(7); R=R.parts[5];|,
+    Void,Void,T(1,2,3,1,2,3,1,2),__LINE__);
+
+tester.testSrc(0'|var c=Utils.cycle( 1,2,3 ), R=List();|
+    "do(7){ R.append(c.next()); c.peek(); }",
+    Void,Void,T( 1,2,3, 1,2,3, 1 ),__LINE__);
+tester.testSrc(0'|var c=Utils.cycle( 1,2,3 ), R=List();|
+    "do(7){ R.append(c.next()); c.peekN(2); }",
+    Void,Void,T( 1,2,3, 1,2,3, 1 ),__LINE__);
+tester.testSrc(0'|var c=Utils.cycle( 1,2,3 ), R=List();|
+    "do(7){ R.append(c.next()); c.peekN(10); }",
+    Void,Void,T( 1,2,3, 1,2,3, 1 ),__LINE__);
+
+
+    	/////////////////////////////////////// List.zipWith
+tester.testSrc(0'|var R=T(1).zipWith('+(1),T(2),L(3))|,
+   Void,Void,T(7),__LINE__);
+tester.testSrc(0'|var R=T(1,2).zipWith(fcn{vm.arglist.sum()},T(3,4),L(5,6))|,
+   Void,Void,T(9,12),__LINE__);
+tester.testSrc(0'|var R=T(1,2,3).zipWith(Op("+").call,T(4,5,6));|,
+     Void,Void,T(5,7,9),__LINE__);
+tester.testSrc(0'|var R=T(1,2).zipWith('+,T(4,5,6));|, Void,Void,T(5,7),__LINE__);
+tester.testSrc(0'|var R=T(1,2,3).zipWith('+,T(4,5));|,Void,Void,T(5,7),__LINE__);
+tester.testSrc(0'|var R=T.zipWith('+,T,T(1,2,3));|,Void,Void,T,__LINE__);
+
+tester.testSrc("var R=L(1,2).zipWith(fcn{ vm.arglist.sum() },T(3,4),L(5,6))",
+   Void,Void,T(9,12),__LINE__);
+tester.testSrc("var R=T(1,2).zipWith(fcn{ vm.arglist.sum() },T(3,4),L(5,6))",
+   Void,Void,T(9,12),__LINE__);
+tester.testSrc("var R=T(1,2,3)[0,2].zipWith(fcn{ vm.arglist.sum() },T(3,4),L(5,6))",
+   Void,Void,T(9,12),__LINE__);
+
+
+    	/////////////////////////////////////// .zipWith
+tester.testSrc(0'|var R=Utils.zipWith(T,T(1,4))|,
+   Void,Void,T(T(1),T(4)),__LINE__);
+
+tester.testSrc(0'|var R=T(1,4).zipWith('+,T(2,5),L(3,6))|,
+   Void,Void,T(6,15),__LINE__);
+tester.testSrc(0'|var R=Utils.zipWith('+,T(1,4),T(2,5,111),L(3,6))|,
+   Void,Void,T(6,15),__LINE__);
+tester.testSrc(0'|var R=Utils.zipWith(fcn{ vm.arglist },|
+   0'|[0..],["a".."b"]);|, Void,Void,T(T(0,"a"),T(1,"b")),__LINE__);
+tester.testSrc(0'|var R=["a".."b"].zipWith(fcn{ vm.arglist },[0..]).walk(10);|,
+    Void,Void,T(T("a",0),T("b",1)),__LINE__);
+
+tester.testSrc(0'|zw:=Utils.zipWith; var R;|
+   "R=T(zw('*,T(1,2,3),T(3,2,2)),"
+   "    zw('*,T(3,5,6),T(3,4,5)),"
+   "    zw('*,T(2,3,4),T(5,4,3)));",
+   Void,Void,T(T(3,4,6),T(9,20,30),T(10,12,12)),__LINE__);
+
+tester.testSrc(0'|zw:=Utils.zipWith; var R;|
+   "var enumerate=zw.fp(self.fcn.idFcn,[0..]);"
+   0'|R=enumerate("abc");|,Void,Void,T(T(0,"a"),T(1,"b"),T(2,"c")),__LINE__);
+tester.testSrc(0'|zw:=Utils.zipWith; var R;|
+   "var enumerate=zw.fp(self.fcn.idFcn,[0..]);"
+   0'|R=enumerate("abc","hoho");|,
+   Void,Void,T(T(0,"a","h"),T(1,"b","o"),T(2,"c","h")),__LINE__);
+
+tester.testSrc(0'|var R=Utils.zipWith(Op("+",1),T(1),T(2),L(3))|,
+   Void,Void,T(7),__LINE__);
+tester.testSrc(0'|var R=Utils|
+   ".zipWith(fcn{ vm.arglist.sum() },T(1,2),T(3,4),L(5,6))",
+   Void,Void,T(9,12),__LINE__);
+tester.testSrc(0'|var R=Utils.zipWith(Op("+").call,T(1,2,3),T(4,5,6));|,
+     Void,Void,T(5,7,9),__LINE__);
+tester.testSrc(0'|var R=Utils.zipWith('+,T(1,2),T(4,5,6));|,
+     Void,Void,T(5,7),__LINE__);
+tester.testSrc(0'|var R=T(1,2,3).zipWith('+,T(4,5));|,Void,Void,T(5,7),__LINE__);
+tester.testSrc(0'|var R=Utils.zipWith('+,T,T);|, Void,Void,T,__LINE__);
+
+tester.testSrc(0'|var R=Utils.zipWith(False,'+,T,T);|, Void,Void,Void,__LINE__);
+tester.testSrc(0'|var R=Utils.zipWith(False,'+(1),T(1),T(2),L(3))|,
+   Void,Void,7,__LINE__);
+
+tester.testSrc(0'|var R=[0..].zipWith(Op("+",1),T(1),T(2),L(3)).walk(99)|,
+   Void,Void,T(7),__LINE__);
+
+
+     ///////////////////////////////////////// .zipW
+tester.testSrc(0'|var R=Walker.zip("abc").walk(99);|,
+   Void,Void,T(T("a"),T("b"),T("c")),__LINE__);
+tester.testSrc(0'|var R=Walker.zip([0..],"abc").walk(99);|,
+   Void,Void,T(T(0,"a"),T(1,"b"),T(2,"c")),__LINE__);
+tester.testSrc(0'|var R=[0..].zip("abc","hoho").walk(99);|,
+   Void,Void,T(T(0,"a","h"),T(1,"b","o"),T(2,"c","h")),__LINE__);
+tester.testSrc(0'|var R="abc".walker().zip("hoho",[0..]).walk(99);|,
+   Void,Void,T(T("a","h",0),T("b","o",1),T("c","h",2)),__LINE__);
+tester.testSrc(0'|var R="abc".walker().zip("hoho",[0..]).walk(99);|,
+   Void,Void,T(T("a","h",0),T("b","o",1),T("c","h",2)),__LINE__);
+tester.testSrc(0'|var R=[0..].zip("abc".walker().zip("hoho")).walk(99);|,
+   Void,Void,T(T(0,T("a","h")),T(1,T("b","o")),T(2,T("c","h"))),__LINE__);
+tester.testSrc(0'|var R=[0..].zip("abc".zip("hoho")).walk(99);|,
+   Void,Void,T(T(0,"ah"),T(1,"bo"),T(2,"ch")),__LINE__);
+
+tester.testSrc(0'|var R=[0..].zip("abc","hoho").walk(99);|,
+   Void,Void,T(T(0,"a","h"),T(1,"b","o"),T(2,"c","h")),__LINE__);
+
+
+     ///////////////////////////////////////// List.zip
+tester.testSrc(0'|var R=T.zip()|,Void,Void,T,__LINE__);
+tester.testSrc(0'|var R=L(1,2).zip(L(3,4),T(5,6))|,
+     Void,Void,T(T(1,3,5),T(2,4,6)),__LINE__);
+tester.testSrc(0'|var R=L(1,2,9).zip(L(3,4),T(5,6))|,
+     Void,Void,T(T(1,3,5),T(2,4,6)),__LINE__);
+tester.testSrc(0'|var R=L(1,2).zip(L(3,4),T(5,6,9))|,
+     Void,Void,T(T(1,3,5),T(2,4,6)),__LINE__);
+tester.testSrc(0'|var R=L(1,2,3).zip(L(4,5,6),T(7,8,9,"a",self))|,
+     Void,Void,T(T(1,4,7),T(2,5,8),T(3,6,9)),__LINE__);
+
+tester.testSrc(0'|var R=T(1,2).zip(T(3,4),"abcd");|,
+     Void,Void,L(L(1,3,"a"),L(2,4,"b")),__LINE__);
+tester.testSrc(0'|var R=Utils.zip(T(1,2),T(3,4),"abcd");|,
+     Void,Void,L(L(1,3,"a"),L(2,4,"b")),__LINE__);
+
+
+     ///////////////////////////////////////// .listUnzip
+tester.testSrc(0'|var R=Utils.Helpers.listUnzip(T());|,Void,Void,T,__LINE__);
+tester.testSrc(0'|var R=Utils.Helpers.listUnzip(T(T(1,3,5),T(2,4,6)));|,
+     Void,Void,T(L(1,2),L(3,4),T(5,6)),__LINE__);
+tester.testSrc(
+     0'|var R=Utils.Helpers.listUnzip(T(T(1,4,7),T(2,5,8),T(3,6,9)));|,
+     Void,Void,T(L(1,2,3),L(4,5,6),T(7,8,9)),__LINE__);
+tester.testSrc(
+     0'|var R=Utils.Helpers.listUnzip(T(T(1,4,7),T(2,5)));|,
+     Void,Void,T(T(1,2),T(4,5)),__LINE__);
+tester.testSrc(
+     0'|var R=Utils.Helpers.listUnzip(T(T(1,4),T(2,5,8)));|,
+     Void,Void,T(T(1,2),T(4,5)),__LINE__);
+
+
+     ////////////////////////////// String.zip == Utils.Helpers.zipWithO
+tester.testSrc(0'|var R="".zip("");|,Void,Void,T,__LINE__);
+tester.testSrc(0'|var R="135".zip("24678");|,Void,Void,T("12","34","56"),__LINE__);
+tester.testSrc(0'|var R="135".zip([0..]);|,Void,Void,T,__LINE__);
+tester.testSrc(0'|var R="135".zip(Dictionary(0,8, 1,9));|,
+   Void,Void,T("18","39"),__LINE__);
+
+
+     /////////////////////////// String.zipWith == Utils.Helpers.zipWithO
+tester.testSrc(0'|var R="".zipWith('+);|,Void,Void,T,__LINE__);
+tester.testSrc(0'|var R="135".zipWith('*,T(2,4,6,7,8));|,
+   Void,Void,T("11","3333","555555"),__LINE__);
+//tester.testSrc(0'|var R="".zipWith();|,Void,"MissingArg",T,__LINE__);
+//tester.testSrc(0'|var R="123".zipWith();|,Void,"MissingArg",T,__LINE__);
+tester.testSrc(0'|var R="".zipWith();|,Void,Void,T,__LINE__);
+tester.testSrc(0'|var R="123".zipWith();|,Void,Void,T,__LINE__);
+
+
+	//////////////////////////////////////////////////////// Utils.zip()
+tester.testSrc(0'|var R=Utils.zip(Data(Void,1,2,3),[100..]);|,Void,Void,T,__LINE__);
+tester.testSrc(0'|var R=Utils.zip(Data(Void,1,2,3),[100..].walk(10));|,
+   Void,Void,T(T(1,100),T(2,101),T(3,102)),__LINE__);
+
+
+     ///////////////////////////////////////////// .callProperty
+tester.testSrc(0'|var R;|
+    0'|R=(L(2,3.4,L(5)).walker() : Utils.Helpers.callProperty("otype",_));|,
+    Void,Void,T("Int","Float","List"),__LINE__);
+
+
+     ///////////////////////////////////////////// .callMethod
+tester.testSrc("var R;"
+   0'|R = L("1","22","333") : Utils.Helpers.callMethod("toInt",_)|,
+   Void,Void,T(1,22,333),__LINE__);
+tester.testSrc("var R;"
+    0'|R = L(1,22,333).walker() : Utils.Helpers.callMethod("toString",_,16)|,
+    Void,Void,T("1","16","14d"),__LINE__);
+
+
+     ///////////////////////////////////////////// .sumList
+tester.testSrc("var R=Utils.Helpers.sumList(L(1,2,3),0);",
+   Void,Void,6,__LINE__);
+tester.testSrc("var R=(L(1,2,3).walker() : Utils.Helpers.sumList(_,0));",
+   Void,Void,6,__LINE__);
+
+
+	/////////////////////////////////// .permute, .permuteK, .permuteW, .pickNFrom
+tester.testSrc(0'|var R=Utils.Helpers.permute(["a".."c"]).len();|,
+   Void,Void,6,__LINE__);
+tester.testSrc(0'|var R=Utils.Helpers.permute("abc".split("")).len();|,
+   Void,Void,6,__LINE__);
+tester.testSrc(0'|var R=Utils.Helpers.permute(T);|, Void,Void,T(T),__LINE__);
+tester.testSrc(0'|var R=Utils.Helpers.permute(T(1));|, Void,Void,T(T(1)),__LINE__);
+
+tester.testSrc(0'|z:=T(1,2,3,4);|
+   "var R=(Utils.Helpers.permute(z) == Utils.Helpers.permuteW(z).walk(99));",
+   Void,Void,True,__LINE__);
+tester.testSrc(0'|var R=Utils.Helpers.permuteW(T).walk(99);|, Void,Void,T(T),__LINE__);
+tester.testSrc(0'|var R=Utils.Helpers.permuteW(T(1)).walk(99);|, Void,Void,T(T(1)),__LINE__);
+
+tester.testSrc("var R=Utils.Helpers.permuteK(2,T(1,2,3)).len();",
+   Void,Void,6,__LINE__);
+tester.testSrc(0'|var R=Utils.Helpers.permuteK(2,["a".."c"]).len();|,
+   Void,Void,6,__LINE__);
+tester.testSrc(0'|var R=Utils.Helpers.permuteK(2,"abc".split("")).len();|,
+   Void,Void,6,__LINE__);
+tester.testSrc(0'|var R=Utils.Helpers.permuteK(3,[1..4]).len();|,
+   Void,Void,24,__LINE__); // n!/(n-k)! 4!/1!
+tester.testSrc(0'|var R=Utils.Helpers.permuteK(3,[1..5]).len();|,
+   Void,Void,60,__LINE__);
+
+tester.testSrc(0'|var R=Utils.Helpers.pickNFrom(3,[1..4]);|,
+   Void,Void,L(L(1,2,3),L(1,2,4),L(1,3,4),L(2,3,4)),__LINE__);
+tester.testSrc(0'|var R=Utils.Helpers.pickNFrom(3,[1..4]).len();|,
+   Void,Void,4,__LINE__);  // 4!/3!(4-3!)
+tester.testSrc(0'|var R=Utils.Helpers.pickNFrom(3,[1..5]).len();|,
+   Void,Void,10,__LINE__);  // 5!/3!(5-3)!
+tester.testSrc(0'|var R=Utils.Helpers.pickNFrom(3,[1..6]).len();|,
+   Void,Void,20,__LINE__);  // 6!/3!(6-3)!
+tester.testSrc(0'|var R=Utils.Helpers.pickNFrom(3,[1..7]).len();|,
+   Void,Void,35,__LINE__);  // 7!/3!(7-3)!
+tester.testSrc(0'|var R=Utils.Helpers.pickNFrom(4,[1..7]).len();|,
+   Void,Void,35,__LINE__);  // 7!/4!(7-4)!
+
+tester.testSrc(0'|var R=(Utils.Helpers.pickNFrom(3,T(1,2,3,4)) ==|
+   "Utils.Helpers.pickNFrom(3,L(1,2,3,4)));",Void,Void,True,__LINE__);
+
+
+   		///////////////////////////////////////////////////// .combosK
+tester.testSrc(0'|var R=Utils.Helpers.combosK(3,[1..4]).apply("concat");|,
+   Void,Void,
+   T("111","112","113","114","122","123","124","133","134","144",
+     "222","223","224","233","234","244","333","334","344","444"), __LINE__);
+tester.testSrc(0'|var R=Utils.Helpers.combosK(3,[1..4]).len();|,
+   Void,Void,20,__LINE__);  // (n+k-1)!/k!(n-1)! --> 6!/3!3!
+tester.testSrc(0'|var R=(Utils.Helpers.combosK(3,T(1,2,3,4)) ==|
+   "Utils.Helpers.combosK(3,L(1,2,3,4)));",Void,Void,True,__LINE__);
+
+
+	//////////////////////////////////////// Utils.Helpers.concat
+tester.testSrc("H := Utils.Helpers;"
+    0'|var R=(H.concat(T(1,2,3),""));|, Void,Void,"123",__LINE__);
+tester.testSrc("H := Utils.Helpers;"
+    0'|var R=(H.concat(T(1,2,3),","));|, Void,Void,"1,2,3",__LINE__);
+tester.testSrc("H := Utils.Helpers;"
+    0'|var R=(H.concat2(Data,["1".."3"],",").text);|, Void,Void,"1,2,3",__LINE__);
+tester.testSrc("H := Utils.Helpers;"
+    0'|var R=(H.concat(T(1,2,3), ",", "(", ")"));|, Void,Void,"(1,2,3)",__LINE__);
+
+
+#if 0
+	//////////////////////////////////////// Utils.Helpers.enumerate
+tester.testSrc("H := Utils.Helpers;"
+    0'|var R=(H.enumerate(["a".."c"]) : H.wap(_).walk(99));|,
+    Void,Void,T(T(0,"a"),T(1,"b"),T(2,"c")),__LINE__);
+tester.testSrc("H := Utils.Helpers;"
+    0'|e:=(H.enumerate(["a".."c"]) : H.wap(_));|
+    0'|var R=L(); foreach nx in (e){R.append(nx)}|,
+    Void,Void,T(T(0,"a"),T(1,"b"),T(2,"c")),__LINE__);
+tester.testSrc("f := fcn(ln){n:=ln[0]; ln[0] = n *= 3; }.fp(L(2));"
+    "e:=Utils.Helpers.enumerate(f); var R = L(e(),e());",
+    Void,Void,T(T(0,6),T(1,18)),__LINE__);
+#endif
+
+
+
+tester.stats();
+returnClass(tester);

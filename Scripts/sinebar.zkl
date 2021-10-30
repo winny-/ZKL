@@ -1,0 +1,144 @@
+//-*-c-*-
+// sinebar.zkl : calculate gage block stacks
+
+var blocks=T(	// 81 inch blocks
+   [0.1001..0.1009, 0.0001],  //  9 blocks: .1001-.1009" in .0001" steps
+   [0.1010..0.1490, 0.0010],  // 49 Blocks: .1010-.1490" in .0010" Steps
+   [0.0500..0.9500, 0.0500],  // 19 Blocks: .0500-.9500" in .0500" steps
+   [1.0000..4.0000],	      //  4 Blocks: 1-4" in 1" steps
+).pump(List,fcn(w){ if(Walker.isType(w)) w.walk() else w }).flatten();
+
+var iBlocks =blocks.apply(fcn(z){ (z*10000).round().toInt() }),
+    tenths =iBlocks.filter(fcn(n){ 01000<n<=01009 }), // 1/10,000": 10
+    thous  =(10).pump(List,List().copy),	      // 1/1,000" : 9 sets of 5
+    theRest;
+iBlocks.filter(fcn(n){ n/10%10 }).apply2('wrap(n){ thous[n/10%10].append(n) });
+theRest=iBlocks.filter(fcn(n,set){ (not set.holds(n)) },tenths.extend(thous.flatten()));
+
+fcn make1stack(z){
+   N:=(z*10000).round().toInt();
+
+   d00,d0,d:=N%1000/100, N%100/10, N%10;
+   stack:=List();
+   if(d) stack.append(1000 + d);  // 1/10,000"
+
+   if(d0){
+      if(d00>=5) d00-=5;
+      stack.append(1000 + d00*100 + d0*10);  // 1/1,000"
+   }
+   n:=stack.sum(0);
+
+   // Build the rest of the stack
+   foreach k in ([0..3]){
+      sets:=Utils.Helpers.pickNFrom(k,theRest);
+      foreach set in (sets){
+	 if(N==set.sum(0) + n) return(stack.extend(set).sort());
+      }
+   }
+   T	// no solution
+}
+
+fcn makeStacks(z){   // find at least two stacks
+   N:=(z*10000).round().toInt();
+
+   // 1/10,000"
+   d:=N%10;
+   stacks:=List(T,T(1000 + d)).extend(
+      Utils.Helpers.pickNFrom(2,tenths)
+	 .filter('wrap(list){ d==list.reduce(fcn(s,n){ s+n },0)%10 }));
+
+   // 1/1,000"
+   dd:=N%100;
+   rs:=List();  // the next set of block stacks
+   foreach n in ([1..2]){
+      sets:=Utils.Helpers.pickNFrom(n,[10..90,10].walk());
+      foreach set in (sets){
+	 if(dd==d+set.sum(0)){ set=thous[set[0]/10];
+	    foreach stk,s in (stacks,set){ rs.append(T.extend(stk,s)) }
+	 }
+      }
+   }
+   if(rs) stacks=rs;
+
+   // Build the rest of the stack
+   rs:=(6).pump(List,List().copy);
+   foreach n in ([0..3]){
+      sets:=Utils.Helpers.pickNFrom(n,theRest);
+      foreach set in (sets){
+	 sum:=set.sum(0);
+	 foreach stk in (stacks){
+	    if(N==sum+stk.sum(0)){
+	       i:=stk.len() + set.len();
+	       if(i<rs.len()) rs[i].append(stk.extend(set));
+	    }
+	 }
+      }
+   }
+   rs=rs.flatten();
+//   rs.len().println(" result(s)");
+   if(rs.len()<2) return();	// only one solution
+   foreach z in (rs.len()){
+      s:=rs[z];
+      foreach t in ([z..rs.len()-1]){ if(zip(s,rs[t])) return(s,rs[t]); }
+   }
+   Void	// no solutions
+}
+fcn zip(s,t){
+   foreach n in (s){ if(t.holds(n)) return(False) }
+   True
+}
+
+
+fcn stackHeight(barLen,angle){ angle.toRad().sin()*barLen }
+fcn formatBar(barLen,angle){ 
+   z,stack:=stackHeight(barLen,angle), make1stack(z);
+   z:=stackHeight(barLen,angle);
+   "%.4f\" sine bar @%.3f\UB0; = %.4f\" = %s"
+      .fmt(barLen,angle,z,
+	   stack.apply(fcn(n){ "%.4f".fmt(n.toFloat()/10000) }).concat(","))
+}
+fcn format(z,stack){
+   "%.4f\" = %s"
+      .fmt(z,stack.apply(fcn(n){ "%.4f".fmt(n.toFloat()/10000) }).concat(","))
+}
+
+
+//////////////////////////
+var barLen=2.5, angle=0, mkstk,table,step=1, two;
+
+var argh=Utils.Argh(
+T("+bar","b","Length of sine bar (default is %.2f\")".fmt(barLen),
+   fcn(b){ barLen=b.toFloat() }),
+T("+table","","Make an angle table: startAngle,stop[,step=1 degree]",
+   fcn(z){
+      table=z.split(",").apply("toFloat");
+      if(table.len()>2) step=table[2].toFloat();
+   }),
+T("+stack","","Make a stack of this [inch] length",fcn(b){ mkstk=b.toFloat() }),
+T("2","2","Make 2 gage block stacks",fcn{ two=2 }),
+);
+argh.parse(vm.arglist);
+
+if(argh.loners) angle=argh.loners[0].toFloat();
+
+fcn usage(msg){
+   println(msg);
+   println("Make a gage block stack from a 81 piece inch set.");
+   argh.usage(); System.exit(1);
+}
+
+if(two){
+   if(not mkstk) usage("sineBar -2 --stack");
+   stks:=makeStacks(mkstk);
+   if(not stks){ println("No solutions"); System.exit(1); }
+   format(mkstk,stks[0]).println();
+   format(mkstk,stks[1]).println();
+}
+else
+   if(mkstk) format(mkstk,make1stack(mkstk)).println();
+   else if(table){
+      foreach a in ([table[0]..table[1],step]){ formatBar(barLen,a).println() }
+   }else{
+      if(not angle) usage("sineBar angle");
+      formatBar(barLen,angle).println();
+   }

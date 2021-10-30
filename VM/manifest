@@ -1,0 +1,37 @@
+# Manifest for zkl VM src
+$packageName = zkl_vm_src.zip
+$zipDst = ZKL/VM
+
+[files]
+allocate.c     arglist.c      atomic.c       bool.c         
+class.c        data.c         dHash.c        dictionary.c   
+fcn.c          file.c         fxpand.c       gc.c           kdata.c
+list.c         loader.c       main.c         method.c       miscObj.c
+noWad.c        number.c       object.c       pcBlock.c      regex.[ch]
+sfmt.c         string.c       tcpSocket.c    thread.c       typeTable.c
+util.c         vault.c        vm.c           void.c         wad.c
+wildmat.c      zmalloc.c      async.c	     pipe.c	    walker.c
+
+thr_pool.[ch]
+
+dHash.h           		    zklArglist.h
+zklAtomic.h       zklClass.h        zklData.h         zklDictionary.h
+zklFcn.h          zklList.h         zklMemory.h       zklNumber.h
+zklObject.h       zklOpcodes.h      zklPCBlock.h      zklString.h
+zklUtil.h	  zklImports.h	    zklMethod.h
+
+buildWad.zkl      op2C.zkl
+
+Makefile
+
+# Windows 10:
+vm_VC14.sln     vm_VC14.vcxproj*
+postBuild.bat
+
+
+manifest license.txt ReadMe.txt
+
+../runzkl
+
+[manifests]
+MD5/manifest

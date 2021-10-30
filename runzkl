@@ -1,0 +1,37 @@
+#!/bin/sh
+# I use this script to run zkl.
+# A bash script to run zkl if you haven't jumped 
+#   through all the Unix hoops to put the bits in the "right" places
+# You can change zklRoot to your build directory, change this
+#   script name to "zkl" and copy it to your >>>bin path directory<<<
+#   
+#   For example: 
+#      chmod a+x runzkl
+#      mkdir ~/bin    # use whatever your personal bin path is in $PATH
+#      cp runzkl ~/bin/zkl
+#   That works for PC-BSD
+#   Linux: My Linux distro default .profile will add ~/bin to PATH if bin exists.
+#     If you have to mkdir it, you'll need to log out and log back in.
+#     or do this: ". ~/.profile" (per terminal).
+#     Look in ~/.profile to see where your bin directory is or
+#     examine "echo $PATH".
+#
+#   Do NOT put runzkl (as zkl) in $zklRoot/Bin as that is the actual executable.
+# You may need to chmod a+x <this script>
+# Note: LD_LIBRARY_PATH is only needed if you "make lib"
+# Note: if you "make zkl", you can just run Bin/zkl but you will still 
+#   need to set zklRoot so zkl can find any scripts/programs you want to run.
+
+if [ -z $zklRoot ]; then  # $zklRoot not defined, look for it
+   zklRoot=$HOME/ZKL			# <<<---- edit!
+   if [ ! -d $zklRoot ]; then
+      zklRoot=$HOME/Projects/ZKL	# <<<---- my bail out
+      if [ ! -d $zklRoot ]; then
+	 echo "I can't find the ZKL tree"
+      fi
+   fi
+   # add a path for root (FreeBSD) so you can "sudo zkl"
+fi
+export zklRoot
+#set -o noglob
+LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$zklRoot/Lib $zklRoot/Bin/zkl "$@"

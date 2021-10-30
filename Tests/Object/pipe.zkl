@@ -1,0 +1,440 @@
+// -*-c-*-
+/* Test Pipes.  Mostly copied from thread
+ * Some of these tests are redundunt because it they didn't work, neither
+ * would the compiler.
+ */
+
+tester := TheVault.Test.UnitTester.UnitTester(__FILE__);
+
+tester.testSrc("p:=Thread.Pipe(); p.breakIt(Exception.BadDay); p.read();",
+	Void,"BadDay",Void,__LINE__);
+tester.testSrc("p:=Thread.Pipe(); p.breakIt(); p.read();",
+	Void,"PipeError",Void,__LINE__);
+tester.testSrc("p:=Thread.Pipe(); p.breakIt(Exception.BadDay); p.write(1);",
+	Void,"BadDay",Void,__LINE__);
+tester.testSrc("p:=Thread.Pipe(); p.breakIt(); p.write(1);",
+	Void,"PipeError",Void,__LINE__);
+tester.testSrc("p:=Thread.Pipe(); p.breakIt(); var R = p.whyBroken;",
+	Void,Void,Void,__LINE__);
+tester.testSrc("p:=Thread.Pipe(); p.breakIt(Exception.BadDay);"
+	"var R = p.whyBroken.name;",Void,Void,"BadDay",__LINE__);
+tester.testSrc("p:=Thread.Pipe(); p.breakIt(Exception.BadDay); p.open();"
+	"var R = p.whyBroken;",Void,Void,Void,__LINE__);
+tester.testSrc("p:=Thread.Pipe(); p.breakIt(1);",Void,"PipeError",Void,__LINE__);
+tester.testSrc("p:=Thread.Pipe(); p.breakIt(self);",Void,"PipeError",Void,__LINE__);
+
+tester.testSrc("p:=Thread.Pipe(); p.breakIt(Exception.BadDay);"
+    "p.breakIt(Exception.IndexError); var R = p.whyBroken.name;",
+    Void,Void,"BadDay",__LINE__);
+
+tester.testSrc("p:=Thread.Pipe(); p.close(); p.write(1);",Void,"TheEnd",Void,__LINE__);
+tester.testSrc("p:=Thread.Pipe(); p.close(); p.read();",Void,"TheEnd",Void,__LINE__);
+
+tester.testSrc("p:=Thread.Pipe(); p.close(); p.breakIt();"
+    "var R=T(p.isClosed,p.isBroken);",Void,Void,T(True,True),__LINE__);
+tester.testSrc("p:=Thread.Pipe(); p.breakIt();  p.close();"
+    "var R=T(p.isClosed,p.isBroken);",Void,Void,T(True,True),__LINE__);
+
+
+tester.testSrc("p:=Thread.Pipe(); var R=p.read(False);",Void,"PipeError",Void,__LINE__);
+tester.testSrc("p:=Thread.Pipe(); var R=p.read(-1);",Void,"PipeError",Void,__LINE__);
+
+
+tester.testSrc("p:=Thread.Pipe(); p.write(1); p.close(); var R=L();"
+    "foreach i in (p) { R.append(i); }",Void,Void,ROList(1),__LINE__);
+
+tester.testSrc("p:=Thread.Pipe(); p.close();"
+    "var R; try { p.write(1); } catch {} R=p.read();",
+    Void,"TheEnd",Void,__LINE__);
+tester.testSrc("p := Thread.Straw(); p.close();"
+    "var R; try { p.write(1); } catch {} R=p.read();",
+    Void,"TheEnd",Void,__LINE__);
+
+tester.testSrc("s := Thread.Straw(); s.write(123,0); var R=s.read(0);",
+    Void,Void,123,__LINE__);
+tester.testSrc("s := Thread.Straw(); s.write(123,0); s.write(123,0);",
+    Void,"PipeError",Void,__LINE__);
+tester.testSrc("s := Thread.Straw(); s.read(0);",Void,"PipeError",Void,__LINE__);
+tester.testSrc("s := Thread.Straw(); s.read(0.1);",Void,"PipeError",Void,__LINE__);
+
+
+		///////////////////////// timeouts
+tester.testSrc("Thread.Pipe().read(0);",Void,"PipeError",Void,__LINE__);
+tester.testSrc("var R; try { Thread.Pipe().read(0); }catch(IOError.) {R=1}",
+    Void,Void,1,__LINE__);
+tester.testSrc("var R=Thread.Straw(); R.write(1,0);"
+    "try { R.write(2,0); }catch(IOError.) {R=1}", Void,Void,1,__LINE__);
+
+
+		////////////////////////////////////// .clear
+tester.testSrc("var R=Thread.Pipe().clear().isClosed;",
+	Void,Void,True,__LINE__);
+tester.testSrc("var R=Thread.Pipe().clear().isOpen;",
+	Void,Void,False,__LINE__);
+
+tester.testSrc("p:=Thread.Pipe(); p.write(1); p.clear(); var R=p.len();",
+	Void,Void,0,__LINE__);
+tester.testSrc("p:=Thread.Pipe(); p.write(1); p.close(); var R=p.len();",
+	Void,Void,1,__LINE__);
+tester.testSrc("p:=Thread.Pipe();p.write(1);p.close();p.open();"
+	"var R=p.len();", Void,Void,1,__LINE__);
+tester.testSrc("p:=Thread.Pipe(); p.write(1); p.close();p.open();"
+	"var R=p.read();", Void,Void,1,__LINE__);
+tester.testSrc("p:=Thread.Pipe(); p.write(1); p.clear(); var R=p.len();",
+	Void,Void,0,__LINE__);
+
+
+		///////////////////////////////////// .wait
+tester.testSrc("p:=Thread.Pipe(); var R=p.wait(0);",Void,Void,False,__LINE__);
+tester.testSrc("p:=Thread.Pipe(); var R=p.wait(0,True);",Void,Void,False,__LINE__);
+tester.testSrc("p:=Thread.Pipe(); var R=p.wait(1,True);",Void,Void,False,__LINE__);
+tester.testSrc("p:=Thread.Pipe(); p.write(1); var R=p.wait(0);",
+    Void,Void,1,__LINE__);
+tester.testSrc("p:=Thread.Pipe(); p.write(1); var R=p.wait(0,True);",
+    Void,Void,False,__LINE__);
+tester.testSrc("p:=Thread.Pipe(); p.write(1); p.close(); var R=p.wait(0,True);",
+    Void,Void,True,__LINE__);
+tester.testSrc("p:=Thread.Pipe(); p.write(1); p.breakIt(); var R=p.wait(0,True);",
+    Void,Void,True,__LINE__);
+
+tester.testSrc(
+    "fcn thread(p) { p.close(); } p:=Thread.Pipe();"
+    "thread.launch(p); var R=p.wait(5,True);", Void,Void,True,__LINE__);
+
+tester.testSrc(
+    "p:=Thread.Pipe(); fcn f(p) { p.read(); }.launch(p); p.write(1);"
+    0'|var R=Atomic.waitFor(p.Property("isEmpty"),5);|, Void,Void,True,__LINE__);
+
+
+		///////////////////////////////////// activity
+tester.testSrc("p:=Thread.Pipe(); p.write(1); var R=Atomic.wait(3,p);",
+	Void,Void,Void,__LINE__);
+tester.testSrc("p:=Thread.Pipe(); var R=Atomic.wait(0.5,p);",
+	Void,Void,Void,__LINE__);
+tester.testSrc("p:=Thread.Straw(); p.write(1); var R=Atomic.wait(1,p);",
+	Void,Void,Void,__LINE__);
+tester.testSrc("p:=Thread.Straw(); var R=Atomic.wait(1,p);",
+	Void,Void,Void,__LINE__);
+tester.testSrc("p:=Thread.Straw();var b=Atomic.Bool();"
+    "fcn(p){b.wait();p.write(1)}.launch(p);"
+    "var R=(Void != Atomic.setAndWait(b,5,p));",Void,Void,True,__LINE__);
+tester.testSrc("p:=Thread.Straw(); a:=Atomic.Bool();var b=Atomic.Bool();"
+    "fcn(p){b.wait();p.write(1)}.launch(p);"
+    "var R=(Void != Atomic.setAndWait(b,5,a,p));",Void,Void,True,__LINE__);
+
+tester.testSrc("p:=Thread.Straw(); a:=Atomic.Bool();var b=Atomic.Bool();"
+    "fcn(p){b.wait();p.write(1)}.launch(p);"
+    "var R=(p.id == Atomic.setAndWait(b,5,a,p)[0].id);",Void,Void,True,__LINE__);
+tester.testSrc("p:=Thread.Straw(); a:=Atomic.Bool();var b=Atomic.Bool();"
+    "fcn(p){b.wait();p.set()}.launch(a);"
+    "var R=(a.id == Atomic.setAndWait(b,5,a,p)[0].id);",Void,Void,True,__LINE__);
+
+
+
+#if 0
+		////////////////////////////////////// .flush
+tester.testSrc("var R=Thread.Pipe(); R.write(1); R.write(2);"
+    "R = (R.flush() != 0);", Void,Void,True);
+#endif
+
+
+tester.testSrc("p:=Thread.Pipe(); p.write(1); var R=p.len();", Void,Void,1,__LINE__);
+tester.testSrc("p:=Thread.Pipe(); p.write(1); p.close(); var R=p.len();",
+	Void,Void,1,__LINE__);
+
+tester.testSrc("p:=Thread.Pipe(); var R=p.isEmpty;", Void,Void,True,__LINE__);
+tester.testSrc("p:=Thread.Pipe(); p.write(1); var R=p.isEmpty;",
+	Void,Void,False,__LINE__);
+tester.testSrc("p:=Thread.Pipe(); p.write(1);p.clear(); var R=p.isEmpty;",
+	Void,Void,True,__LINE__);
+
+tester.testSrc("p:=Thread.Pipe(); var R=p.isClosed;", Void,Void,False,__LINE__);
+tester.testSrc("p:=Thread.Pipe(); p.close(); var R=p.isClosed;",
+	Void,Void,True,__LINE__);
+tester.testSrc("p:=Thread.Pipe(); p.close();p.open(); var R=p.isClosed;",
+	Void,Void,False,__LINE__);
+
+tester.testSrc("p:=Thread.Pipe(); var R=p.toBool();", Void,Void,False,__LINE__);
+tester.testSrc("p:=Thread.Pipe(); p.write(1); var R=p.toBool();",
+	Void,Void,True,__LINE__);
+
+tester.testSrc(
+    "fcn thread(p) { Atomic.sleep(2); p.write(123); } p:=Thread.Pipe();"
+    "thread.launch(p); var R=p.read(5);", Void,Void,123,__LINE__);
+tester.testSrc(
+    "fcn thread(p) { Atomic.sleep(2); p.write(123); } p:=Thread.Straw();"
+    "thread.launch(p); var R=p.read(5);", Void,Void,123,__LINE__);
+
+
+/* ******************************************************************** */
+/* *************************** Data Pumps ***************************** */
+/* ******************************************************************** */
+X := 
+   "class DataPump {"
+   "   var output;"
+   "   fcn init(input) { output = Thread.Pipe(); self.launch(input); }"
+   "   fcn liftoff(input)"
+   "   {"
+   "      while (True)"
+   "      {"
+   "	     try   { x := input.read(); output.write(x); }"
+   "	     catch { output.breakIt(input.whyBroken); break; }"
+   "      }}}"
+
+   "pipe1 := Thread.Pipe(); pipe1.write(666);"
+   "pipe := DataPump(pipe1).output;"
+   "pipe := DataPump(pipe).output;"
+   "pipe := DataPump(pipe).output;"
+   "pipe := DataPump(pipe).output;"
+   "pipe := DataPump(pipe).output;"
+   "pipe := DataPump(pipe).output;";
+
+tester.testSrc(X+"pipe1.breakIt(Exception.BadDay); pipe.read(); pipe.read();",
+	Void,"BadDay",Void,__LINE__);
+tester.testSrc(X + "pipe1.breakIt(); pipe.read(); pipe.read()",
+	Void,"PipeError",Void,__LINE__);
+
+
+/* ******************************************************************** */
+/* *********************************  ********************************* */
+/* ******************************************************************** */
+
+////////////////////////// Does pipe loose data?
+fcn counter(pipe)
+{
+   n := 0;
+   do(10000) { pipe.write(n += 1); }
+   pipe.close();
+}
+fcn test2
+{
+   pipe := Thread.Pipe(); counter.launch(pipe);
+   N := 0;
+   foreach n in (pipe)
+   {
+      if ((N += 1) != n) throw(Exception.BadDay);
+   }
+   return(N);
+}
+tester.testRun(test2,Void,10000,__LINE__);
+
+
+/////////////////////////// multi-producer
+const COUNT	  = 4000;
+const NUM_THREADS = 4;
+class C2
+{
+   fcn init(conveyor, startSwitch) { launch(conveyor, startSwitch); }
+   fcn liftoff(conveyor, startSwitch)
+   {
+      startSwitch.wait();
+      do(COUNT) { conveyor.write(True); }
+      conveyor.write(False);
+   }
+}
+var conveyor = Thread.Pipe();
+class C3
+{
+   fcn init
+   {
+//      startTime = Time.Clock.time;
+      startSwitch := Atomic.Bool();
+      do(NUM_THREADS) { C2(conveyor,startSwitch); }
+      startSwitch.set();
+      n := count := 0;
+      while(1)
+      {
+	 z := conveyor.read();
+	 if (not z)
+	 {
+	    if ((n += 1) == NUM_THREADS) break;
+	 }
+	 else count += 1;
+      }
+//      et = Time.Clock.time - startTime;
+//      println(count, " ",et, " ", et.toFloat() / count);
+      returnClass(count == NUM_THREADS * COUNT);
+   }
+}
+tester.testRun(C3,Void,True,__LINE__);
+
+
+    // lots of writers writing to Straw
+tester.testSrc("s := Thread.Straw(); p := Thread.Pipe();"
+   "do(10){ fcn(p,s){while(1){s.write(p.read(20),20)}}.launch(p,s); }"
+   "(0).pump(100,Void,p.write); p.close();"
+   "var R=(0).pump(100,List,s.read.fp(13)).sort(); s.close();"
+   "R=(0).pump(100,Void,fcn(n){if (R[n]!=n)return(Void.Stop,n); True});",
+   Void,Void,True,__LINE__);
+
+
+/////////////////////////// multi-reader
+    // lots of readers reading Straw
+tester.testSrc("s := Thread.Straw(); p := Thread.Pipe();"
+   "do(10){ fcn(s,p){while(1){p.write(s.read(20),10)}}.launch(s,p); }"
+   "(0).pump(100,Void,s.write.fp1(20)); s.close();"
+   "var R=(0).pump(100,List,p.read).sort(); p.close();"
+   "R=(0).pump(100,Void,fcn(n){if (R[n]!=n)return(Void.Stop,n); True});",
+   Void,Void,True,__LINE__);
+
+
+		//////////////////////////////////// interrupt write
+class WriteTest
+{
+   var pipe = Thread.Pipe(), vmid, go = Atomic.Bool();
+
+   fcn init { launch(); }
+
+   fcn liftoff{
+      vmid = vm;
+      go.set();
+      try{ foreach n in (100000) { pipe.write(n); } } catch(PipeError) {}
+      pipe.close();
+   }
+   fcn splashdown(h,e) {
+      if (e.isInstanceOf(Exception.HeyYou)) pipe.breakIt(e);
+      go.set()
+   }
+   fcn waitTillWedged
+   {
+      go.wait(); go.clear();
+      try{ while(pipe.write(666,1)){} } catch(PipeError){}
+      // pipe is full
+   }
+   fcn test1
+   {
+      waitTillWedged(); vm.kick(vmid); go.wait(5);
+      pipe.isClosed;
+   }
+   fcn test2
+   {
+      waitTillWedged(); vm.kick(vmid); go.wait(5);
+      pipe.whyBroken.name;
+   }
+}
+tester.testRun(WriteTest().test1,Void,True,__LINE__);
+tester.testRun(WriteTest().test2,Void,"HeyYou",__LINE__);
+
+
+		//////////////////////////////////// interrupt read
+class ReadTest
+{
+   var pipe = Thread.Pipe(), vmid, go = Atomic.Bool(), R=0;
+
+   fcn init { launch(); }
+
+#if 0
+   fcn liftoff { vmid = vm.vmID; go.set(); pipe.read(); R = 1; }
+   fcn splashdown(h,e)
+   {
+      if (not R) R = e;
+      go.set()
+   }
+#else
+   fcn liftoff {
+      onExit(done);
+      vmid = vm; go.set(); pipe.read(); R = 1; 
+   }
+   fcn done {
+      if (not R) R = vm.xxception;
+      go.set()
+   }
+#endif
+   fcn test1
+   {
+      go.wait(); go.clear();  // thread might not be reading when I throw
+      Atomic.sleep(1); vm.kick(vmid); go.wait(5);
+      R.name + pipe.isClosed
+   }
+   fcn test2
+   {
+      go.wait(); go.clear(); Atomic.sleep(1); pipe.close(); go.wait(5);
+      R.name
+   }
+}
+tester.testRun(ReadTest().test1,Void,"HeyYouFalse",__LINE__);
+tester.testRun(ReadTest().test2,Void,"TheEnd",__LINE__);
+
+
+		//////////////////////////////////// .reduce
+tester.testSrc("p:=Thread.Pipe();p.write(1);p.write(2);p.write(3);p.close();"
+    "var R=p.reduce(fcn(s,i){s+i});",Void,Void,6,__LINE__);
+tester.testSrc("p:=Thread.Pipe();p.write(1);p.write(2);p.write(3);p.close();"
+    0'|var R=p.reduce(fcn(s,i){s+i},"");|,Void,Void,"123",__LINE__);
+tester.testSrc("p:=Thread.Pipe();p.write(1);p.write(2);p.write(3);p.breakIt();"
+    "var R=p.reduce(fcn(s,i){s+i});",Void,"PipeError",6,__LINE__);
+tester.testSrc("p:=Thread.Pipe();p.write(1);p.write(2);p.write(3);p.breakIt();"
+    "var R=42; try{R=p.reduce(fcn(s,i){s+i})}catch{};",
+    Void,Void,42,__LINE__);
+tester.testSrc("p:=Thread.Pipe();p.write(1);p.write(2);p.write(3);p.close();"
+    0'|var R=p.reduce(fcn(s,i){Void.Stop},"");|,Void,Void,"",__LINE__);
+tester.testSrc("p:=Thread.Pipe();p.write(1);p.write(2);p.write(3);p.close();"
+    0'|var R=p.reduce(fcn(s,i){Void.Stop});|,Void,Void,1,__LINE__);
+
+
+    		///////////////////////////////////////// .pump
+tester.testSrc(0'|var R=Thread.Pipe(); T(1,22,333).pump(Void,R.write);R.close();|
+   "R=R.pump(List);",Void,Void,T(1,22,333),__LINE__);
+tester.testSrc(0'|var R=Thread.Pipe(); T(1,2,3,4,5).pump(Void,R.write);|
+   "R=R.pump(List,fcn(a){R.close(); a});",Void,Void,T(1,2,3,4,5),__LINE__);
+tester.testSrc(0'|var R=Thread.Pipe(); T(1,2,3,4,5).pump(Void,R.write);|
+   "R=R.pump(List,fcn(a){if(a==3){R.write(666);R.close()} a});",
+   Void,Void,T(1,2,3,4,5,666),__LINE__);
+tester.testSrc(0'|var R=Thread.Pipe(); T(1,22,333).pump(Void,R.write);R.close();|
+   "R=(0).pump(5,Void,R.read.fp(False));",Void,"TheEnd",Void,__LINE__);
+
+tester.testSrc(0'|var R=Thread.Pipe(); T("1","22","333").pump(Void,R.write);|
+   "R.close(); d:=Data(0,String); R.pump(Void,d.write); R=d.toList();",
+   Void,Void,T("1","22","333"),__LINE__);
+tester.testSrc(0'|var R=Thread.Pipe(); T("1","22","333").pump(Void,R.write);|
+   "R.close(); R=R.pump(Data(0,String)).toList();",
+   Void,Void,T("1","22","333"),__LINE__);
+
+
+    		///////////////////////////////////////// .filter
+tester.testSrc(0'|var R=Thread.Pipe(); T(1,22,333,5).pump(Void,R.write);R.close();|
+   "R=R.filter('>(100));",Void,Void,T(333),__LINE__);
+
+tester.testSrc(0'|var R=Thread.Pipe(); p:=Thread.Pipe();|
+   "T(1,22,333,5).pump(p); p.close();"
+   "p.pump(R,'>(100),Void.Filter); R.close(); R=R.pump(Void);",Void,Void,333,__LINE__);
+tester.testSrc(0'|var R=Thread.Pipe(); p:=Thread.Pipe();|
+   "T(1,22,333,5).pump(p); p.close();"
+   "p.pump(R,'>(100),Void.Filter); R.close(); R=R.pump(Void);",Void,Void,333,__LINE__);
+
+
+    		///////////////////////////////////////// manual examples
+tester.testSrc(0'|fcn producer(p){p.write("one");p.write("two");p.close();}|
+   "p := Thread.Pipe(); producer.launch(p);"
+   "var R=p.walker().walk(99);",Void,Void,T("one","two"),__LINE__);
+tester.testSrc(0'|fcn producer(p){p.write(0);p.write("one");p.write("two");|
+   "p.write(3);p.write(4);p.close();}p := Thread.Straw(); producer.launch(p);"
+   "var R=p.walker().walk(99);",Void,Void,T(0,"one","two",3,4),__LINE__);
+
+tester.testSrc(0'|fcn producer(p){p.write("one");p.write("two");p.close();}|
+   "p := Thread.Straw(); producer.launch(p);"
+   "var R=p.reduce(fcn(R,n){R+n},L());",Void,Void,T("one","two"),__LINE__);
+tester.testSrc(0'|fcn producer(p){p.write(0);p.write("one");p.write("two");|
+   "p.write(3);p.write(4);p.close();}p := Thread.Straw(); producer.launch(p);"
+   "var R=p.reduce(fcn(R,n){R+n},L());",Void,Void,T(0,"one","two",3,4),__LINE__);
+tester.testSrc(0'|fcn producer(p){p.write(0);p.write("one");p.write("two");|
+   "p.write(3);p.write(4);p.close();}p := Thread.Straw(); producer.launch(p);"
+   "var R=p.walker().walk(99);",Void,Void,T(0,"one","two",3,4),__LINE__);
+
+tester.testSrc(0'|fcn producer(p){p.write(0);p.write("one");p.write("two");|
+   "p.write(3);p.write(4);p.close();}p := Thread.Straw(); producer.launch(p);"
+   "var R=0;while(1){try{p.read();R+=1;}catch{break}}",   Void,Void,5,__LINE__);
+tester.testSrc(0'|fcn producer(p){p.write(0);p.write("one");p.write("two");|
+   "p.write(3);p.write(4);p.close();}p := Thread.Straw(); producer.launch(p);"
+   "var R=L();while(1){try{R+p.read();}catch{break}}",
+   Void,Void,T(0,"one","two",3,4),__LINE__);
+
+tester.testSrc(0'|fcn producer(p){p.write(1);p.write(2);p.close();|
+   "p.write(3);p.close();}p := Thread.Straw();"
+   "p := Thread.Pipe(); producer.launch(p);"
+   "var R=p.reduce(fcn(R,n){R+n},L());",Void,Void,T(1,2),__LINE__);
+
+
+
+tester.stats();
+returnClass(tester);

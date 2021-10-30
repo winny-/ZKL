@@ -1,0 +1,7 @@
+# Manifest for the zkl tests
+$packageName = zkl_tests.zip
+$zipDst = ZKL/Tests
+
+[files]
+manifest *.txt Makefile emptyFile ruleSet*
+*.zkl Object/*.zkl

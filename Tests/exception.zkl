@@ -1,0 +1,336 @@
+// -*-c-*-
+// StopWalking is tested in loops.zkl
+// The unit tester also beats on exceptions, try/catch
+
+tester := TheVault.Test.UnitTester.UnitTester(__FILE__);
+
+tester.testSrc("throw(Void)",Void,"AssertionError",Void,__LINE__);
+tester.testSrc("throw(123)",Void,"AssertionError",Void,__LINE__);
+tester.testSrc("throw(List)",Void,"AssertionError",Void,__LINE__);
+tester.testSrc("throw(Exception)",Void,"AssertionError",Void,__LINE__);
+
+tester.testSrc("var R = Exception.KissOfDeath.catchable",Void,Void,False,__LINE__);
+tester.testSrc("var R = Exception.KissOfDeath().catchable",Void,Void,False,__LINE__);
+tester.testSrc("var R = Exception.VMError.catchable",Void,Void,False,__LINE__);
+tester.testSrc("var R = Exception.VMError().catchable",Void,Void,False,__LINE__);
+
+
+tester.testSrc("var R; try { throw(Void) } catch { R = __exception.name; }",
+   Void,Void,"AssertionError",__LINE__);
+
+tester.testSrc("try { x := 123; }", "SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var R = Exception(\"Foo\").toString();",Void,Void,
+	"Exception(Foo)",__LINE__);
+tester.testSrc("var R = Exception().toString();",Void,Void,
+	"Exception(An Exception)",__LINE__);
+
+tester.testSrc(
+   "fcn(x) {"
+   "   if (0 == x) throw(Exception(\"StopNow\"));"
+   "   return( x * self.fcn(x - 1) );"
+   "}(10);", Void,"Exception",Void,__LINE__);
+
+tester.testSrc(
+   "var R;"
+   "fcn foo{ throw(Exception.BadDay); }"
+   "fcn bar{"
+   "   try{ foo(1,2,3); }"
+   "   catch(ArmyBoots){}"
+   "   catch(Boo,BadDay,Fever){ R = \"OK\"; }"
+   "   fallthrough {}"
+   "}();",  Void,Void,"OK",__LINE__);
+
+tester.testSrc(
+   "var R;"
+   "try { throw(Exception.BadDay); }"
+   "catch(ArmyBoots) {}"
+   "catch(Boo,Fever) {}"
+   "catch { R = \"OK\"; }",
+   Void,Void,"OK",__LINE__);
+
+tester.testSrc(
+   "var R;"
+   "try { throw(Exception.BadDay); }"
+   "catch(ArmyBoots) {}"
+   "catch(Boo,Fever) {}",
+   Void,"BadDay",Void,__LINE__);
+
+tester.testSrc(
+   "var R;"
+   "try { x := 123; } catch {}"
+   "fallthrough { R = \"OK\"; }",
+   Void,Void,"OK",__LINE__);
+
+tester.testSrc(
+   "var R; reg r = 123;"
+   "try { R.foo } catch { R = r / 10 }",
+   Void,Void,12,__LINE__);
+
+tester.testSrc(
+   "var R; reg r = 123;"
+   "try { } catch { R = r / 10 }"
+   "fallthrough try { throw(Exception.BadDay) } catch { R = r / 100; }",
+   Void,Void,1,__LINE__);
+
+tester.testSrc(
+   "var R; reg r = 123;"
+   "try { } catch { R = r / 10 }"
+   "fallthrough { try { throw(Exception.BadDay) } catch { R = r / 100; } }",
+   Void,Void,1,__LINE__);
+
+tester.testSrc(
+   "var R;"
+   "try { R.foo; } catch { R = 1 }"
+   "fallthrough { try { throw(Exception.BadDay) } catch { R = 2; } }",
+   Void,Void,1,__LINE__);
+
+tester.testSrc(
+   "var R; try { } catch { R = 1 } fallthrough { throw(Exception.BadDay); }",
+   Void,"BadDay",Void,__LINE__);
+
+tester.testSrc("var R; try { x := 123; } catch {} R = \"OK\";",
+   Void,Void,"OK",__LINE__);
+tester.testSrc("var R; try { throw(Exception.BadDay); } catch {} R = \"OK\";",
+   Void,Void,"OK",__LINE__);
+
+tester.testSrc(
+   "try   { throw(Exception.BadDay); }"
+   "catch { throw(Exception.BadDay); }",
+   Void,"BadDay",Void,__LINE__);
+
+tester.testSrc(
+   "var R; try {"
+   "try   { throw(Exception.BadDay); }"
+   "catch { throw(Exception.BadDay); }"
+   "} catch { R = \"OK\"; }",
+   Void,Void,"OK",__LINE__);
+
+tester.testSrc(
+   "var R; try {"
+   "try   { throw(Exception.BadDay); }"
+   "catch { throw(Exception.BadDay); }"
+   "} catch(BadHair) { R = \"OK\"; }",
+   Void,"BadDay",Void,__LINE__);
+
+tester.testSrc("var R; try{ R / R } catch(*){ R = 123; }", Void,Void,123,__LINE__);
+tester.testSrc("var R; try{ throw(Exception.KissOfDeath); }"
+    "catch(0){ R = 123; }", Void,Void,123,__LINE__);
+
+tester.testSrc("var R; try { reg x,y = 123; throw(Exception.BadDay); } "
+	"catch { reg z=6; R = z; }", Void,Void,6,__LINE__);
+
+tester.testSrc("try{}catch(!)","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("try{} catch(!f@)","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("try{} catch(!){}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("try{} catch(!,hoho) {}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("try{} catch(hoho,!){}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("try{} catch(hoho,!,hoho){}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("try{} catch(!;){}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("try{} catch(!!){}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("try{} catch(!0){}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("try{} catch(12){}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("try{} catch(1){}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("try{} catch(foo@bar){}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("try{} catch(return){}","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var R; try{} catch(+foo){}",Void,Void,Void,__LINE__);
+tester.testSrc("var R; try{} catch(-foo){}",Void,Void,Void,__LINE__);
+tester.testSrc("try{} catch(-trace){} var R;",Void,Void,Void,__LINE__);
+tester.testSrc("try{} catch(+trace){} var R;",Void,Void,Void,__LINE__);
+tester.testSrc("var R; try{ throw(Exception.BadDay) }catch(+trace) {R=5}",
+    Void,"BadDay",Void,__LINE__);
+tester.testSrc("var R; try{ throw(Exception.BadDay) }catch(+trace,*) {R=5}",
+    Void,Void,5,__LINE__);
+tester.testSrc("var R; try{ throw(Exception.BadDay) }"
+    "catch(+trace){} catch{R=5}",
+    Void,Void,5,__LINE__);
+
+tester.testSrc("var R; try { throw(Exception.BadDay) }"
+   " catch(!BadDay) { R = 123; }", Void,"BadDay",Void,__LINE__);
+tester.testSrc("var R; try { throw(Exception.BadDay) }"
+   " catch(!BadDay,*) { R = 123; }", Void,"BadDay",Void,__LINE__);
+tester.testSrc("var R; try { throw(Exception.BadDay) }"
+   " catch(!Foo,*) { R = 123; }", Void,Void,123,__LINE__);
+
+tester.testSrc("var R; try { __exception; } catch {} ","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R;try {}catch(a){ __exception }catch(b){ __exception }",Void,Void,Void,__LINE__);
+
+	// register names, register overlap
+tester.testSrc("var R; try { reg a,b = 123; R.foo } catch { reg a=3; R = a; }",
+	Void,Void,3,__LINE__);
+tester.testSrc("var R; try{reg a=1,b=2;}catch {} fallthrough { reg a=5,b=6; R=a+b; }",
+	Void,Void,11,__LINE__);
+tester.testSrc("var R; try { reg a=1,b=2; } catch {}"
+	"fallthrough try { R = a+b; } catch{}",
+	Void,Void,3,__LINE__);
+tester.testSrc("var R; try { reg a=1,b=2; } catch {}"
+	"fallthrough try { reg a; R = a; } catch{}",
+	Void,Void,Void,__LINE__);
+tester.testSrc("var R; try { reg a=1,b=2; } catch {}"
+	"fallthrough try { R.foo } catch{ R = a+b; }",
+	Void,Void,3,__LINE__);
+tester.testSrc("var R; try { reg a=1,b=2; } catch {}"
+	"fallthrough { reg a=5,b=6; try { R = a+b; } catch{} }",
+	Void,Void,11,__LINE__);
+tester.testSrc("var R; try { reg a=1,b=2; } catch {}"
+	"fallthrough { reg a,b=7; try { R.foo; } catch { R=b; } }",
+	Void,Void,7,__LINE__);
+tester.testSrc("var R; try { reg a=1,b=2; } catch {}"
+	"fallthrough try { } catch {}"
+	"fallthrough try { R = a+b;  } catch {}",
+	Void,Void,3,__LINE__);
+tester.testSrc("var R; try { reg a=1,b=2; } catch {}"
+	"fallthrough try { } catch {}"
+	"fallthrough try { R.foo  } catch { R = a+b }",
+	Void,Void,3,__LINE__);
+tester.testSrc("var R; reg Z=6; try { reg a=1,b=2; } catch {}"
+	"fallthrough try { } catch {}"
+	"fallthrough try { R = Z;  } catch { R = Z }",
+	Void,Void,6,__LINE__);
+tester.testSrc("var R; reg Z=6; try { reg a=1,b=2; } catch {}"
+	"fallthrough try { } catch {}"
+	"fallthrough try { R.foo  } catch { R = Z }",
+	Void,Void,6,__LINE__);
+tester.testSrc("var R; try { reg a=1,b=2; } catch {} fallthrough { R = a+b; }",
+	"SyntaxError",Void,Void,__LINE__);
+
+
+		////////////////////////////// register count
+tester.testSrc("var R; try { R = vm.registers.len() } catch {}", Void,Void,3,__LINE__);
+tester.testSrc("var R; try { R = vm.registers.len() } catch { reg a,b; }",
+	Void,Void,5,__LINE__);
+tester.testSrc("var R; try { reg x,y,z; } catch {}"
+	"fallthrough { R = vm.registers.len(); }", Void,Void,5,__LINE__);
+tester.testSrc("var R; try { R = vm.registers.len() } catch {}"
+	"fallthrough { reg x,y,z; }", Void,Void,5,__LINE__);
+
+tester.testSrc("var R; try { reg a,b; R = vm.registers.len(); } catch {}"
+	"fallthrough try { reg x; } catch {}",
+	 Void,Void,4,__LINE__);
+tester.testSrc("var R; try { reg a,b; } catch {}"
+	"fallthrough try { reg x; R = vm.registers.len(); } catch {}",
+	 Void,Void,3,__LINE__);
+
+//tester.testSrc("var R; reg n; try { n = 5; } "
+//   "catch {} fallthrough if (n) { R = n; }", Void,Void,5);
+tester.testSrc("var R; reg n; try { n = 5; } "
+   "catch {} fallthrough { if (n) { R = n; }}", Void,Void,5,__LINE__);
+
+
+
+#if 0
+tester.testSrc("var R = Exception.TheEnd.function_",Void,Void,Void);
+tester.testSrc("var R = Exception.TheEnd().function_",Void,Void,True);
+tester.testSrc("var R; try { throw(Exception.TheEnd) }"
+    "catch { R=__exception.function_ }",Void,Void,Void);
+tester.testSrc("var R; try { throw(Exception.TheEnd()) }"
+    "catch { R=__exception.function_.toString() }",
+    Void,Void,"Fcn(__constructor)");
+
+tester.testSrc("var R; try { f() } catch { R=__exception.function_.toString() }"
+    "fcn f { try { g() } catch { throw(__exception) }}"
+    "fcn g { throw(Exception.BadDay()) }", Void,Void,"Fcn(g)");
+
+tester.testSrc("var R; try { f() } catch { R=__exception.function_.toString() }"
+    "fcn f { try { g() } catch { "
+            "if (__exception.function_) __exception.setVar(\"function_\",True);"
+	    "throw(__exception) }}"
+    "fcn g { throw(Exception.BadDay()) }", Void,Void,"Fcn(f)");
+#endif
+
+    // these are actually class tests but I found it testing exceptions ...
+tester.testSrc(0'|class WorseDay(Exception.BadDay){ BadDay.text = "Oh Pooh";|
+   "fcn init(msg) { BadDay.init(msg); } }"
+   "var R = WorseDay.text",Void,Void,"Oh Pooh",__LINE__);
+tester.testSrc(0'|class WorseDay(Exception.BadDay){ text = "Oh Pooh";|
+   "fcn init(msg) { BadDay.init(msg); } }"
+   "var R = WorseDay.text",Void,Void,"Oh Pooh",__LINE__);
+
+
+		/////////////////////// Exception trees, catching parents
+tester.testSrc("var R; try{}catch(:Bad@Day){ R = 1 }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R; try{}catch(Bad@Day.){ R = 1 }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R; try{}catch(:){ R = 1 }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R; try{}catch(.){ R = 1 }","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var R; try { throw(Exception.BadDay) }"
+   "catch(BadDay.) { R = 1 }",Void,Void,1,__LINE__);
+tester.testSrc(0'|class WorseDay(Exception.BadDay){ text = "Oh Pooh";|
+   "fcn init(msg) { BadDay.init(msg); } }"
+   "var R; try{ throw(WorseDay) } catch(BadDay.){ R = 1 }",Void,Void,1,__LINE__);
+tester.testSrc("class WorseDay(Exception.BadDay){ text = \" Pooh\";"
+   "fcn init(msg) { BadDay.init(msg); } }"
+   "class WorstDay(WorseDay){text = \"Blech\";"
+   "fcn init(msg) { WorseDay.init(msg); } }"
+   "var R; try { throw(WorstDay) } catch(BadDay.) { R = __exception.text }",
+   Void,Void,"Blech",__LINE__);
+
+
+tester.testSrc("var R; try { throw(Exception.BadDay) }"
+   "catch(BadDay.) { R = 1 }",Void,Void,1,__LINE__);
+tester.testSrc("class WorseDay(Exception.BadDay){ text = \"Oh Pooh\";"
+   "fcn init(msg) { BadDay.init(msg); } }"
+   "var R; try { throw(WorseDay) } catch(BadDay.) { R = 1 }",Void,Void,1,__LINE__);
+tester.testSrc(
+#<<<
+0'|class WorseDay(Exception.BadDay){ text = "Pooh";
+      fcn init(msg) { BadDay.init(msg); } }
+   class WorstDay(WorseDay){ text = "Blech";
+      fcn init(msg) { WorseDay.init(msg); } } |
+#<<<
+   "var R; try{ throw(WorstDay) } catch(BadDay.){ R = __exception.text }",
+   Void,Void,"Blech",__LINE__);
+
+
+   		///////////////////////////////////// Crossing VMs
+tester.testSrc("var R; try { L(1).apply(fcn { throw(Exception.BadDay) }) }"
+   "catch { R = __exception.name }",Void,Void,"BadDay",__LINE__);
+
+tester.testSrc("var R;"
+    "fiber := vm.createFiber(fcn { vm.yield(vm); throw(Exception.BadDay) });"
+    "try { fiber.resume() }catch { R = __exception.name }",Void,Void,"BadDay",__LINE__);
+tester.testSrc("var R;"
+    "try { vm.createFiber(fcn { throw(Exception.BadDay) }) }"
+    "catch { R = __exception.name }",Void,Void,"BadDay",__LINE__);
+
+#if 0
+tester.testSrc("var R;"
+    "try {vm.kick(vm.vmID)} catch {R=__exception.name}",
+    Void,Void,"ValueError",__LINE__);
+#else
+tester.testSrc("var R;"
+    "try {vm.kick(vm)} catch {R=__exception.name}",
+    Void,Void,"ValueError",__LINE__);
+#endif
+
+
+    // backout of C recursion
+tester.testSrc(0'|var R="";|
+    "fcn f(n){(0).pump(100,Void,"
+    "		'wrap(){R+=n;if(n==5)throw(Exception.Generic); f(n+1)})}"
+    "try {f(0)} catch {R+=__exception.name}",
+    Void,Void,"012345Generic",__LINE__);
+
+tester.testSrc(0'|var R="";|	// with tailcall
+    "fcn f(n){(0).pump(100,Void,"
+    "	   'wrap(){R+=n;if(n==5)throw(Exception.Generic); return(f(n+1))})}"
+    "try {f(0)} catch {R+=__exception.name}",
+    Void,Void,"012345Generic",__LINE__);
+
+
+
+    		////////////////////////////////////// dead VMs
+#if 0
+tester.testSrc("var R = vm.createFiber(f); fcn f { return(vm.vmID); }"
+    "R.throw(Exception.BadDay,R)",Void,"NotFoundError");
+#else
+tester.testSrc("var R = vm.createFiber(f); fcn f { return(vm); }"
+    "R.throw(R)",Void,"NotFoundError",Void,__LINE__);
+
+tester.testSrc("vm.kick(1)",Void,"TypeError",Void,__LINE__);
+#endif
+
+
+tester.stats();
+returnClass(tester);

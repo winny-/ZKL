@@ -1,0 +1,507 @@
+// -*-c-*-
+// Test _debug_ and #if
+
+tester := Test.UnitTester(__FILE__);
+
+tester.testSrc("var R; _debug_(ON) {R=10}",Void,Void,10,__LINE__);
+tester.testSrc("var R; _debug_(OFF){} _debug_ {R=10}",Void,Void,Void,__LINE__);
+tester.testSrc("var R; _debug_(ON){} _debug_(0) {R=10}",Void,Void,Void,__LINE__);
+tester.testSrc("var R; _debug_(ON){} _debug_ {R=10}",Void,Void,10,__LINE__);
+tester.testSrc("var R; _debug_ (ON,10){} _debug_ {R=10}",Void,Void,Void,__LINE__);
+tester.testSrc("var R; _debug_ (ON,10){} _debug_(11) {R=10}",Void,Void,10,__LINE__);
+tester.testSrc("var R; _debug_ (ON){R=10}_debug_(OFF){R=11}",Void,Void,10,__LINE__);
+tester.testSrc("var R; _debug_ (ON){R=10}_debug_(OFF){R=11}_debug_{R=12}",
+		Void,Void,10,__LINE__);
+tester.testSrc("var R; _debug_(ON){R=10}_debug_(OFF){R=11}_debug_{R=12}"
+	"_debug_(ON){}_debug_{R=13}",Void,Void,13,__LINE__);
+
+tester.testSrc("_debug_{fcn f{123}} else {fcn f{456}} var R=f();",
+   Void,Void,456,__LINE__);
+tester.testSrc("_debug_(ON){fcn f{123}} else {fcn f{456}} var R=f();",
+   Void,Void,123,__LINE__);
+tester.testSrc("_debug_(ON){fcn f{123}} var R=f();", Void,Void,123,__LINE__);
+tester.testSrc("_debug_(ON){{fcn f{123}} var R=f();","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("_debug_(ON){ fcn f{123}  var R=f();","SyntaxError",Void,Void,__LINE__);
+
+
+		///////////////////////////////////////// #if
+tester.testSrc("#if 1","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("#if 1 #endif","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R;\n #if 1\n #endif",Void,Void,Void,__LINE__);
+tester.testSrc("var R; #if 1\n #endif","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R;\n #if 1\n R=1;\n#endif",Void,Void,1,__LINE__);
+tester.testSrc("var R;\n #if 5\n R=1;\n#endif",Void,Void,1,__LINE__);
+tester.testSrc("var R;\n #if 0\n R=1;\n#endif",Void,Void,Void,__LINE__);
+tester.testSrc("var R;\n      #if      0\n R=1;\n#endif",Void,Void,Void,__LINE__);
+tester.testSrc("var R;\n      #if      1\n R=1;\n#endif",Void,Void,1,__LINE__);
+tester.testSrc("var R;\n #if\n R=1;\n#endif","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R;\n #if1\n R=1;\n#endif","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R;\n #if hoho\n R=1;\n#endif","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var R; \n#if 1\n#if 0\n R=1; \n#endif\n#endif",Void,Void,Void,__LINE__);
+tester.testSrc("var R; \n#if 1\n#if 1\n R=1; \n#endif\n#endif",Void,Void,1,__LINE__);
+tester.testSrc("var R; \n#if 1\n#if 0\n R=1; \n#endif","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var R=0; \n#if 1\n R=1; \n#else\n R+=2; \n#endif",Void,Void,1,__LINE__);
+tester.testSrc(
+#<<<"
+var R=0;
+#if 0
+   R=1;
+#else
+   R+=2;
+#endif",Void,Void,2,__LINE__);
+#<<<
+
+tester.testSrc("var R;\n#if 0\nR=1;\n#endif\nR=2;",Void,Void,2,__LINE__);
+tester.testSrc("var R;\n"
+   "#if 1\n R=1;\n"
+   "#else\n    #if 0\nR=2;\n   #endif\n    R=3;\n"
+   "#endif\n",
+   Void,Void,1,__LINE__);
+
+tester.testSrc("#if 1\nR:=5;\n@endif","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("@if 1\nR:=5;\n#endif","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var R;\n#if 1\n//#if 0\nR=1;\n//#endif\n#endif",Void,Void,1,__LINE__);
+tester.testSrc("var R;\n#if 1\n##if 0\nR=1;\n##endif\n#endif",Void,Void,1,__LINE__);
+tester.testSrc("var R;\n/*#if 1*/\nR=1;\n/*#endif*/","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var R;\n#if 1\n reg code;\n #else // (3)\n reg code;\n #endif\n",
+   Void,Void,Void,__LINE__);
+
+tester.testSrc("var R;\n"
+"#if 0\n"
+"   #if 0\n  R = 5;\n #endif\n"
+"   R = 1;\n"
+"#else\n   R = 23;\n"
+"#endif\n",Void,Void,23,__LINE__);
+
+
+	////////////////// #ifdef
+tester.testSrc("var R;\n#ifdef foo\n//#if 0\nR=1;\n//#endif\n#endif",
+   Void,Void,Void,__LINE__);
+tester.testSrc("#define foo 1\n"
+   "var R;\n#ifdef foo\n//#if 0\nR=1;\n//#endif\n#endif", Void,Void,1,__LINE__);
+tester.testSrc("#define foo 0\n"
+   "var R;\n#ifdef foo\n//#if 0\nR=1;\n//#endif\n#endif", Void,Void,1,__LINE__);
+
+
+   	////////////////////////////// #elif
+tester.testSrc("var R=0;\n#if 1\n R=1\n#elif 0\nR+=2;\n#endif",
+   Void,Void,1,__LINE__);
+tester.testSrc("var R=0;\n#if 1\n R=1\n#elif 1\nR+=2;\n#endif",
+   Void,Void,1,__LINE__);
+tester.testSrc("var R=0;\n#if 0\n R=1\n#elif 0\nR=+2;\n#endif",
+   Void,Void,0,__LINE__);
+tester.testSrc("var R=0;\n#if 0\n R=1\n#elif 1\nR+=2;\n#endif",
+   Void,Void,2,__LINE__);
+
+
+tester.testSrc("var R=0;\n#if 1\n#if 1\n R+=1\n#elif 0\nR+=2;\n#endif\n#endif",
+   Void,Void,1,__LINE__);
+tester.testSrc("var R=0;\n#if 1\n#if 1\n R+=1\n#elif 1\nR+=2;\n#endif\n#endif",
+   Void,Void,1,__LINE__);
+tester.testSrc("var R=0;\n#if 1\n#if 0\n R+=1\n#elif 0\nR+=2;\n#endif\n#endif",
+   Void,Void,0,__LINE__);
+tester.testSrc("var R=0;\n#if 1\n#if 0\n R+=1\n#elif 1\nR+=2;\n#endif\n#endif",
+   Void,Void,2,__LINE__);
+
+tester.testSrc("var R=0;\n#if 0\n#if 1\n R+=1\n#elif 0\nR+=2;\n#endif\n#endif",
+   Void,Void,0,__LINE__);
+tester.testSrc("var R=0;\n#if 0\n#if 1\n R+=1\n#elif 1\nR+=2;\n#endif\n#endif",
+   Void,Void,0,__LINE__);
+tester.testSrc("var R=0;\n#if 0\n#if 0\n R+=1\n#elif 0\nR+=2;\n#endif\n#endif",
+   Void,Void,0,__LINE__);
+tester.testSrc("var R=0;\n#if 0\n#if 0\n R+=1\n#elif 1\nR+=2;\n#endif\n#endif",
+   Void,Void,0,__LINE__);
+
+tester.testSrc("var R=0; \n#if 1\n R+=1  \n#elif 1\n R+=2; \n#else\n R+=10;"
+   "\n#endif",Void,Void,1,__LINE__);
+tester.testSrc("var R=0; \n#if 1\n R+=1; \n#elif 1\n R+=2; \n#else\n R+=10;"
+   "\n#endif",Void,Void,1,__LINE__);
+tester.testSrc("var R=0;\n#if 1\nR+=1 \n#elif 0\nR+=2; \n#else R+=10;\n"
+   "#endif",Void,Void,1,__LINE__);
+
+tester.testSrc("var R=0;\n#if 0\nR+=1 \n#elif 1\nR+=2; \n#else R+=10;\n"
+   "#endif",Void,Void,2,__LINE__);
+tester.testSrc(
+   "var R=0; \n#if 0\n R+=1; \n#elif 0\n R+=2; \n#else\n R+=10; \n#endif",
+   Void,Void,10,__LINE__);
+tester.testSrc(
+#<<<"
+var R=0;
+#if 0
+  R=1;
+#elif 1
+  R+=2;		/**/
+#if 0
+     R+=100; 
+#else
+     R+=200;	/**/
+#endif
+     R+=1000;	/**/
+#else 
+  R+=10;
+#endif"   ,Void,Void,1202,__LINE__);
+#<<<
+
+tester.testSrc(
+#<<<"
+var R=0;
+#if 0
+  R=1;
+#elif 1
+  R+=2;		/**/
+#if 1
+     R+=100; 	/**/
+#else
+     R+=200;
+#endif
+     R+=1000;	/**/
+#else 
+  R+=10;
+#endif"   ,Void,Void,1102,__LINE__);
+#<<<
+
+tester.testSrc(
+#<<<"
+var R=0;
+#if 1
+  R=1;		/**/
+#elif 1
+  R+=2;
+#if 1
+     R+=100; 
+#else
+     R+=200;
+#endif
+     R+=1000;
+#else 
+  R+=10;
+#endif"   ,Void,Void,1,__LINE__);
+#<<<
+
+tester.testSrc(
+#<<<"
+var R=0;
+#if 1
+  R=1;		/**/
+#elif 0
+  R+=2;
+#if 1
+     R+=100; 
+#else
+     R+=200;
+#endif
+     R+=1000;
+#else 
+  R+=10;
+#endif"   ,Void,Void,1,__LINE__);
+#<<<
+
+tester.testSrc(
+#<<<"
+var R=0; 
+#if 0
+	R+=1;
+#if 0
+	R+=2; 
+#else 
+	R+=10;
+#endif
+	R+=100;
+#endif"   ,Void,Void,0,__LINE__);
+#<<<
+
+tester.testSrc(
+#<<<"
+var R=0; 
+#if 1
+	R+=1;
+#if 0
+	R+=2; 
+#else 
+	R+=10;
+#endif
+	R+=100;
+#endif"   ,Void,Void,111,__LINE__);
+#<<<
+
+tester.testSrc(
+#<<<"
+var R=0; 
+#if 0
+	R+=1;
+#if 0
+	R+=2; 
+#else 
+	R+=10;
+#endif
+	R+=100;
+#endif"   ,Void,Void,0,__LINE__);
+#<<<
+
+
+	////////////////// #define
+tester.testSrc("var R;\n#define foo 5",Void,Void,Void,__LINE__);
+tester.testSrc("var R;\n#define .foo 5","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R;\n#define 6 5","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R;\n#define foo 1\n  #if foo\n R = 1\n #endif",
+    Void,Void,1,__LINE__);
+tester.testSrc("var R;\n#define foo 0\n  #if foo\n R = 1\n #endif",
+    Void,Void,Void,__LINE__);
+tester.testSrc("var R;\n     #define foo 1\n  #if foo\n R = 1\n #endif",
+    Void,Void,1,__LINE__);
+tester.testSrc("var R;\n#define foo 1\n#define foo 0\n#if foo\n R=1\n #endif",
+    Void,Void,Void,__LINE__);
+
+tester.testSrc("var R;\n#   define foo 1\n  #if foo\n R = 1\n #endif",
+    "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R; #define foo 1\n  #if foo\n R = 1\n #endif",
+    "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R;\n#define foo 5\n  #if bar\n R = 1\n #endif",
+    "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R;\n#define foo 1\n  R = foo","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var R;\n#define foo 1\n#if 1\nR=5;\n#endif",Void,Void,5,__LINE__);
+
+tester.testSrc("#define foo 1\nvar R=\n#tokenize foo\n;",Void,Void,1,__LINE__);
+
+
+	//////////////////// #text
+tester.testSrc("#text foo 123\nvar R=\n#tokenize foo\n;", Void,Void,123,__LINE__);
+tester.testSrc("#text  foo \"123\"\nvar R=\n#tokenize foo\n;", Void,Void,"123",__LINE__);
+tester.testSrc("#text foo 123\nvar R=\n#tokenize foo(456)\n;", Void,Void,123,__LINE__);
+
+tester.testSrc("var R;\n#text foo     \n#if foo\nR=1\n#endif\n",
+    Void,Void,Void,__LINE__);
+tester.testSrc("var R;\n#text foo hoho\n#if foo\nR=1\n#endif\n",
+    Void,Void,1,__LINE__);
+tester.testSrc("#text foo 123\n#ifdef foo\nvar R=1\n#endif\n", Void,Void,1,__LINE__);
+
+
+	//////////////////// #fcn
+tester.testSrc("#fcn   f { 123 }\nvar R=\n   #tokenize    f\n;",Void,Void,123,__LINE__);
+tester.testSrc("#fcn   f { 123 }\nvar R=\n   #tokenize  f()\n;",Void,Void,123,__LINE__);
+tester.testSrc(0'|#fcn f{"\"123\""}| "\nvar R=\n #tokenize f\n;",
+    Void,Void,"123",__LINE__);
+tester.testSrc(0'|#fcn f{String("\"",vm.arglist.concat(" "),"\"")}|
+    "\nvar R=\n#tokenize f(1,2,3)\n;",Void,Void,"1 2 3",__LINE__);
+tester.testSrc("#fcn f{vm.arglist}\n"
+    0'|var R="";| "R+=\n#tokenize f(1,2,3)\n;",Void,Void,"L(1,2,3)",__LINE__);
+
+tester.testSrc("#fcn f { 123 }\nvar R=\n #tokenize f(\n;",
+    "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("#fcn f { 123 }\nvar R=\n #tokenize f ()\n;",Void,Void,123,__LINE__);
+tester.testSrc("#fcn f { 123 }\nvar R=\n #tokenize f (pooh)\n;",Void,Void,123,__LINE__);
+tester.testSrc("#fcn f { 123 }\nvar R=\n #tokenize f(pooh)\n;",
+    "SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("#define n 1\n#text world \"World\"\n"
+    0'|#fcn f{String("var R; R=",world,"+",n)}| "\n"
+    "#tokenize f\n;",Void,Void,"World1",__LINE__);
+
+tester.testSrc("#define n 1\n"
+    0'|#fcn f(a){"var R; R=a;"}| "\n"
+    "#tokenize f(n)\n;","SyntaxError",Void,Void,__LINE__);
+
+
+	//////////////////// #tokenize
+tester.testSrc("#tokenize foo\n","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R;\n#fcn f {1/0}\n#text f\n#tokenize f\n",
+    "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R;\n#fcn f {1/0}\n#define f 0\n#tokenize f()\n",
+    "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R;\n#fcn f {1/0}\n#define f 1\n#tokenize f()\n",Void,Void,Void,__LINE__);
+
+tester.testSrc("var R;\n"
+0'|#fcn f { "#define foo 1" }| "\n"
+"#tokenize f\n"
+"#if foo\n"
+"   R = 1;\n"
+"#endif\n",Void,Void,1,__LINE__);
+
+
+	//////////////////// #<<<, #<<<#, #<<<"
+tester.testSrc("var R=\n"
+   "#<<<\n"
+   "\"1 \n"
+   " 2\"\n"
+   "#<<<\n;", Void,Void,"1 \n 2",__LINE__);
+tester.testSrc("var R=\n"
+   "#<<<<\n"	// #<<<junk  OK?
+   "2\n"
+   "#<<<\n;",Void,Void,2,__LINE__);
+tester.testSrc("var R=\n"
+   " #<<<\n"	// leading junk
+   "2\n"
+   "#<<<\n;", "SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var R=\n"
+   "#<<<\"\n"
+   "ho\tho\";\n"
+   "#<<<\n;", Void,Void,"ho\tho",__LINE__);
+tester.testSrc("var R=\n"
+   "#<<<\"\n"
+   "ho\tho\";\n"
+   "#<<<hoho\n;", Void,Void,"ho\tho",__LINE__);  // #<<<junk OK?
+tester.testSrc("var R=Data(Void,\n"
+   "#<<<\"\n"
+   "ho\tho\").text;\n"
+   "#<<<\n;", Void,Void,"ho\tho",__LINE__);
+tester.testSrc("var R=Data(Void,\n"
+   "#<<<\"\n"
+   "ho\tho\"\n"
+   "#<<<\n"
+   ").text;", Void,Void,"ho\tho",__LINE__);
+
+tester.testSrc("var R=\n"
+   "#<<<\"\n"
+   "ho\tho\n"
+   "\";\n"
+   "#<<<\n;", Void,Void,"ho\tho\n",__LINE__);
+tester.testSrc("var R=\n"
+   "#<<<\"   \n"
+   "hoho\";\n"
+   "#<<<\n;",Void,Void,"hoho",__LINE__);
+
+tester.testSrc("var R=\n"
+   "#<<<\"\n"
+   "ho\tho\n"
+   "#<<<\n\";", "SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var R=\n"
+   "#<<<\"\"\n"
+   "ho\tho\";\n"
+   "#<<<\n;", "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R=\n"
+   "#<<<\"hoho\n"
+   "ho\tho\";\n"
+   "#<<<\n;", "SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var R=\n"
+   "#<<<\n"
+   "\"1 \n"
+   " 2\"\n"
+   " #<<<\n;",  // leading space
+   "SyntaxError",Void,"1 \n 2",__LINE__);
+
+tester.testSrc("var R=\n"
+   " #<<<\n"  // leading space
+   "\"1 \n"
+   " 2\"\n"
+   "#<<<\n;;", "SyntaxError",Void,"1 \n 2",__LINE__);
+
+tester.testSrc("var R=\n"
+   "	#<<<\n"	// leading tab
+   "\"1 \n"
+   " 2\"\n"
+   "#<<<\n;", "SyntaxError",Void,Void,__LINE__);
+
+
+
+tester.testSrc("var R=\n"
+   "#<<<#\n"
+   "\"1 \n"
+   " 2\"\n"
+   "#<<<\n"	// mismatch, should be #<<<#
+   "123;", "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R=\n"
+   "#<<<#\n"
+   "\"1 \n"
+   " 2\"\n"
+   "#<<<#hoho\n"	// #<<<#junk OK?
+   "123;", Void,Void,123,__LINE__);
+tester.testSrc("var R=\n"
+   " #<<<#\n"	// leading junk
+   "\"1 \n"
+   "#<<<#\n"
+   "123;", "SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var R=\n"
+   "#<<<#\n"
+   "\"1\n"
+   "#<<<#\n"
+   "1;",Void,Void,1,__LINE__);
+tester.testSrc("var R=\n"
+   "#<<<#misc garbage\n"
+   "\"1\n"
+   "#<<<#\n"
+   "1;",Void,Void,1,__LINE__);
+
+tester.testSrc("var R=\n"
+   "#<<<#\n"
+   "#<<<\n"
+   "\"1\n"
+   "#<<<#\n"
+   "1;",Void,Void,1,__LINE__);
+
+tester.testSrc("var R=\n"
+   "#<<<\n"
+   "1;\n"
+   "#<<<#\n"	// regular ole comment
+   "#<<<",Void,Void,1,__LINE__);
+
+tester.testSrc("var R=\n"
+   "#<<<\n"
+   "1;\n"
+   "#<<<\n"
+   "#<<<#\n"
+   "hoho foo bar\n"
+   "#<<<#\n"	,Void,Void,1,__LINE__);
+tester.testSrc("var R=\n"
+   "#<<<#\n"
+   "hoho foo bar\n"
+   "#<<<#\n"
+   "#<<<\n"
+   "1;\n"
+   "#<<<\n"	,Void,Void,1,__LINE__);
+
+tester.testSrc("var R=\n"
+   "#<<<\n"
+   " #<<<#\n"   // leading space --> comment out rest of line--> R=
+   "1;\n"
+   "#<<<\n"
+   "2;",Void,Void,2,__LINE__);
+
+    // From the manual
+    // x:= 
+    // #<<<
+    // "#<<< starts a block of lines that are concatenated verbatim 
+    // and fed into the parser as one line. #<<< ends the block. 
+    // Both #<<< tokens must start the line that is otherwise ignored 
+    // 
+    // Note that is isn't a string, but arbitrary source " + 1 + 23; 
+    // #<<<
+tester.testSrc(
+  "x:=\n#<<<\n\"#<<< starts a block of lines that are concatenated verbatim\n"
+  "and fed into the parser as one line. #<<< ends the block.\n"
+  "Both #<<< tokens must start the line that is otherwise ignored\n"
+  "\n"
+  "Note that is isn't a string, but arbitrary source \" + 1 + 23;\n"
+  "#<<<" "\nvar R=x;", 
+  Void,Void,
+  "#<<< starts a block of lines that are concatenated verbatim\n"
+  "and fed into the parser as one line. #<<< ends the block.\n"
+  "Both #<<< tokens must start the line that is otherwise ignored\n"
+  "\n" "Note that is isn't a string, but arbitrary source 123",__LINE__);
+
+
+    				/////////////////////////////// _assert_
+tester.testSrc("var R; _assert_(1==1);",Void,Void,Void,__LINE__);
+tester.testSrc("var R; _assert_(1==2);",Void,"AssertionError",Void,__LINE__);
+tester.testSrc("\n\n\nvar R; try{ _assert_(1==2) }catch{ R=__exception.text }",
+   Void,Void,"assert(<text>:4)",__LINE__);
+tester.testSrc(0'|var R; try{ _assert_(1==2,"foo") }catch{ R=__exception.text }|,
+   Void,Void,"assert(<text>:1): foo",__LINE__);
+tester.testSrc(0'|var R; fcn f{"hoho"}| "\n\n\n"
+   0'|try{ _assert_((z:=f())==5,"I wanted 5, got "+z) }catch{ R=__exception.text }|,
+   Void,Void,"assert(<text>:4): I wanted 5, got hoho",__LINE__);
+
+
+
+
+tester.stats();
+
+returnClass(tester);

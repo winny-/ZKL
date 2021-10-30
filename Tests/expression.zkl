@@ -1,0 +1,373 @@
+// -*-c-*-
+
+var tester = TheVault.Test.UnitTester.UnitTester(__FILE__);
+
+
+   /* Test both to see if an expression yields the correct result and
+    * doesn't leave junk on the stack.  I detect this with addition:  "hoho"
+    * + fcn(), if there is junk left on the stack it will left between
+    * "hoho" and the fcn return value and the addition will be wrong.
+    * These days, I could just use vm.size to check the stack size
+    */
+fcn testTwice(src,result,line=Void)
+{
+   tester.testSrc("var R = %s;".fmt(src),Void,Void,result,line);
+#if 0
+   tester.testSrc(("fcn foo { x=666; %s; return(100); }"
+	0'|var R = ("hoho" + foo());|).fmt(src),Void,Void,"hoho100");
+#else
+   tester.testSrc("var R,__z=vm.size[1]; %s; R = vm.size[1] - __z;".fmt(src),
+      Void,Void,0,line);
+#endif
+}
+
+
+
+tester.testSrc("var R = (if (True) 123 else 456);",Void,Void,123,__LINE__);
+tester.testSrc("var R = if (True) 123 else 456;;",Void,Void,123,__LINE__);
+
+tester.testSrc("var R = \"1\"+2;",Void,Void,"12",__LINE__);
+tester.testSrc("var R = 1 + \"2\";",Void,Void,3,__LINE__);
+tester.testSrc("var R = \"1\" + \"2\";",Void,Void,"12",__LINE__);
+
+tester.testSrc("var R = (if (True) 123 else 456);",Void,Void,123,__LINE__);
+tester.testSrc("var R = if(False) 123 else 456;",Void,Void,456,__LINE__);
+
+tester.testSrc("var R; if (456 == if (False) 123 else 456) R = \"OK\";",
+	Void,Void,"OK",__LINE__);
+tester.testSrc("var R; if ((if (1) 123 else 456) == 123) R=\"OK\";",
+	Void,Void,"OK",__LINE__);
+
+tester.testSrc("var R; if (1) if (1) R = \"OK\";",Void,Void,"OK",__LINE__);
+tester.testSrc("var R; if (1) { if (1) R = \"OK\"; }",Void,Void,"OK",__LINE__);
+
+tester.testSrc("if (1) println;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var foo,bar; foo bar;","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("println(1) println(2);","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn F{} F F();","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn F{} F()F();","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn F{} F().F();",Void,"NotFoundError",Void,__LINE__);
+
+tester.testSrc("var R = self.isType(self);",Void,Void,True,__LINE__);
+tester.testSrc("var R = (1).isInstanceOf(2);",Void,Void,True,__LINE__);
+
+ABFG := "class ClassA{} class ClassB{} fcn fcnF{} fcn fcnG{} var R;";
+
+tester.testSrc(ABFG + "R = ClassA.isType(ClassB);",Void,Void,True,__LINE__);
+tester.testSrc(ABFG + "R = ClassA.isType(ClassA());",Void,Void,True,__LINE__);
+tester.testSrc(ABFG + "R = fcnF.isType(fcnG)",Void,Void,True,__LINE__);
+tester.testSrc(ABFG + "R = ClassA.isInstanceOf(ClassA);",Void,Void,True,__LINE__);
+tester.testSrc(ABFG + "R = ClassA.isInstanceOf(ClassA())",Void,Void,True,__LINE__);
+tester.testSrc(ABFG + "R = ClassA.isInstanceOf(ClassB)",Void,Void,False,__LINE__);
+tester.testSrc(ABFG + "R = fcnF.isInstanceOf(fcnG)",Void,Void,False,__LINE__);
+
+tester.testSrc("i := 0; var R; if (i+=1) R = i;",Void,Void,1,__LINE__);
+
+tester.testSrc("var R = 1; R += 1;",Void,Void,2,__LINE__);
+tester.testSrc("var R = 1; i := 5; R += i;",Void,Void,6,__LINE__);
+tester.testSrc("var R = 1; if (1) R += 1; else R += 20;",Void,Void,2,__LINE__);
+tester.testSrc("var R = 1; if (0) R += 1; else R += 20;",Void,Void,21,__LINE__);
+tester.testSrc("var R; if (not (R = 1)) {} else R = \"OK\"",Void,Void,"OK",__LINE__);
+tester.testSrc("var R; if (not R = 1) {} else R = \"OK\"",Void,Void,"OK",__LINE__);
+
+
+	// Does register ("a") stay block local?
+tester.testSrc("if (1) { a := 2; } else a := 3; var R=a;",Void,Void,Void,__LINE__);
+
+tester.testSrc("var R;"
+   "opSkipBack := 12; opSkipNZ := 14; opSkip := 11; opCode := opSkip; n := 0;"
+   "if (((n == 0) and (opCode == opSkipBack)) or "
+   "    ((n == 0) and L(opSkip,opSkipNZ).holds(opCode)))"
+   "  R=True; else R=False;",
+   Void,Void,True,__LINE__);
+tester.testSrc("var R; if (1 and 2 and 3 and 4 and 5) R=True; else R=False;",
+   Void,Void,True,__LINE__);
+tester.testSrc("var R = 1 + (2 + (3 + (4 + 5)));", Void,Void,15,__LINE__);
+tester.testSrc("var R;"
+   "if (1 and (2 and (3 and (4 and 5)))) R=True; else R=False;",
+   Void,Void,True,__LINE__);
+
+testTwice("((1 == 2) and (3 == 4)) or ((5 != 6) and 7)",7,__LINE__);
+   
+tester.testSrc("var R;"
+   "if (((1 == 2) and (3 == 4)) or ((5 == 6) or 7)) R=True; else R=False;",
+   Void,Void,True,__LINE__);
+tester.testSrc("var R; "
+   "if ((1 == 2)  or ((3 == 4) or ((5 == 6) or 7))) R=True; else R=False;",
+   Void,Void,True,__LINE__);
+tester.testSrc("var R; "
+   "if ((1 and 2) or (3 and 4) or True) R=True; else R=False;",
+   Void,Void,True,__LINE__);
+tester.testSrc("var R; if ((1 + 2) or (3 + 4)) R=True; else R=False;",
+   Void,Void,True,__LINE__);
+
+testTwice("(12 + not 1)", 12,__LINE__);
+testTwice("(12 + not -1)",12,__LINE__);
+testTwice("(not 1)",	False,__LINE__);
+testTwice("(not -1)",	False,__LINE__);
+testTwice("(12 + - (not 1))",13,__LINE__);
+/* 
+testTwice("(12 + - not 1)",13);
+testTwice("(- not 1)",	True);
+testTwice("(- not -1)",	True);
+*/
+
+testTwice("(12 + -1)",		11,__LINE__);
+testTwice("(12 + (-1))",	11,__LINE__);
+testTwice("(1 - - 2)",		3,__LINE__);
+
+tester.testSrc("var R = ((1 == 2) or 5);",Void,Void,5,__LINE__);
+tester.testSrc("var R = ((1 != 2) and 5);",Void,Void,5,__LINE__);
+testTwice("((1 + 2 + 3 + 4) and 5)",5,__LINE__);
+
+	// or leaves junk on the stack
+testTwice("(1 == 2 or 16 + 1 != 17);",False,__LINE__);
+testTwice("(2 == 2 or 16 + 1 != 17);",True,__LINE__);
+
+x := "var R, a=\"a\"; fcn f(x,y) { R = \"\" + x + y; }";
+tester.testSrc(x + "f(if (1) 9,2);",Void,Void,"92",__LINE__);
+tester.testSrc(x + "f(if (1) 9,a);",Void,Void,"9a",__LINE__);
+tester.testSrc(x + "f((if (1) a),9);",Void,Void,"a9",__LINE__);
+tester.testSrc(x+ "x(if (1) a,9);","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var R;R=(\"1\" + \"2\").toInt();",Void,Void,12,__LINE__);
+tester.testSrc("var R;R=(1).toString();",Void,Void,"1",__LINE__);
+tester.testSrc("var R;R=(1 + \"2\");",Void,Void,3,__LINE__);
+tester.testSrc("var R;R=(\"1\" + 2);",Void,Void,"12",__LINE__);
+
+tester.testSrc("fcn f(a,b,c){a and  b or c}  var R=f(1,2,3);",Void,Void,2,__LINE__);
+tester.testSrc("fcn f(a,b,c){a and (b or c)} var R=f(1,2,3);",Void,Void,2,__LINE__);
+tester.testSrc("fcn f(a,b,c){a and  b or c}  var R=f(0,2,3);",Void,Void,3,__LINE__);
+tester.testSrc("fcn f(a,b,c){a and (b or c)} var R=f(0,2,3);",Void,Void,0,__LINE__);
+tester.testSrc("fcn f(a,b,c){a and  b or c}  var R=f(1,0,3);",Void,Void,3,__LINE__);
+tester.testSrc("fcn f(a,b,c){a and (b or c)} var R=f(1,0,3);",Void,Void,3,__LINE__);
+tester.testSrc("fcn f(a,b,c){a and  b or c}  var R=f(1,2,0);",Void,Void,2,__LINE__);
+tester.testSrc("fcn f(a,b,c){a and (b or c)} var R=f(1,2,0);",Void,Void,2,__LINE__);
+tester.testSrc("fcn f(a,b,c){a and  b or c}  var R=f(0,2,0);",Void,Void,0,__LINE__);
+tester.testSrc("fcn f(a,b,c){a and (b or c)} var R=f(0,2,0);",Void,Void,0,__LINE__);
+tester.testSrc("fcn f(a,b,c){a and  b or c}  var R=f(0,0,3);",Void,Void,3,__LINE__);
+tester.testSrc("fcn f(a,b,c){a and (b or c)} var R=f(0,0,3);",Void,Void,0,__LINE__);
+tester.testSrc("fcn f(a,b,c){a and  b or c}  var R=f(0,0,0);",Void,Void,0,__LINE__);
+tester.testSrc("fcn f(a,b,c){a and (b or c)} var R=f(0,0,0);",Void,Void,0,__LINE__);
+
+tester.testSrc("fcn f(a,b,c){ a or b  and c} var R=f(1,2,3);",Void,Void,3,__LINE__);
+tester.testSrc("fcn f(a,b,c){(a or b) and c} var R=f(1,2,3);",Void,Void,3,__LINE__);
+tester.testSrc("fcn f(a,b,c){ a or b  and c} var R=f(0,2,3);",Void,Void,3,__LINE__);
+tester.testSrc("fcn f(a,b,c){(a or b) and c} var R=f(0,2,3);",Void,Void,3,__LINE__);
+tester.testSrc("fcn f(a,b,c){ a or b  and c} var R=f(1,0,3);",Void,Void,3,__LINE__);
+tester.testSrc("fcn f(a,b,c){(a or b) and c} var R=f(1,0,3);",Void,Void,3,__LINE__);
+tester.testSrc("fcn f(a,b,c){ a or b  and c} var R=f(1,2,0);",Void,Void,0,__LINE__);
+tester.testSrc("fcn f(a,b,c){(a or b) and c} var R=f(1,2,0);",Void,Void,0,__LINE__);
+tester.testSrc("fcn f(a,b,c){ a or b  and c} var R=f(0,2,0);",Void,Void,0,__LINE__);
+tester.testSrc("fcn f(a,b,c){(a or b) and c} var R=f(0,2,0);",Void,Void,0,__LINE__);
+tester.testSrc("fcn f(a,b,c){ a or b  and c} var R=f(0,0,3);",Void,Void,0,__LINE__);
+tester.testSrc("fcn f(a,b,c){(a or b) and c} var R=f(0,0,3);",Void,Void,0,__LINE__);
+tester.testSrc("fcn f(a,b,c){ a or b  and c} var R=f(1,0,0);",Void,Void,0,__LINE__);
+tester.testSrc("fcn f(a,b,c){(a or b) and c} var R=f(1,0,0);",Void,Void,0,__LINE__);
+tester.testSrc("fcn f(a,b,c){(a or b) and c} var R=f(0,0,0);",Void,Void,0,__LINE__);
+
+
+tester.testSrc("var R = (\"1\" + \"2\").toInt().toList().toString();",
+    Void,Void,"L(0,1,2,3,4,5,6,7,8,9,10,11)",__LINE__);
+tester.testSrc("var R = (\"1\" + \"2\").toInt().toList().toString() + 5;",
+    Void,Void,"L(0,1,2,3,4,5,6,7,8,9,10,11)5",__LINE__);
+tester.testSrc(0'|var R = ("1" + "2").toInt().toList().toString() + |
+    "(5).toString() + 6;", Void,Void,"L(0,1,2,3,4,5,6,7,8,9,10,11)56",__LINE__);
+tester.testSrc("var R = (1).toInt().toString() + (5).toString()",
+    Void,Void,"15",__LINE__);
+
+tester.testSrc("()","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("println(())","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var R = (\"hoho\" + -1 + 2);",Void,Void,"hoho-12",__LINE__);
+
+
+	// check to see if garbage is left on stack
+testTwice("(1 + 2 == 3)"	,True,__LINE__);
+testTwice("(-1 + 2)"		,1,__LINE__);
+testTwice("(1 + -2 + 3)"	,2,__LINE__);
+testTwice("(1 + (-2 + 3))"	,2,__LINE__);
+testTwice("(1 + -(2 + 3))"	,-4,__LINE__);
+testTwice("(1--2)"		,3,__LINE__);
+testTwice("(1---2)"		,-1,__LINE__);
+testTwice("(1----2)"		,3,__LINE__);
+testTwice("(not 1--2)"		,True,__LINE__);
+testTwice("(not -1)"		,False,__LINE__);
+testTwice("(-not 1)"		,True,__LINE__);
+testTwice("(-not -1)"		,True,__LINE__);	// -(not (-1))
+
+
+tester.testSrc("(1 not -2)","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var R = println(\"1\" 2);","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R = println(1 2);","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R = 1 2;","SyntaxError",Void,Void,__LINE__);
+
+
+tester.testSrc("(1 + (2+3))len()","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("(1 + (2+3)len())","SyntaxError",Void,Void,__LINE__);
+tester.testSrc(" 1 + (2+3)len()", "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("(2+3)len()",	  "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("(2)len()",	  "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("().len()",	  "SyntaxError",Void,Void,__LINE__);
+
+testTwice("(1 + (2+3).len())",2,__LINE__);
+testTwice("(1 + (2+3).len()).toString()","2",__LINE__);
+testTwice("((2+3).toInt()).toString()","5",__LINE__);
+testTwice("(1) or (self == 4)",1,__LINE__);
+
+testTwice("1 + (2+3).len()",2,__LINE__);
+
+
+tester.testSrc("x = 1+;",	  "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("x = 1+2+;",	  "SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var R = 1 + 2 - 5;",Void,Void,-2,__LINE__);
+
+tester.testSrc("var R = try{4}catch{} ",Void,Void,4,__LINE__);
+tester.testSrc("var R = try{4}catch{} reg r = 5; ","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R = try{4}catch{}; reg r = 5; ",Void,Void,4,__LINE__);
+
+tester.testSrc("var R; if (1) try{4}catch{}; R.type;",Void,Void,Void,__LINE__);
+tester.testSrc("var R; if (1) try{4}catch{} 1+2;","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var R; R = 5 + try{4}catch{} + 2",Void,Void,11,__LINE__);
+tester.testSrc("var R; R = fcn { try{4}catch{} + 2 }();","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R; R = fcn { (try{4}catch{}) + 2 }();",Void,Void,6,__LINE__);
+tester.testSrc("var R; R = fcn { (try{4}catch{} + 2) }();",Void,Void,6,__LINE__);
+tester.testSrc("var R; R = try{4}catch{} + 2",Void,Void,6,__LINE__);
+tester.testSrc("var R; R = 5 + -try{4}catch{} + 2",Void,Void,3,__LINE__);
+tester.testSrc("var R; R = 5 + (try{4}catch{}) + 2",Void,Void,11,__LINE__);
+
+tester.testSrc("var R; R = fcn { if(4) 2; + 5 }();","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R; R = fcn { (if(4) 2) + 5 }();",Void,Void,7,__LINE__);
+tester.testSrc("var R; R = fcn { 5 + if(4) 2; }();",Void,Void,7,__LINE__);
+tester.testSrc("var R = (if(4) 2 else 5); R.type",Void,Void,2,__LINE__);
+tester.testSrc("var R = (if(4) 2 else 5) + 3; R.type",Void,Void,5,__LINE__);
+tester.testSrc("var R = if(4) 2 else 5; R.type","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R = if(4) 2 else 5;; R.type",Void,Void,2,__LINE__);
+
+tester.testSrc("var R; if(1) switch(3){case(1){11}}; R.type;",Void,Void,Void,__LINE__);
+tester.testSrc("var R = fcn{(switch(3){case(3){11}}) +5;}();",Void,Void,16,__LINE__);
+tester.testSrc("var R = fcn{(switch(3){case(3){11}} +5)}();",Void,Void,16,__LINE__);
+
+
+tester.testSrc("var R; R = (2==2 and 2==2 and 2==2);",Void,Void,True,__LINE__);
+
+		/////////////////////////////////// logic chaining
+tester.testSrc("var R; R = (2 == 2 == 2);",Void,Void,True,__LINE__);
+tester.testSrc("var R; R = (2 == (1+1) == 2);",Void,Void,True,__LINE__);
+tester.testSrc("var R; R = ((3-1) == (1+1) == 2);",Void,Void,True,__LINE__);
+
+tester.testSrc("var R; R = ((2==2==2) and 3==3);",Void,Void,True,__LINE__);
+
+tester.testSrc("var R; R = (2==2 and (3==3==3));",Void,Void,True,__LINE__);
+tester.testSrc("var R; R = (2==2 and 3==3==3);",Void,Void,True,__LINE__);
+
+tester.testSrc("var R; R = ((2==2==2) and 3==3==3);",Void,Void,True,__LINE__);
+tester.testSrc("var R; R = ((2==2==2) and (3==3==3));",Void,Void,True,__LINE__);
+//tester.testSrc("var R; R = ((2==2==2==2) and 3==3==3);",Void,Void,True,__LINE__);
+
+tester.testSrc("var R; R = ((3-1) == (1+1) == (2*1));",Void,Void,True,__LINE__);
+
+tester.testSrc("var R; R = ((2 == 2) == True);",Void,Void,True,__LINE__);
+tester.testSrc("var R; R = ((2 == 2) == 2);",Void,Void,False,__LINE__);
+tester.testSrc("var R; R = (((2 == 2)) == 2);",Void,Void,False,__LINE__);
+tester.testSrc("var R; R = (2 == (2 == 2));",Void,Void,False,__LINE__);
+tester.testSrc("var R; R = (2 == ((2 == 2)));",Void,Void,False,__LINE__);
+
+tester.testSrc("var R; R = (3-1 == 1+1 == 2);",Void,Void,True,__LINE__);
+
+tester.testSrc("var R; fcn f{var v=1; v+=1} R = (2 == f() == 2);",
+   Void,Void,True,__LINE__);
+tester.testSrc("var R; fcn f{var v=1; v+=1} R = (2 == f() == f());",
+   Void,Void,False,__LINE__);
+tester.testSrc("var R; fcn f{var v=1; v+=1}; (2 == f() == 2); R=f()",
+   Void,Void,3,__LINE__);
+
+tester.testSrc("var R; R = (2 == try{2}catch{4} == 2);",Void,Void,True,__LINE__);
+
+tester.testSrc("var R; R = (1<2<3);",Void,Void,True,__LINE__);
+
+testTwice("(2<3<9);",True,__LINE__);
+testTwice("(2<9<4);",False,__LINE__);
+testTwice("(9<3<4);",False,__LINE__);
+
+#if 0
+testTwice("(2<3<4<5);",True);
+testTwice("(2<3<4<6>5);",True);
+testTwice("(9<3<4<5);",False);
+testTwice("(2<9<4<5);",False);
+testTwice("(2<3<9<5);",False);
+testTwice("(2<3<4<9);",False);
+#endif
+
+tester.testSrc("var R; R = (4==4<5);","SyntaxError",Void,Void,__LINE__);
+
+testTwice("2==3",False,__LINE__);
+testTwice("2==3==4",False,__LINE__);
+
+testTwice("2==(3==4==5)==6",False,__LINE__);
+tester.testSrc("var R=(2<=(f()+1)>0); fcn f{1}",Void,Void,True,__LINE__);
+
+tester.testSrc("var a=5, b=False, R=(a==b==False);",Void,Void,False,__LINE__);
+tester.testSrc("var a=5, b=False, R=(b==a==False);",Void,Void,False,__LINE__);
+tester.testSrc("class C { var a=5, b=False; }"
+    "var R=(C.a==C.b==False);",Void,Void,False,__LINE__);
+tester.testSrc("class C { var a=5, b=False; }"
+    "var R=(C.b==C.a==False);",Void,Void,False,__LINE__);
+
+tester.testSrc("class C { var a=5, b=5, c=6; }"
+    "var R=(C.a<=C.b<=C.c);",Void,Void,True,__LINE__);
+tester.testSrc("class C { var a=5, b=5, c=5; }"
+    "var R=(C.a<C.b<C.c);",Void,Void,False,__LINE__);
+tester.testSrc(0'|class C { var a=3, b=2, c="a"; }|
+    "var R=(C.a>C.b>C.c);",Void,"ValueError",False,__LINE__);
+tester.testSrc(0'|class C { var a="b", b="a", c=1; }|
+    "var R=(C.a>C.b>C.c);",Void,Void,True,__LINE__);
+
+tester.testSrc(0'|class C { var a=1, b="0", c="."; }|
+    "var R=(C.a>C.b>C.c);",Void,Void,True,__LINE__);
+testTwice(0'|(1>"0">".")|,True,__LINE__);
+
+tester.testSrc("reg a=5, b=False; var R=(a==b==False);",Void,Void,False,__LINE__);
+tester.testSrc("reg a=5, b=False; var R=(b==a==False);",Void,Void,False,__LINE__);
+
+tester.testSrc("var R; (R=1);(R=2);",Void,Void,2,__LINE__);
+tester.testSrc("var R; (R=1) (R=2);",Void,Void,2,__LINE__);
+tester.testSrc("var R; (R=1)(R=2);", "SyntaxError",Void,2,__LINE__);
+tester.testSrc("var R; ( (R=1) (R=2) )", "SyntaxError",Void,2,__LINE__);
+
+tester.testSrc("var R; b:=1; c:=False; R = b == c;", Void,Void,False,__LINE__);
+tester.testSrc("var R; b:=1; c:=False; if (R=b==c){R=666};", Void,Void,False,__LINE__);
+
+
+			////////////////////////// very strange
+tester.testSrc("a:=1; var R=(==a 1);", Void,Void,True,__LINE__);
+tester.testSrc("a:=1; var R=(==1 a);", Void,Void,True,__LINE__);
+tester.testSrc("a:=1; var R=(>0 a);",  Void,Void,False,__LINE__);
+tester.testSrc("a:=1; var R=(<0 a);",  Void,Void,True,__LINE__);
+
+
+			/////////////////////////////// compose strangness
+tester.testSrc("fcn mod(a,b){1/0} fcn f{ False and 9:mod(_,2) == 1 }"
+   "var R=f();", Void,"MathError",True,__LINE__);
+tester.testSrc("fcn mod(a,b){1/0} fcn f{ False and (9):mod(_,2) == 1 }"
+   "var R=f();", Void,"MathError",False,__LINE__);
+tester.testSrc("fcn mod(a,b){1/0} fcn f{ False and (9:mod(_,2)) == 1 }"
+   "var R=f();", Void,Void,False,__LINE__);
+tester.testSrc("fcn mod(a,b){1/0} fcn f{ False and (9:mod(_,2) == 1) }"
+   "var R=f();", Void,Void,False,__LINE__);
+
+
+		/////////////////////////////////////////////
+tester.testSrc("var R; (R)=2;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R,a,b,c; (a=b)=c;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R; (R=1)=2;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R; class A{ var a } (A()).a=5;","SyntaxError",Void,Void,__LINE__);
+
+
+
+tester.stats();
+returnClass(tester);

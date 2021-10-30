@@ -1,0 +1,105 @@
+//-*-c-*-
+// Rosetta Code: Find duplicate files
+
+include(zkl.h.zkl);
+const FLAGS=FILE.GLOB.IGNORE_CASE + FILE.GLOB.NO_DIRS;
+var [const] MsgHash=Import("zklMsgHash");
+var recurse=False, fileSpec, minSz=0, maxSz=(0).MAX;
+
+argh:=Utils.Argh(
+   T("+R","R","Recurse into subdirectories, starting at <arg>",
+	fcn(arg){ recurse=arg }),
+   T("+minSz","","Only consider files larger than <arg>",
+	fcn(arg){ minSz=arg.toInt() }),
+   T("+maxSz","","Only consider files less than <arg>",
+	fcn(arg){ maxSz=arg.toInt() }),
+);
+
+argh.parse(vm.arglist);
+try { fileSpec=argh.loners[0]; }
+catch{
+   argh.usage("Find duplicate files <glob>");
+   System.exit(1);
+}
+
+#if 0	// not really worth threading, this is the unthreaded way
+fnames:=Data(0,String);
+if (recurse) File.globular(recurse,fileSpec,True,FLAGS,fnames);
+else	     File.glob(fileSpec,FLAGS).pump(fnames);
+
+files:=Dictionary();  // (len:(name,name...), ...)
+foreach fname in (fnames){
+   sz:=File.len(fname);
+   if(minSz<=sz<=maxSz) files.appendV(File.len(fname),fname);
+}
+
+    //////////////////////// group files by size
+files=files.pump(List,Void.Xplode,fcn(k,v){ v.len()>1 and v or Void.Skip });
+println("Found %d groups of same sized files, %d files total.".fmt(files.len(),
+   files.apply("len").sum(0)));
+
+if(not files)	// no files found
+   { println("No duplicates found");  System.exit(); }
+
+buffer:=Data(0d100_000);  // we'll resuse this buffer for hashing
+hashes:=files.pump(List,'wrap(fnames){ // get the MD5 hash for each file
+   fnames.pump(List,'wrap(fname){
+      file,hash := File(fname,"rb"), MsgHash.toSink("MD5");
+      file.pump(buffer,hash); file.close();
+      return(hash.close(),fname); // -->( (hash,name), (hash,name) ... )
+   })
+},T(Void.Write,Void.Write)); // flatten list of lists of lists to above
+
+#else  // but if you want to thread (and it is lots faster)
+
+    //////////////////  Use two threads to walk file system and size files
+fcn indexFiles(in){	// thread
+   files:=Dictionary();
+   foreach fname in (in){
+      sz:=File.len(fname);
+      if(minSz<=sz<=maxSz) files.appendV(File.len(fname),fname);
+   }
+   files	// this thread is done
+}
+fcn findFiles(fileSpec,recurse,out){	// thread
+   if (recurse) File.globular(recurse,fileSpec,True,FLAGS,out);
+   else	        File.glob(fileSpec,FLAGS).pump(out);
+   out.close();	// this thread is done
+}
+p:=Thread.Pipe();
+findFiles.launch(fileSpec,recurse,p);
+files:=indexFiles.future(p);  // (len:(name,name...), ...)
+
+    //////////////////////// group files by size
+files=files.pump(List,Void.Xplode,fcn(k,v){ v.len()>1 and v or Void.Skip });
+println("Found %d groups of same sized files, %d files total.".fmt(files.len(),
+   files.apply("len").sum(0)));
+
+if(not files)	// no files found
+   { println("No duplicates found");  System.exit(); }
+
+    ////////////////// Use several threads to hash files
+fcn hashFile(fileNames,out){  // fileNames is list of list of same sized files
+   buffer:=Data(0d50_000);  // we'll resuse this buffer to read & hash the file
+   fileNames.pump(out,'wrap(fname){  // get the MD5 hash for each file
+      file,hash := File(fname,"rb"), MsgHash.toSink("MD5");
+      file.pump(buffer,hash); file.close();
+      return(hash.close(),fname);
+   }); // out-->( (hash,name), (hash,name) ... )
+}
+in,hashes := Thread.Pipe(),Thread.Pipe();
+threads:=(5).pump(List,hashFile.future.fp(in,hashes));
+    // don't give an one thread a wad of big files: flaten list of lists
+files.pump('wrap(list){ list.pump(in) }); in.close();
+threads.apply("noop"); hashes.close();	// wait for threads to finish
+
+#endif	// threaded section
+
+
+   //// Hash the file hashes, then scoop out the files with the same hash
+buffer:=Dictionary();
+files:=hashes.pump(Void,Void.Xplode,buffer.appendV)
+       .pump(List,Void.Xplode,fcn(k,v){ v.len()>1 and v or Void.Skip });
+  
+println("Found %d duplicate files:".fmt(files.apply("len").sum(0)));
+foreach group in (files){ println("   ",group.concat(", "),"\n") }

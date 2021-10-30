@@ -1,0 +1,169 @@
+//-*-c-*-
+/*
+ * opToC : Convert the opcode.h.zkl and vm.h.zkl to C header files
+ *   zklOpcodes.h and typeTable.c
+ */
+
+Attributes(script);
+
+include(vm.h.zkl);	// ZSC_Protocol, etc
+
+const vm_h	= "vm.h.zkl";
+const opcode_h	= "opcode.h.zkl";
+const Date	= Import("Time.Date");
+
+const WARNING  = 
+("/* This file is machine ganerated\n"
+" *    (from %s and %s by %s).\n"
+" * Don't mess with it, your efforts will be in vain.\n"
+" * Generated %s\n"
+" */\n\n")
+.fmt(vm_h,opcode_h,System.argv[1],Date.ctime());
+
+const headerFile    = "zklOpcodes.h";
+const typeTableFile = "typeTable.c";
+
+var Asm		    = Compiler.Asm;
+
+var file;
+
+/* ******************************************************************** */
+/* *********************** Create opcodes.h *************************** */
+/* ******************************************************************** */
+
+const __OPCODES_H =	"__ZKL_OPCODES_H";
+
+println("================> Generating ",headerFile);
+
+file = File(headerFile,"w");
+file.write(WARNING);
+file.write("#ifndef %s\n#define %s\n\n".fmt(__OPCODES_H,__OPCODES_H));
+
+file.writeln("#define ZSC_PROTOCOL\t\"%s\"".fmt(ZSC_Protocol));
+file.writeln("#define WAD_PROTOCOL\t\"%s\"".fmt(Wad_Protocol));
+file.writeln();
+
+file.writeln("#define ZSC_MAGIC_COOKIE\t\0x%x".fmt(ZSC_MagicCookie));
+file.writeln("#define WAD_MAGIC_COOKIE\t0x%x".fmt(Wad_MagicCookie));
+file.writeln("#define CODE_TAG\t\t0x%02x".fmt(CodeTag));
+file.writeln("#define FCN_TAG\t\t\t0x%02x".fmt(FcnTag));
+file.writeln("#define CLASS_TAG\t\t0x%02x".fmt(ClassTag));
+file.writeln("#define DATA_TAG\t\t0x%02x".fmt(DataTag));
+file.writeln("#define WAD_TAG\t\t0x%02x".fmt(WadTag));
+file.writeln();
+
+file.writeln("char *typeToName(unsigned int t);\t// in %s\n".fmt(typeTableFile));
+
+theOpCodes := filterFile(File(File.searchFor(opcode_h,System.includePath)));
+dump(theOpCodes.toDictionary());
+
+file.write("\n\n");
+
+types := filterFile(File(File.searchFor(vm_h,System.includePath)));
+types := types.filter(fcn(v,specials){ t := v[1].toInt(); 
+          t < 100 or specials.holds(t)}, T(ParentType,ClassVarType));
+//types == L( L("AtomicBool","17"), ...)
+//types = types.toDictionary();	// "AtomicBool" : 17
+dump(types.toDictionary());
+
+file.write("\n#endif // %s\n".fmt(__OPCODES_H));
+
+file.close();
+
+/* ******************************************************************** */
+/* ******************** Create typetable.c **************************** */
+/* ******************************************************************** */
+
+println("================> Generating ",typeTableFile);
+
+file = File(typeTableFile,"w");
+file.write(WARNING);
+
+#if 0
+file.writeln("#include \"%s\"\t// BoolType, etc\n".fmt(headerFile));
+file.writeln("typedef struct { int theType; char *name; } TypeTable;");
+file.writeln("TypeTable typeTable[] =\n{");
+
+    // --> AtomicBoolType, "AtomicBool",       	// 17
+foreach name in (types.keys.sort())
+{
+   t := types[name];
+   file.write("   %-20s%-20s\t// %2d\n"
+      .fmt("%s,".fmt(name),"\"%s\",".fmt(Asm.typeTable[t]),t));
+}
+
+file.writeln("   0,\t\t\t0");
+file.writeln("};");
+file.writeln("\n"
+   "char *typeToName(int t)\n"
+   "{\n"
+   "   TypeTable *p;\n"
+   "   for (p = typeTable; p->name; p++)\n"
+   "      if (t == p->theType) return p->name;\n"
+   "   return \"\";\n"
+   "}\n");
+
+#else
+
+file.writeln("#include \"%s\"\t// prototype for typeToName\n".fmt(headerFile));
+file.writeln("char *typeTable[] =\n{");
+
+n2const := 	// L("AtomicBool","17") --> D("17" : "AtomicBool")
+   types.reduce(fcn(d,x) { d[x[1]] = x[0]; d },Dictionary());
+
+aTypeTable := Asm.typeTable;
+max := aTypeTable.keys.apply("toInt")
+		.reduce(fcn(m,n){if(n < 99 and n > m) n else m}, 0);
+
+    // --> "AtomicBool",  // 17: AtomicBoolType
+foreach n in ([0..max])		// dump table by index
+{
+   typeName := aTypeTable.find(n); constName := "";
+   if (Void == typeName) typeName  = "???";	// dead slot
+   else 		 constName = n2const[n];
+   file.write("   %-20s\t// %2s: %s\n"
+      .fmt("\"%s\",".fmt(typeName),n,constName));
+}
+
+file.writeln("};");
+file.writeln("\n"
+   "char *typeToName(unsigned int t) {\n",
+   0'|   if(t > %d) return "Bogus";|.fmt(max),"\n"
+   "   return typeTable[t];\n"
+   "}"
+);
+
+#endif
+
+file.close();
+
+println("All Done");
+
+/* ******************************************************************** */
+/* *********************************  ********************************* */
+/* ******************************************************************** */
+
+fcn filterFile(file)	// look for "const opNoop" or "const ObjectType"
+{
+   result := L();
+   regexp := RegExp("const\\ +([a-zA-Z0-9_]+)[^0-9]+([0-9]+)");
+   foreach line in (file)
+   {
+      if (regexp.search(line))	// ignore ZSC_Protocol, etc
+      {
+	 name := (pair := regexp.matched[1,2])[0];
+	 if (name.holds("Type") or name[0,2] == "op") result.append(pair);
+      }
+   }
+   return(result);
+}
+
+fcn dump(d)
+{
+   foreach name in (d.keys.sort())
+   {
+      code := d[name];
+#print("#define %s\t\t%s\n".fmt(name,code));
+      file.write("#define %-20s%3s\n".fmt(name,code));
+   }
+}

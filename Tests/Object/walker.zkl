@@ -1,0 +1,587 @@
+// -*-c-*-
+// Test Walkers
+
+tester := TheVault.Test.UnitTester.UnitTester(__FILE__);
+
+
+    			///////////////////////////////////// Walker.apply
+tester.testSrc(0'|var R=T.walker().apply();|,Void,"MissingArg",Void,__LINE__);
+tester.testSrc(0'|var R=T.walker().apply(Void);|,Void,Void,T,__LINE__);
+tester.testSrc(0'|var R=T.walker().apply(0);|,
+    Void,Void,T,__LINE__);
+tester.testSrc(0'|var R=T.walker().apply(-3);|,
+    Void,Void,T,__LINE__);
+tester.testSrc(0'|var R=T(1,2,3).walker().apply(2,'+(1));|,
+    Void,Void,T(2,2,2),__LINE__);
+tester.testSrc(0'|var R=T(1,2,3).walker().apply(2,T('+(1),'*(2)));|,
+    Void,Void,T(2,2,2),__LINE__);
+
+
+			//////////////////////////////////////// Walker.pump
+tester.testSrc(
+    "var R=L(3,5,7).walker().pump(List,fcn(x){ x and x*self.fcn(x-1) or 1 });",
+    Void,Void,T(6,120,5040),__LINE__);
+
+tester.testSrc(0'|var R; R = L("1","22","333").walker().pump(List,"len");|,
+	Void,Void,L(1,2,3),__LINE__);
+tester.testSrc(0'|var R=L(); L("1","22","333").walker().pump(Void,R.append);|,
+	Void,Void,L("1","22","333"),__LINE__);
+
+tester.testSrc(0'|var R=["a".."z"].pump(5,String,"toUpper");|,
+	Void,Void,"ABCDE",__LINE__);
+tester.testSrc(0'|var R=["a".."b"].pump(5,String,"toUpper");|,
+	Void,Void,"AB",__LINE__);
+
+tester.testSrc(0'|var R=[10..12].pump(List,T("toString",16)).concat("");|,
+	Void,Void,"abc",__LINE__);
+tester.testSrc(0'|var R=[10..20].pump(3,List,T("toString",16)).concat("");|,
+	Void,Void,"abc",__LINE__);
+
+tester.testSrc(0'|var R=L(); [1..3].pump(List,R.append);|,
+	Void,Void,T(1,2,3),__LINE__);
+tester.testSrc(0'|var R=L(); [1..10].pump(3,Void,R.append);|,
+	Void,Void,T(1,2,3),__LINE__);
+tester.testSrc(0'|var R=L(); [1..3].pump(10,Void,R.append);|,
+	Void,Void,T(1,2,3),__LINE__);
+
+tester.testSrc(0'|var R=[1..3].pump(10,List);|,Void,Void,T(1,2,3),__LINE__);
+tester.testSrc(0'|var R=[1..3].pump(*,List);|,Void,Void,T(1,2,3),__LINE__);
+tester.testSrc(0'|var R=[1..3].pump(-1,List);|,Void,Void,T,__LINE__);
+
+
+		////////////////////////////// Walker.pump(Walker, lazy pump
+tester.testSrc("var R=L(3,5,7).walker()"
+    ".pump(Walker,fcn(x){ x and x*self.fcn(x-1) or 1 }).walk(2);",
+    Void,Void,T(6,120),__LINE__);
+tester.testSrc(0'|var R=L("1","22","333").walker().pump(Walker,"len").walk(2);|,
+    Void,Void,L(1,2),__LINE__);
+tester.testSrc(0'|var R=["a".."z"].pump(Walker,"toUpper").next();|,
+    Void,Void,"A",__LINE__);
+
+
+			//////////////////////////////////////// Walker.filter
+tester.testSrc(0'|var R=[0..2].filter();|,Void,Void,T(1,2),__LINE__);
+tester.testSrc(0'|var R=[0..2].filter(1);|,Void,Void,T(1),__LINE__);
+tester.testSrc(0'|var R=[0..2].filter(5);|,Void,Void,T(1,2),__LINE__);
+tester.testSrc(0'|var R=[1..2].filter(-1);|,Void,Void,T,__LINE__);
+
+tester.testSrc(0'|var R=Utils.range(0,13,3).filter(fcn(x) { (not (x%2)) });|,
+    Void,Void,T(0,6,12),__LINE__);
+tester.testSrc(0'|var R="foo bar".walker().filter(Op("<"),"h");|,
+    Void,Void,T("f"," ","b","a"),__LINE__);
+
+tester.testSrc(0'|var R = L("2","123").walker().filter("holds","1")|,
+   Void,Void,T("123"),__LINE__);
+tester.testSrc(0'|var R = L("","123").walker().filter("len")|,
+   Void,Void,T("123"),__LINE__);
+tester.testSrc(0'|var R = L("","123").walker().filter(fcn(s){ s.len() })|,
+   Void,Void,T("123"),__LINE__);
+
+tester.testSrc(0'|var R =  L("foo","oo","bar","kangaroo").walker();|
+    "R=R.filter(fcn(nameFromList,pattern) { nameFromList.matches(pattern) },"
+    "        \"*oo*\");",Void,Void,L("foo","oo","kangaroo"),__LINE__);
+
+tester.testSrc(0'|var R = [0..*].filter(3)|,Void,Void,T(1,2,3),__LINE__);
+tester.testSrc(0'|var R = [0..*].filter(1)|,Void,Void,T(1),__LINE__);
+
+tester.testSrc(0'|var R=L();[0..2].filter(T('+(3),R.append));|,
+   Void,Void,T(0,1,2),__LINE__);
+tester.testSrc(0'|var R=L();[0..2].filter(T('+(3),fcn(n){ R.append(n) }));|,
+   Void,Void,T(0,1,2),__LINE__);
+tester.testSrc(0'|var R=L();[0..2].filter(T(fcn(n){ n+3 },|
+   "fcn(n){ R.append(n) }));", Void,Void,T(0,1,2),__LINE__);
+tester.testSrc(0'|var R=L();[0..2].filter(T(fcn(n){ n+3 },R.append));|,
+   Void,Void,T(0,1,2),__LINE__);
+
+#<<<#
+tester.testSrc(0'|var R=T(0,0,0).walker(); R.sink(String); R=R.filter();|,
+   Void,Void,"",__LINE__);
+tester.testSrc(0'|var R=[0..2].walker(); R.sink(String); R=R.filter();|,
+   Void,Void,"12",__LINE__);
+tester.testSrc(0'|var R=[0..9].walker(); R.sink(String); R=R.filter(4);|,
+   Void,Void,"1234",__LINE__);
+
+tester.testSrc(0'|var R=["a".."c"].walker(); R.sink(Data); R=R.filter().text;|,
+   Void,Void,"abc",__LINE__);
+tester.testSrc(0'|var R=["a".."c"].walker(); R.sink(Data,String);|
+   "R=R.filter().len();", Void,Void,6,__LINE__);
+
+tester.testSrc(0'|var R=[0..2].walker(); R.sink(T); R=R.filter();|,
+   Void,Void,T(1,2),__LINE__);
+tester.testSrc(0'|var R=[0..2].walker(); R.sink(L); R=R.filter();|,
+   Void,Void,T(1,2),__LINE__);
+tester.testSrc(0'|var R=[0..2].walker(); R.sink(Void); R=R.filter();|,
+   Void,Void,2,__LINE__);
+#<<<#
+
+tester.testSrc(0'|var R=[0..10].filter(T('>(5),'!=(8)));|,
+   Void,Void,T(6,7,9,10),__LINE__);
+tester.testSrc(0'|var R=[0..4].filter(T('-(1)),2);|,
+   Void,Void,T(0,1,2,4),__LINE__);
+
+tester.testSrc(0'|var R=T(T(0),T(1)).walker().pump(List,T("get",0),Void.Filter)|,
+   Void,Void,T(T(1)),__LINE__);
+tester.testSrc(0'|var R=[0..4].pump(List,'-(1),'>(1),Void.Filter)|,
+   Void,Void,T(3,4),__LINE__);
+tester.testSrc(0'|var R=[0..4].pump(List,'-(1),'>(1),Void.Filter,'+(10))|,
+   Void,Void,T(13,14),__LINE__);
+
+
+		//////////////// lazy filters
+tester.testSrc(0'|var R=[0..2].filter(Walker,'-(1)).walk(99);|,Void,Void,T(0,2),__LINE__);
+tester.testSrc(0'|var R=T(T(0),T(1)).walker().filter(Walker,'-(1)).walk(99);|,
+   Void,"NotImplementedError",Void,__LINE__);
+tester.testSrc(0'|var R=T(T(0),T(1)).walker().filter(Walker,"get",0).walk(99);|,
+   Void,Void,T(T(1)),__LINE__);
+tester.testSrc(0'|var R=[0..2].filter(Walker).walk(99)|,Void,Void,T(1,2),__LINE__);
+
+tester.testSrc(0'|var R=Walker([3..5].next).filter(fcn(n){ n<4 })|,
+   Void,"TheEnd",Void,__LINE__);
+
+
+
+    			/////////////////////////////////////// walker.filter1
+tester.testSrc("var R = [1..0].filter1()",Void,Void,False,__LINE__);
+tester.testSrc("var R = [0..2].filter1()",Void,Void,1,__LINE__);
+tester.testSrc(0'|var R = L(0,Void,T,"").walker().filter1()|,Void,Void,False,__LINE__);
+tester.testSrc(0'|var R = T("2","123","11").walker().filter1("holds","1")|,
+    Void,Void,"123",__LINE__);
+tester.testSrc(0'|var R=[4..6].filter1("noop")|,Void,Void,4,__LINE__);
+tester.testSrc(0'|var R=[0..6].filter1(1)|,Void,Void,1,__LINE__);
+
+#<<<#
+tester.testSrc(0'|var R=[0..2].walker(); R.sink(String); R=R.filter1();|,
+   Void,Void,1,__LINE__);
+#<<<#
+
+
+    			////////////////////////////////////////// .filter22
+tester.testSrc(0'|var R=[0..2].filter22();|,Void,Void,T(T(1,2),T(0)),__LINE__);
+tester.testSrc(0'|var R=[1..4].filter22('<,3);|,
+    Void,Void,T(T(1,2),T(3,4)),__LINE__);
+tester.testSrc(0'|var R=[0..*].filter22(5,Op("<"),3);|,
+    Void,Void,T(T(0,1,2),T(3,4)),__LINE__);
+#<<<#
+tester.testSrc(0'|var R=[0..3].walker(); R.sink(String); R=R.filter22();|,
+   Void,Void,T("123","0"),__LINE__);
+tester.testSrc(0'|var R=[0..9].walker(); R.sink(String); R=R.filter22(4);|,
+   Void,Void,T("123","0"),__LINE__);
+#<<<#
+
+
+			///////////////////////////// Walker.reduce
+tester.testSrc(0'|var R=[1..0].reduce(Op("+"),0);|,Void,Void,0,__LINE__);
+tester.testSrc(0'|var R=[1..1].reduce('+);|,Void,Void,1,__LINE__);
+
+tester.testSrc(0'|var R=[1..1].reduce(fcn(x,y){x+y+1},0);|,Void,Void,2,__LINE__);
+
+tester.testSrc(0'|var R=[1..3].reduce(Op("+"),0);|,   Void,Void,6,__LINE__);
+tester.testSrc(0'|var R=[1..3].reduce(Op("+"),1);|,   Void,Void,7,__LINE__);
+//tester.testSrc(0'|var R=[1..3].reduce(9,Op("+"),0);|, Void,Void,6,__LINE__);
+//tester.testSrc(0'|var R=[1..9].reduce(3,Op("+"),0);|, Void,Void,6,__LINE__);
+
+tester.testSrc(0'|var R=(5).walker().reduce(Op("+").fp(2),1);|,
+    Void,Void,21,__LINE__);
+//tester.testSrc(0'|var R=(10).walker().reduce(3,Op("+").fp(2),1);|,Void,Void,10,__LINE__);
+
+tester.testSrc(0'|c := Op("+").fp(1);|
+    0'|var R = [1..5].reduce(c,0);|,Void,Void,20,__LINE__);
+tester.testSrc(0'|c := fcn(x,y,z){x+y+z}.fpN(2,1);|
+    0'|var R = [1..5].reduce(c,0);|,Void,Void,20,__LINE__);
+
+tester.testSrc(0'|var R=[2..6].reduce('*,1);|,Void,Void,720,__LINE__);
+//tester.testSrc(0'|var R=[1..10].reduce(6,'*,1);|,Void,Void,720,__LINE__);
+
+
+		// infinite lists
+tester.testSrc(0'|var R=["a"..].walk(3)|,Void,"TheEnd",T,__LINE__);  // -->[]
+tester.testSrc(0'|var R=["a"..*].walk(3)|,Void,"TheEnd",T,__LINE__); // -->[]
+tester.testSrc(0'|var R=[5..].walk(3)|,Void,Void,T(5,6,7),__LINE__);
+tester.testSrc(0'|var R=[5..*,2].walk(3)|,Void,Void,T(5,7,9),__LINE__);
+
+
+tester.testSrc(0'|var R=[5..10].walk(-3)|,Void,"TheEnd",T,__LINE__);
+
+		// compiler bug
+tester.testSrc(0'|var R; fcn f{} [1..1].apply(fcn(n){f(n)});|,
+    Void,Void,Void,__LINE__);
+tester.testSrc(0'|var R;class P{} [1..1].apply(fcn(n){P(n)});|,
+    Void,Void,Void,__LINE__);
+tester.testSrc(0'|var R=L(); fcn f(n){} [1..2].apply(R.append);|,
+    Void,Void,T(1,2),__LINE__);
+tester.testSrc("var R; fcn f{ foreach i in (1 - 0)  {} }()",Void,Void,Void,__LINE__);
+tester.testSrc("var R; fcn f{ foreach i in (1 - (0)){} }()",Void,Void,Void,__LINE__);
+tester.testSrc("var R; fcn f{ foreach i in ((1 - (0))){} }()",Void,Void,Void,__LINE__);
+
+
+#if 0
+			//////////////////////////////// Walker.enumerate
+tester.testSrc("var R; R = \"foo\".walker().enumerate();",
+    Void,Void,L(L(0,"f"),L(1,"o"),L(2,"o")),__LINE__);
+tester.testSrc("var R; R = Walker(3,*).enumerate(3);",
+    Void,Void,L(L(0,3),L(1,4),L(2,5)),__LINE__);
+tester.testSrc(0'|var R; R = ["a".."c"].enumerate();|,
+    Void,Void,L(L(0,"a"),L(1,"b"),L(2,"c")),__LINE__);
+
+tester.testSrc(0'|var R; w:=T(1,2,3,4).walker(); R=w.enumerate();|,
+    Void,Void,T(L(0,1),T(1,2),T(2,3),T(3,4)),__LINE__);
+tester.testSrc(0'|var R; w:=T(1,2,3,4).walker(); R=w.enumerate(2);|,
+    Void,Void,T(L(0,1),T(1,2)),__LINE__);
+tester.testSrc(0'|var R; w:=T(1,2,3,4).walker(); w.enumerate(3);|
+    "R=w.enumerate(2);", Void,Void,T(L(3,4)),__LINE__);
+tester.testSrc(0'|var R; w:=T(1,2,3,4).walker(); w.enumerate(3);|
+    "R=w.enumerate();", Void,Void,T(L(3,4)),__LINE__);
+
+tester.testSrc(0'|var R; w:=T(1,2,3).walker(); w.peekN(2);|
+    "R=w.enumerate();", Void,Void,T(T(0,1),T(1,2),T(2,3)),__LINE__);
+tester.testSrc(0'|var R; w:=T(1,2,3).walker(); w.push(4,5);|
+    "R=w.enumerate(3);", Void,Void,T(T(0,4),T(1,5),T(2,1)),__LINE__);
+#endif
+
+
+			/////////////////////////////// .walk()
+tester.testSrc(0'|var R=T.walker().walk(99);|, Void,"TheEnd",Void,__LINE__);
+tester.testSrc(0'|var R=T.walker().walk(0);|, Void,"TheEnd",T,__LINE__);
+tester.testSrc(0'|var R=T.walker().walk(-3);|, Void,"TheEnd",T,__LINE__);
+tester.testSrc(0'|var R=(1).walker(999).walk(999).len();|,
+    Void,Void,999,__LINE__);
+
+#<<<#
+tester.testSrc(0'|var R=T(1,2,3).walker().sink(String).walk(-3);|,
+    Void,"TheEnd","",__LINE__);
+tester.testSrc(0'|var R=T.walker().sink(String).walk(99);|, Void,"TheEnd",Void,__LINE__);
+tester.testSrc(0'|var R=T.walker().sink(String).walk(0);|,Void,"TheEnd","",__LINE__);
+tester.testSrc(0'|var R=T.walker().sink(Data).walk(0);|,Void,"TheEnd",Data(),__LINE__);
+
+tester.testSrc(0'|var R=(1).walker(999).sink(String).walk(999).len();|,
+    Void,Void,999,__LINE__);
+#<<<#
+
+
+tester.testSrc("var R=Utils.range(0,13,3).walk(99)",
+	Void,Void,L(0,3,6,9,12),__LINE__);
+tester.testSrc("var R=[0..*].walk(3)", Void,Void,T(0,1,2),__LINE__);
+tester.testSrc("var R=[0..2].walk(30)", Void,Void,T(0,1,2),__LINE__);
+tester.testSrc("var R=[0..*]; R.pump(3,Void); R=R.walk(3)", Void,Void,T(3,4,5),__LINE__);
+
+tester.testSrc("var R=(0).walker(5);"
+    "R=R.tweak(fcn(n) { if (n == 2) return(Void.Stop,Void.Void); n }).walk(99);",
+    Void,Void,L(0,1),__LINE__);
+tester.testSrc("var R=(0).walker(5);"
+    "R=R.tweak(fcn(n) { if (n == 2) return(Void.Stop); n }).walk(99);",
+    Void,Void,L(0,1),__LINE__);
+tester.testSrc("var R=(0).walker(5);"
+    "R=R.tweak(fcn(n) { if (n == 2) return(Void.Skip); n }).walk(99);",
+    Void,Void,L(0,1,3,4),__LINE__);
+tester.testSrc("var R=(0).walker(5);"
+    "R=R.tweak(fcn(n) { if (n == 2) return(Void.Stop,55); n }).walk(99);",
+    Void,Void,L(0,1,55),__LINE__);
+tester.testSrc("var R=(0).walker(5);"
+    "R=R.tweak(fcn(n) { if (n == 2) return(Void.Skip,55); n }).walk(99);",
+    Void,Void,L(0,1,55,3,4),__LINE__);
+
+tester.testSrc("var R=T(1,2).walker(); R.walk(99); R=R.n;",  Void,Void,2,__LINE__);
+tester.testSrc("var R=T(1,2).walker(); R.walk(99); R=R.idx;",Void,Void,1,__LINE__);
+tester.testSrc("var R=T(1,2).walker(); R.pump(2,Void);R.pump(2,Void); R=R.n;",
+    Void,Void,2,__LINE__);
+tester.testSrc("var R=T(1,2).walker(); R.pump(2,Void);R.pump(2,Void); R=R.idx;",
+    Void,Void,1,__LINE__);
+
+tester.testSrc("var R=(0).walker(10)"
+   ".tweak(fcn(n){ if(n<2) n else Void.Skip }); R.pump(Void); R=R.idx;",
+    Void,Void,9,__LINE__);
+tester.testSrc("var R=(0).walker(10)"
+   ".tweak(fcn(n){ if(n<2) n else Void.Skip }); R.pump(Void); R=R.n;",
+    Void,Void,2,__LINE__);
+
+tester.testSrc("var R=T(1,2).walker(); R.walk(2); R=R.walk(99);",
+   Void,"TheEnd",2,__LINE__);
+
+tester.testSrc("var R=T(1,2,3,4).walker().walk.fp(2); R=Utils.wap(R).walk(99);",
+    Void,Void,T(T(1,2),T(3,4)),__LINE__);
+tester.testSrc("var R=T(1,2,3,4,5).walker().walk.fp(2); R=Utils.wap(R).walk(99);",
+    Void,Void,T(T(1,2),T(3,4),T(5)),__LINE__);
+tester.testSrc("var R=T.walker().walk.fp(2); R=Utils.wap(R).walk(99);",
+    Void,"TheEnd",T(T),__LINE__);
+tester.testSrc("var R=T.walker().walk.fp(2); R=Utils.wap(R).pump(2,List);",
+    Void,Void,T,__LINE__);
+
+tester.testSrc(0'|var R=T(123).walker().tweak('{ Void.Skip });|
+   "R=R.walk(99);",  Void,"TheEnd","123",__LINE__);
+tester.testSrc(0'|var R=T(123).walker().tweak('{ Void.Stop });|
+   "R=R.walk(99);",  Void,"TheEnd","123",__LINE__);
+
+
+		//////////////////////////////////////////////// .tweak
+    // Collatz sequences
+tester.testSrc(
+   "fcn collatz(n,z=L()){ z.append(n); if(n==1) return(z);"
+   "   if(n.isEven) return(self.fcn(n/2,z)); return(self.fcn(n*3+1,z)) }"
+   0'|var R=[1..100].tweak(collatz).filter(fcn(z){ z.len()>25 }).len();|,
+   Void,Void,32,__LINE__);
+tester.testSrc(
+   "fcn collatz(n,z=L()){ z.append(n); if(n==1) return(z);"
+   "   if(n.isEven) return(self.fcn(n/2,z)); return(self.fcn(n*3+1,z)) }"
+   "var R=[1..100];"
+   "R=R.tweak(collatz)"
+   "   .tweak(fcn(c,w){ if(w.idx<100) c else Void.Stop }.fp1(R))"
+   "   .tweak(fcn(c){ if(c.len()>25)  c else Void.Skip })"
+   "   .walk(99).len();", Void,Void,32,__LINE__);
+tester.testSrc(
+   "fcn collatz(n,z=L()){ z.append(n); if(n==1) return(z);"
+   "   if(n.isEven) return(self.fcn(n/2,z)); return(self.fcn(n*3+1,z)) }"
+   0'|var R=[1..100].pump(List,collatz,"len").filter('>(25)).len()|,
+   Void,Void,32,__LINE__);
+
+tester.testSrc(0'|var R;|
+    "fcn f{ (100).walker().tweak(fcn(n){ throw(Exception.Generic) }).walk(10) }"
+    "try { f() } catch { R=__exception.name }",
+    Void,Void,"Generic",__LINE__);
+tester.testSrc(0'|var R;|
+    "fcn f{ (100).walker().tweak(fcn(n){ if(n==4) throw(Exception.Generic) })"
+    ".walk(10) } try{ f()} catch { R=__exception.name }",
+    Void,Void,"Generic",__LINE__);
+
+tester.testSrc(0'|var R; w:=(2).walker().tweak(Void,666);|
+    "w.walk(10); R=w.n; ",Void,Void,10,__LINE__);
+tester.testSrc(0'|var R; w:=(2).walker().tweak(Void,666);|
+    "w.walk(10); R=w.idx; ",Void,Void,1,__LINE__);
+
+tester.testSrc(0'|var R; w:=(1).walker().tweak(Void,fcn(w){ 5 });|
+    "R=w.walk(4);",Void,Void,T(0,5,5,5),__LINE__);
+
+tester.testSrc(0'|var R; w:=(2).walker().tweak(Void,fcn(w){ Void.Again });|
+    "R=w.walk(4);",Void,Void,T(0,1),__LINE__);
+
+tester.testSrc(0'|var R; w:=[4..2,-1].walker().tweak(self.fcn.idFcn);|
+    "w.walk(99); w.reset(); R=w.walk(4);",Void,Void,T(4,3,2),__LINE__);
+
+tester.testSrc(0'|var R=[4..3,-1].tweak('+(2)).tweak('*(3)).tweak(Void,666);|
+    "R=R.walk(4);", Void,Void,T(18,15,666,666),__LINE__);
+
+tester.testSrc(0'|var R=Walker.tweak((1).walker(3).next).walk(99);|,
+   Void,"TheEnd",Void,__LINE__);
+
+tester.testSrc(0'|var R=Walker().walk(3);|,
+   Void,Void,T(0,0,0),__LINE__);
+tester.testSrc(0'|var R=Walker(fcn{ 1 }).walk(3);|,
+   Void,Void,T(1,1,1),__LINE__);
+tester.testSrc(0'|var R=Walker(self.fcn.idFcn).walk(1);|,
+   Void,Void,T(T),__LINE__);
+
+
+		//////////////////////////////////////////////// .atEnd
+tester.testSrc("var R=T.walker().atEnd;",Void,Void,False,__LINE__);
+tester.testSrc("var R=T.walker(); R._next(); R=R.atEnd;",Void,Void,True,__LINE__);
+tester.testSrc("var R=T.walker().tweak(Void,Void); R._next(); R=R.atEnd;",
+   Void,Void,True,__LINE__);
+tester.testSrc("var R=T.walker().tweak(Void,Void); R.pump(5,Void); R=R.atEnd;",
+   Void,Void,True,__LINE__);
+
+
+		/////////////////////////////////////// .drop
+tester.testSrc("var R=[5..].zip(T(1,2)).drop(1).next();",Void,Void,T(6,2),__LINE__);
+tester.testSrc("var R=T(1,2).walker().drop(2).next();",Void,"TheEnd",Void,__LINE__);
+tester.testSrc("var R=T(1,2).walker().drop(9).atEnd;",Void,Void,True,__LINE__);
+tester.testSrc("var R=T(1).walker().drop(0).next();",Void,Void,1,__LINE__);
+tester.testSrc("var R=T(1).walker().drop(-10).next();",Void,Void,1,__LINE__);
+tester.testSrc("var R=T(1).walker().drop(-1).next();",Void,Void,1,__LINE__);
+tester.testSrc("var R=T(1).walker().drop().next();",Void,Void,1,__LINE__);
+tester.testSrc("var R=T(1).walker().drop(*).next();",Void,"TheEnd",1,__LINE__);
+tester.testSrc("var R=T(1).walker().drop(*).atEnd;",Void,Void,True,__LINE__);
+
+tester.testSrc(
+    "var nfib=[1..].zip(fcn(ab){ ab.append(ab.sum(0.0)).pop(0) }.fp(L(1,1)));"
+    "nfib.drop(3); var R=nfib.walk(2);",Void,Void,L(L(4,3),L(5,5)),__LINE__);
+
+
+		/////////////////////////////////////// .zip, .zipWith
+tester.testSrc("var R=[5..].zip(T(1,2)).walk(99);",Void,Void,T(T(5,1),T(6,2)),__LINE__);
+
+tester.testSrc("var R=[5..].zipWith('+,T(1,2)).walk(99);",
+   Void,Void,T(6,8),__LINE__);
+
+tester.testSrc("var R=Walker.zip(5,2).walk(99);",Void,Void,T(L(0,0),L(1,1)),__LINE__);
+tester.testSrc("var R=Walker.zip(5.2).walk(2);",Void,Void,T(T(5.2),T(5.2)),__LINE__);
+
+tester.testSrc("var R=[1..].zip(fcn{ Void.Stop }).walk(2);",
+   Void,Void,T(T(1,Void),T(2,Void)),__LINE__);
+
+tester.testSrc("var R=[0..].zip(Data(Void,5,6).howza(0)).walk(3);",
+   Void,Void,T(T(0,5),T(1,6)),__LINE__);
+
+tester.testSrc(0'|var R="abc".walker().zip(1,"2",3).next();|,
+   Void,Void,T("a",0,"2",0),__LINE__);
+
+
+	////////////////////////////////// Walker.cproduct:  cartesian product
+tester.testSrc(0'|var R=Walker.cproduct(["a".."c"],T(1,2)).walk(99);|, Void,Void,
+    T( T("a",1),T("a",2), T("b",1),T("b",2), T("c",1),T("c",2) ),__LINE__);
+tester.testSrc(0'|var R=Walker.cproduct(["a".."c"],T(1)).walk(99);|,
+    Void,Void, T( T("a",1),T("b",1),T("c",1) ),__LINE__);
+tester.testSrc(0'|var R=Walker.cproduct(["a".."c"]).walk(99);|,
+    Void,Void, T( T("a"),T("b"),T("c") ),__LINE__);
+tester.testSrc(0'|var R=Walker.cproduct().walk(99);|,Void,Void, T(T),__LINE__);
+tester.testSrc(0'|var R=Walker.cproduct(3,T).walk(99);|,Void,"TheEnd",Void,__LINE__);
+
+tester.testSrc("p:=Thread.Pipe(); p.write(5); p.close();"
+    0'|var R=Walker.cproduct(p).walk(99);|,Void,Void, T(T(5)),__LINE__);
+tester.testSrc("p:=Thread.Pipe(); p.write(5); p.close();"
+    0'|var R=Walker.cproduct(2,p).walk(99);|,Void,Void, T(T(0,5)),__LINE__);
+
+tester.testSrc("p:=Thread.Pipe(); p.write(5); p.close();"
+    0'|var R=List(); foreach a,b in (2,p){ R.append(T(a,b)) }|,
+    Void,Void, T(T(0,5)),__LINE__);
+tester.testSrc("p:=Thread.Pipe(); p.write(5); p.close();"
+    0'|var R=List(); foreach a in (2){ foreach b in (p){ R.append(T(a,b)) }}|,
+    Void,Void, T(T(0,5)),__LINE__);
+
+tester.testSrc(
+    0'|var R=List(); foreach a in (2){ foreach b in (T){ R.append(T(a,b)) }}|,
+    Void,Void, T,__LINE__);
+tester.testSrc(
+    0'|var R=List(); foreach a,b in (Walker.cproduct(2,T)){ R.append(T(a,b)) }|,
+    Void,Void, T,__LINE__);
+tester.testSrc(
+    0'|var R=List(); foreach a,b in (Walker.cproduct(T,T)){ R.append(T(a,b)) }|,
+    Void,Void, T,__LINE__);
+
+tester.testSrc("var R=Walker.cproduct(T(1,2),T()).pump(List)",Void,Void,T,__LINE__);
+tester.testSrc("var R=Walker.cproduct(T(1,2),T()).walk(99)",Void,"TheEnd",T,__LINE__);
+
+
+    			///////////////////////////////////// Walker.add
+tester.testSrc(0'|var R=((0).walker(*)+5+10).walk(3);|,
+    Void,Void,T(15,16,17),__LINE__);
+
+tester.testSrc(0'|var R=((0).walker(*)==1).walk(3);|,Void,Void,T(False,True,False),__LINE__);
+tester.testSrc(0'|var R=((0).walker(*)!=1).walk(3);|,Void,Void,T(True,False,True),__LINE__);
+
+
+		      ///////////////////////////////////////// Walker.cycle
+tester.testSrc(0'|var R=T(1,"two",3).walker().cycle().walk(7);|,
+    Void,Void,T(1,"two",3,1,"two",3,1),__LINE__);
+tester.testSrc(0'|var R="FOE".walker().cycle().walk(4);|,
+    Void,Void,T("F","O","E","F"),__LINE__);
+tester.testSrc(0'|var R=[5..7].cycle().walk(4);|,Void,Void,T(5,6,7,5),__LINE__);
+tester.testSrc(0'|var R=T(1,2,3).walker().cycle().walk(4);|,
+    Void,Void,T(1,2,3,1),__LINE__);
+tester.testSrc(0'|var R=T(666).walker().cycle().walk(2);|,
+    Void,Void,T(666,666),__LINE__);
+tester.testSrc(0'|var R=T.walker().cycle().walk(2);|,Void,"TheEnd",Void,__LINE__);
+tester.testSrc(0'|var R=[1..0].cycle().walk(2);|,Void,"TheEnd",Void,__LINE__);
+tester.testSrc(0'|var R=(0).walker(*).cycle().walk(2);|,Void,Void,T(0,1),__LINE__);
+tester.testSrc(0'|var R=(0).walker(*).cycle().walk(2);|,Void,Void,T(0,1),__LINE__);
+
+
+tester.testSrc(0'|var R=Walker.cycle(T(1,"two",3)).walk(7);|,
+    Void,Void,T(1,"two",3,1,"two",3,1),__LINE__);
+tester.testSrc(0'|var R=Walker.cycle("FOE").walk(4);|,
+    Void,Void,T("F","O","E","F"),__LINE__);
+tester.testSrc(0'|var R=Walker().cycle([5..7]).walk(4);|,Void,Void,T(5,6,7,5),__LINE__);
+tester.testSrc(0'|var R=Walker.cycle(1,2,3).walk(4);|,Void,Void,T(1,2,3,1),__LINE__);
+tester.testSrc(0'|var R=Walker.cycle(T(666)).walk(2);|,Void,Void,T(666,666),__LINE__);
+tester.testSrc(0'|var R=Walker.cycle(T).walk(2);|,Void,"TheEnd",Void,__LINE__);
+tester.testSrc(0'|var R=Walker.cycle([1..0]).walk(2);|,Void,"TheEnd",Void,__LINE__);
+
+tester.testSrc(0'|var R=T(1,2).walker(); R.walk(99); R=R.cycle().walk(3);|,
+    Void,Void,T(1,2,1),__LINE__);
+tester.testSrc(0'|var R=[4..3,-1]; R.walk(99); R=R.cycle().walk(3);|,
+    Void,Void,T(4,3,4),__LINE__);
+tester.testSrc(0'|var R=[4..3,-1]; R.walk(99); R=R.cycle().next();|,
+    Void,Void,4,__LINE__);
+
+tester.testSrc(0'|var R=Walker.cycle(2).walk(5);|, Void,Void,T(0,1,0,1,0),__LINE__);
+tester.testSrc(0'|var R=(2).walker().cycle().walk(5);|, Void,Void,T(0,1,0,1,0),__LINE__);
+tester.testSrc(0'|var R=(0).walker().cycle().walk(3);|, Void,"TheEnd",Void,__LINE__);
+tester.testSrc(0'|var R=(0).walker().cycle(2).walk(5);|,Void,Void,T(0,1,0,1,0),__LINE__);
+
+tester.testSrc(0'|var R=Walker.cycle(T(3,4)).walk(5);|,Void,Void,T(3,4,3,4,3),__LINE__);
+tester.testSrc(0'|var R=Walker.cycle(T(3,4),T).walk(3);|,
+   Void,Void,T(T(3,4),T,T(3,4)),__LINE__);
+
+tester.testSrc(0'|var R=Walker.cycle(T(3)).walk(3);|,Void,Void,T(3,3,3),__LINE__);
+tester.testSrc(0'|var R=Walker.cycle(2,Void.Skip).walk(3);|,Void,Void,T(2,2,2),__LINE__);
+tester.testSrc(0'|var R=Walker.cycle(2,Void.Stop).walk(3);|,Void,Void,T(2,2,2),__LINE__);
+tester.testSrc(0'|var R=Walker.cycle(2,Void.Skip,Void.Stop).walk(3);|,Void,Void,T(2,2,2),__LINE__);
+tester.testSrc(0'|var R=Walker.cycle(2,Void.Stop,Void.Skip).walk(3);|,Void,Void,T(2,2,2),__LINE__);
+tester.testSrc(0'|var R=Walker.cycle(2,Void.Stop,Void.Stop).walk(3);|,Void,Void,T(2,2,2),__LINE__);
+tester.testSrc(0'|var R=Walker.cycle(Void.Stop).walk(3);|,Void,"NotFoundError",Void,__LINE__);
+tester.testSrc(0'|var R=Walker.cycle(T(Void.Stop)).walk(3);|,Void,"TheEnd",Void,__LINE__);
+tester.testSrc(0'|var R=Walker.cycle(T(Void.Skip)).walk(3);|,Void,"TheEnd",Void,__LINE__);
+
+
+    			//////////////////////////////////////// Walker.chain
+tester.testSrc(0'|var R=Walker.chain("foo",2,["a".."c"]).walk(99);|,
+   Void,Void,L("f","o","o",0,1,"a","b","c"),__LINE__);
+tester.testSrc(0'|var R=Walker.chain("foo",Walker.cycle(2),["a".."c"]).walk(6);|,
+   Void,Void,L("f","o","o",0,1,0),__LINE__);
+tester.testSrc(0'|var R=["a".."c"].chain(T(1,2,3)).walk(99);|,
+   Void,Void,L("a","b","c",1,2,3),__LINE__);
+tester.testSrc(0'|var R=Walker.chain(T(1,2),Walker.chain(T(5,6),[50..])).walk(10);|,
+   Void,Void,L(1,2,5,6,50,51,52,53,54,55),__LINE__);
+
+
+    			//////////////////////////////////////// Walker.reset
+tester.testSrc(0'|var R=[4..3,-1]; id:=R.id; id2:=R.reset().id; R=(id==id2)|,
+    Void,Void,True,__LINE__);
+tester.testSrc(0'|var R=[4..3,-1].tweak(self.fcn.idFcn).tweak(self.fcn.idFcn);|
+    "R.walk(99); R=R.tweak('+(5)); R.reset(); R=R.walk(99);", Void,Void,T(9,8),__LINE__);
+
+tester.testSrc(0'|var R="hoho".walker(); R.peek(); R.reset(); R=R.parts[5];|,
+    Void,Void,T,__LINE__);
+tester.testSrc(0'|var R="hoho".walker(); R.peek(); R.reset(True); R=R.parts[5];|,
+    Void,Void,T,__LINE__);
+tester.testSrc(0'|var R="hoho".walker(); R.peek(); R.reset(False); R=R.parts[5];|,
+    Void,Void,T("h"),__LINE__);
+tester.testSrc(0'|var R="hoho".walker(); R.peek(); R.reset(False); R=R.peek();|,
+    Void,Void,"h",__LINE__);
+
+tester.testSrc(0'|var R="hoho".walker(); R.peekN(3); R.reset(); R=R.parts[5];|,
+    Void,Void,T,__LINE__);
+tester.testSrc(0'|var R="hoho".walker(); R.peekN(3); R.reset(False); R=R.parts[5];|,
+    Void,Void,T("h","o","h","o"),__LINE__);
+tester.testSrc(0'|var R="hoho".walker(); R.peekN(3); R.reset(False); R=R.peek();|,
+    Void,Void,"h",__LINE__);
+tester.testSrc(0'|var R="1234".walker(); R.peekN(3); R.reset(False); R=R.peekN(3);|,
+    Void,Void,"4",__LINE__);
+tester.testSrc(0'|var R="1234".walker(); R.peekN(3); R.reset(False); R=R.n;|,
+    Void,Void,0,__LINE__);
+
+
+#<<<#
+    			///////////////////////////////////// list assignment
+tester.testSrc("a,b,c:=[1..]; var R=T(a,b,c);",Void,Void,T(1,2,3),__LINE__);
+tester.testSrc("var a,b,c; foreach x,y,z in ([1..9]){ a,b,c=x,y,z }"
+   "var R=T(a,b,c);",Void,Void,T(7,8,9),__LINE__);
+#<<<#
+
+
+    			///////////////////////////////////// .chunk
+tester.testSrc("var a,b,c; foreach x,y,z in ([1..9].chunk(3)){ a,b,c=x,y,z }"
+   "var R=T(a,b,c);",Void,Void,T(7,8,9),__LINE__);
+tester.testSrc("var a,b,c; foreach x,y,z in ([1..9].chunk(3,String)){ a,b,c=x,y,z }"
+   "var R=T(a,b,c);",Void,Void,T("7","8","9"),__LINE__);
+tester.testSrc("var a,b,c; foreach x,y,z in ([1..8].chunk(3)){ a,b,c=x,y,z }"
+   "var R=T(a,b,c);",Void,"IndexError",Void,__LINE__);
+tester.testSrc("var a,b,c; foreach x,y,z in ([1..9].chunk(2)){ a,b,c=x,y,z }"
+   "var R=T(a,b,c);",Void,"IndexError",Void,__LINE__);
+
+tester.testSrc("var R=[1..9].chunk(3,String).walk(99);",
+   Void,Void,T("123","456","789"),__LINE__);
+tester.testSrc("var R=[1..5].chunk(3,String).walk(99);",
+   Void,Void,T("123","45"),__LINE__);
+
+tester.testSrc(0'|var R="abcdefghij".walker().chunk(3,String).walk(99);|,
+   Void,Void,T("abc","def","ghi","j"),__LINE__);
+tester.testSrc(0'|var R="abcdef".walker().chunk(2,String).chunk(2).walk(99);|,
+   Void,Void,T(L("ab","cd"),L("ef")),__LINE__);
+
+
+
+    			///////////////////////////////////// generated code
+// over in asm.zkl
+
+
+tester.stats();
+returnClass(tester);

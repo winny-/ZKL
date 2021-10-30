@@ -1,0 +1,1491 @@
+// -*-c-*-
+
+/* todo:
+ *   copy tests: look at what happens when copy classes out of the middle of
+ *   a class, ie a parent. Does topdog make sense?, etc
+ *   
+ */
+
+//include(vm.h.zkl);
+const MethodType	=  12;
+const PropertyType	=  26;
+
+tester := Test.UnitTester(__FILE__);
+
+
+tester.testSrc("return(Void);","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class { return(Void); }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class { fcn init {return(); }}","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var R; returnClass(Void)",Void,Void,Void,__LINE__);
+tester.testSrc("var R; returnClass()","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R; returnClass(1,2,3)","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn init {} returnClass(Void)","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R; class { returnClass(Void); }",Void,Void,Void,__LINE__);
+tester.testSrc("class { fcn init {} returnClass(Void); }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn { returnClass(Void); }","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("class A(Excepton) {}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class A(Exception.BadDay) {fcn init{}} var R=\"OK\";",
+	Void,Void,"OK",__LINE__);
+
+tester.testSrc("class fcn       {}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class while     {}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class class     {}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class init      {}","SyntaxError",Void,Void,__LINE__);
+
+		// sugar
+tester.testSrc("class ask {} var R=\"OK\";",Void,Void,"OK",__LINE__);
+
+tester.testSrc("class C { fcn println{Console.println(123)}}"
+    "var R=C.println();",Void,Void,"123",__LINE__);
+tester.testSrc("class C { fcn println{ Console.println(123) }} class D(C) {}"
+    "var R=D.println();",Void,Void,"123",__LINE__);
+tester.testSrc("class C { fcn println{Console.println(123)}}"
+    "class D(C) { fcn f {println()}}"
+    "var R=D.println();",Void,Void,"123",__LINE__);
+tester.testSrc("class C { fcn println{Console.println(123)}}"
+    "class D(C) { fcn println {C.println()}}"
+    "var R=D.println();",Void,Void,"123",__LINE__);
+
+
+	////////////////////////////////// .Method
+tester.testSrc("var R=self.Method(\"embryo\").toString();",
+	Void,Void,"Method(RootClass#.embryo)",__LINE__);
+tester.testSrc("var R=self.Method(\"Z\");",Void,"NotFoundError",Void,__LINE__);
+
+tester.testSrc("var R; class C(Exception.BadDay) "
+	"{ fcn init { BadDay.init(Void); R = self.Method(\"launch\"); } }();"
+	"R = R.toString();",Void,Void,"Method(C.launch)",__LINE__);
+
+
+	////////////////////////////// .Property
+tester.testSrc("class C{var v} var R=C.Property(\"v\").toString();",
+	Void,Void,"Var(C.v)",__LINE__);
+tester.testSrc("class C{var v=123;} var R=C.Property(\"v\")();",
+	Void,Void,123,__LINE__);
+tester.testSrc("var R=self.Property(\"id\").toString();",
+	Void,Void,"Property(RootClass#.id)",__LINE__);
+tester.testSrc("var R = (self.Property(\"id\").value == self.id);",
+	Void,Void,True,__LINE__);
+tester.testSrc("var R=self.property(\"exception\");",Void,"NotFoundError",Void,__LINE__);
+tester.testSrc("var R=self.Property(\"Z\");",Void,"NotFoundError",Void,__LINE__);
+tester.testSrc("var R=self.Property(\"name\").toString();",
+	Void,Void,"Property(RootClass#.name)",__LINE__);
+
+tester.testSrc("class C{var v} var R=C.Property(\"v\",0).toString();",
+	Void,Void,"Var(C.v)",__LINE__);
+tester.testSrc("class C{var v} var R=C.Property(\"v\",1).toString();",
+	Void,Void,"Var(C.v)",__LINE__);
+tester.testSrc(0'|class C{var v} var R=C.Property("name",2)();|,Void,Void,"C",__LINE__);
+tester.testSrc(0'|class C{} var R=C.Property("NAME",2);|,
+   Void,"NotFoundError",Void,__LINE__);
+tester.testSrc(0'|class C{var v} C.Property("v",2);|,
+   Void,"NotFoundError",Void,__LINE__);
+
+tester.testSrc(0'|class C{var v} class C2(C) {} C2.Property("v",1);|,
+	Void,"NotFoundError",Void,__LINE__);
+
+//tester.testSrc(0'|class C{var [const] v_=123;} var cv = C.Property("v_");|
+//	"cv.set(1);",Void,"AssertionError",Void);
+tester.testSrc(0'|class C{var [private] v;} var cv = C.Property("");|,
+	Void,"NotFoundError",Void,__LINE__);
+
+
+tester.testSrc("var R = Exception.BadDay.payload;",Void,Void,Void,__LINE__);
+
+
+	/////////////////// hidious var tests
+classC :=
+"      class C {"
+"	 fcn c { R += \"c\"; a(); B2.b2(); b(); }"
+"      }";
+
+classB2 :=
+"   class B2 {"
+"      fcn b2 { R += \"b2\"; }"
+"   }";
+
+classB :=
+"   class B {"
+"      fcn b { R += (\"b\"); }"
++classC+
+"      }";
+
+classA := 
+"class A {"
+"   fcn a { R += (\"a\"); }"
++classB+classB2+
+"}";
+
+tester.testSrc("var R=\"\";"+classA+"A.B.C.c();",Void,Void,"cab2b",__LINE__);
+
+
+	//////////////////////// Inheritance, parents
+tester.testSrc("class A { class B(A) {} }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class A {} class B(A) { fcn A {}   }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class A {} class B(A) { var A;     }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class A {} class B(A) { reg A;     }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class A {} class B(A) { class A {} }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class B(A) { class B2(B) {} }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class A{} class B(A,A) {}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class A{} class B{} class C(A,B,A){}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class C { class D(E){} class E{}}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class A { var a; class B(C) { var b; } } class C { var c; }",
+    "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class A { var a; class B(A) { var b; } }",
+    "SyntaxError",Void,Void,__LINE__);
+
+	// does the compiler chase parent references correctly?
+	// ie late binding not OK in this case
+tester.testSrc("class A { var a; } class B(A) {} B.A.b","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class B{var b} class C(B) { { b = 123 }}"
+    "var R = C.B.b;",Void,Void,123,__LINE__);
+tester.testSrc("class B{var b} class C(B) { class C2 { b = 123 }}"
+    "var R = C.B.b;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class B{var b} class C(B) { class C2 { B.b = 123 }}"
+    "var R = C.B.b;",Void,Void,Void,__LINE__);
+tester.testSrc("class B{var b} class C(B) { class C2 { B.b = 123 }}"
+    "var R = B.b;",Void,Void,123,__LINE__);
+tester.testSrc("class [static] A {"
+    "class B{var b} class C(B) { class C2 { B.b = 123 }}}"
+    "var R = A.C.B.b;","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var R;"
+   "class Pipe(Utils.Helpers.Stream)"
+   " { fcn init { Stream.init(); _closed.clear(); }}",Void,Void,Void,__LINE__);
+
+classA =
+"class A {"
+"   var av;"
+"   if (not R) R = \"\";"
+"   R += \"A\";"
+"   fcn a { R += \"a\"; }"
+"}";
+
+classB =
+"class B(A) {"
+"   R += \"B\";"
+"   fcn b { R += \"b\"; }"
+"}";
+
+classC =
+"class C(B,A) {"
+"   R += \"C\";"
+"   fcn c { a := 123; R += \"c\"+a; }"
+"}";
+
+
+tester.testSrc("var R;"+classA+classB+classC+"C.c();",
+	Void,Void,"AABABACc123",__LINE__);
+tester.testSrc("var R;"+classA+classB+classC+"R=C.linearizeParents.toString()",
+	Void,Void,"L(Class(C),Class(B),Class(A))",__LINE__);
+
+tester.testSrc("var R; class A {fcn a {}} class C(A) {a = 234;}",
+   "SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var R; class A {var a; fcn a {}}",    "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R; class A {reg a; fcn a {}}",    "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R; class A {fcn a {} a:=5;}" ,    "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R; class A {class C{}; fcn C {}}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R; class A {class C{}; var C;}",  "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R; class A {class C{}; reg C;}",  "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R; class A {class C{}; C:=5;}",   "SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var R=\"\";"
+  "class A { fcn init { R += \"A\"; } }"
+  "class B(A) { fcn init { A.init(); R += \"B\"; } }"
+  "B();",
+  Void,Void,"AB",__LINE__);
+
+tester.testSrc("var R;"
+   "class A(Exception.BadDay) { fcn init { BadDay.init(\"123\"); } }"
+   "R = A().text;", Void,Void,"123",__LINE__);
+
+tester.testSrc("var R;"
+   0'|class(Exception.BadDay){ fcn init { BadDay.init("123"); R=text;}}();|,
+   Void,Void,"123",__LINE__);
+
+tester.testSrc(
+    "var x=123,R;"
+    "class A { var v = 6; fcn a { R = v + x; } } A.a();",
+    Void,Void,129,__LINE__);
+
+
+tester.testSrc("class C(Exception.Exception) { fcn init {} text = 123; }"
+    "var R = C().text;",Void,Void,123,__LINE__);
+tester.testSrc("class C(Exception.Exception) { fcn init {} text = 123; }"
+    "var R = C().Exception.text;",Void,Void,123,__LINE__);
+
+tester.testSrc("class C{ fcn f{ self }} class D(C){} class E(D){}"
+    0'|var R = (E.f().name == "C")|,Void,Void,True,__LINE__);
+
+
+   	///////////////////////////////// Parents
+tester.testSrc("class A{} class B(A) { var A;    }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class A{} class B(A) { var a,A;  }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class A{} class B(A) { fcn A{}   }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class A{} class B(A) { class A{} }","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var R; class A{} class B(A) { fcn f { var A; }}",Void,Void,Void,__LINE__);
+tester.testSrc("var R; class A{} class B(A) { class C{ class A {}}}",Void,Void,Void,__LINE__);
+
+tester.testSrc("class C { fcn init {}} class D(C) { fcn init{C.init()}}"
+    "d:=Data(); D.init.unasm(d);"
+    0'|var R=d.find("fcnNI(1)").isType(1);|,Void,Void,True,__LINE__);
+
+tester.testSrc("class [static] C(Exception.BadDay) { fcn init {}}"
+    "var R;", Void,Void,Void,__LINE__);
+tester.testSrc("class A { class [static] B {} class [static] C(B) {} }",
+    "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class B {var b;} class [static] C(B) {}",
+   "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class A { class [static] B {var b;} class C(B) {b=3;} }"
+    "var R = A.B.b;",Void,Void,3,__LINE__);
+
+tester.testSrc("var R; class C{ fcn init{} } class D(C){}",
+    "SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("class A{ var v=1 } class B{ var v=2 } class C(A,B){}"
+    "var R = C.v;",Void,Void,1,__LINE__);
+tester.testSrc("class A{ var v=1 } class B{ var v=2 } class C(A,B){ v=3 }"
+    "class D(C,B,A){} var R = D.v;",Void,Void,2,__LINE__);
+tester.testSrc("class A{ var v=1 } class B{ var v=2 } class C(A,B){ v=3 }"
+    0'|class D(C,B,A){} var R = D.linearizeParents.apply("name");|,
+    Void,Void,L("D","C","B","A"),__LINE__);
+
+
+	////////////////////////////////// .linearizeParents, some tests above
+tester.testSrc("var R; class A{} R = A.linearizeParents.toString();",
+    Void,Void,"L(Class(A))",__LINE__);
+tester.testSrc("var R; class A{} class B(A) {} R = B.linearizeParents.toString();",
+    Void,Void,"L(Class(B),Class(A))",__LINE__);
+tester.testSrc("class A{} class B(A){} class C(A){} class D(B,C){}"
+    "var R = D.linearizeParents.toString();",
+    Void,Void,"L(Class(D),Class(B),Class(C),Class(A))",__LINE__);
+tester.testSrc("class A{} class B(A){} class C(A){} class D(B,C){}"
+    "var R = (D.linearizeParents[3] == D.B.A);",
+    Void,Void,True,__LINE__);
+tester.testSrc("class [static] A{} class B(A){} class C(A){} class D(B,C){}"
+    "var R = (D.linearizeParents[3] == A);",
+    Void,Void,True,__LINE__);
+
+tester.testSrc("var R = Three.linearizeParents.toString();"
+    "class One{} class Two(One){} class Three(One,Two){} ",
+    Void,Void,"L(Class(Three),Class(One),Class(Two))",__LINE__);
+tester.testSrc("var R = Four.linearizeParents.toString();"
+    "class One{} class Two(One){} class Four(Two,One){}",
+    Void,Void,"L(Class(Four),Class(Two),Class(One))",__LINE__);
+
+tester.testSrc(
+   "class R11 {} class R12 {}"
+   "class R21(R11,R12)  {}     class R22 {}"
+   "class R31(R21) {} class R32(R21) {}    class R33(R22) {}"
+   "class C(R31,R32,R33) {}"
+   0'|var R=C.linearizeParents.apply("name").concat(",")|, Void,Void,
+   "C,R31,R32,R33,R21,R22,R11,R12",__LINE__);
+tester.testSrc(
+   "class R11 {} class R12 {}"
+   "class R21(R11,R12)  {}     class R22 {}"
+   "class R31(R21) {} class R32(R21) {}    class R33(R22) {}"
+   "class C(R31,R32,R21,R33) {}"
+   0'|var R=C.linearizeParents.apply("name").concat(",")|, Void,Void,
+   "C,R31,R32,R21,R33,R11,R12,R22",__LINE__);
+
+
+   	///////////////////////////////// vars
+tester.testSrc("var R; { R = 2; }",Void,Void,2,__LINE__);
+tester.testSrc("x := 1; class A {a = 123; class B { b = a; }}", "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("x := 1; class A {a = x;}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class A { a = 123; class B { fcn b { b2 = a; } }}",
+	"SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var a; a = 1; var R = varNames.holds(\"a\");",Void,Void,True,__LINE__);
+tester.testSrc("a := 1; var R = varNames.holds(\"a\");",Void,Void,False,__LINE__);
+tester.testSrc("var R,a; foo(); fcn foo { a = 3; } R = a;",Void,Void,3,__LINE__);
+tester.testSrc("var R;   foo(); fcn foo { R = 3; }",       Void,Void,3,__LINE__);
+tester.testSrc("var R,a; foo(); fcn foo { a = 3; } a=5; R = a;",Void,Void,5,__LINE__);
+tester.testSrc("foo(); fcn foo { a = 3; } reg a;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R; fcn { R = 34; }();",Void,Void,34,__LINE__);
+tester.testSrc("{ reg R = 1; var R = 2; }",Void,Void,Void,__LINE__);
+tester.testSrc("{ reg R; var R; }",Void,Void,Void,__LINE__);
+tester.testSrc("class A { var a; } class B(A) { a = 12; } var R = B.a;",
+	Void,Void,12,__LINE__);
+tester.testSrc("class A { } var R = A.vars", Void,Void,ROList,__LINE__);
+tester.testSrc("class A { var a = 5; } var R = A.vars",
+	Void,Void,ROList(ROList("a",5)),__LINE__);
+tester.testSrc("class C {fcn f{}} var R = C.fcns.toString();",
+	Void,Void,"L(Fcn(nullFcn),Fcn(f))",__LINE__);
+
+
+		///// construction order
+tester.testSrc("class C{ var cv=5; fcn f{ cv }} var R=C.f();", 
+   Void,Void,5,__LINE__);
+tester.testSrc("class C{ var cv=5; class D{ cv=7; } fcn f{ cv }}"
+   "var R=C.f();", Void,Void,7,__LINE__);
+tester.testSrc("class C{ var cv=5; fcn f{ cv } class D{ cv=7; }}"
+   "var R=C.f();", Void,Void,7,__LINE__);
+tester.testSrc("class C{ fcn f{ cv } class D{ cv=7; } var cv=5; }"
+   "var R=C.f();", Void,Void,5,__LINE__);
+
+tester.testSrc("var R=False; if(R){ class A{ R=5 }}",Void,Void,False,__LINE__);
+tester.testSrc("var R=False; if(R){ class A{ R=5 }} else{ class B{ R=7 }}",
+   Void,Void,7,__LINE__);
+tester.testSrc("var R=False; while(R){ class C2{ R=123 }; break;}",
+   Void,Void,False,__LINE__);
+tester.testSrc("var R=False; if(R){ fcn f{ class{ R=123 }}}",Void,Void,False,__LINE__);
+tester.testSrc("var R=1; b:=class{ R=7 }",Void,Void,7,__LINE__);
+tester.testSrc("var R=1; try{ class{ R=7 } }catch{}",Void,Void,7,__LINE__);
+
+tester.testSrc("var R=0; fcn f{} f(class{ R=5 });",Void,Void,5,__LINE__);
+tester.testSrc("var R=0; fcn g{ R=7 }(class{ R=5 });",Void,Void,7,__LINE__);
+tester.testSrc("var R=0; fcn h{ R=7 } h(class{ R=5 }); ",Void,Void,7,__LINE__);
+
+#<<<
+abcd:=0'^var R="", r=False;
+class A{          // constructe4 first
+   R+=self.name;
+   var av=12;     // initialized here
+   class B{       // constructed second
+       R+=self.name;
+      class C{ R+=self.name;     // third
+         if(r){ class E{ R+=self.name; }}  // not constructed
+      }
+   }
+   class D{       // forth but after dfv initialized
+      R+=self.name;
+      fcn init{ R+=self.fcn.name; }  // fifth (for A())
+      fcn f{ var dfv=5; } // dfv initialized before D
+   }
+}^;
+#<<<
+tester.testSrc(abcd,Void,Void,"ABCD",__LINE__);
+tester.testSrc(abcd+"A()",Void,Void,"ABCDABCD",__LINE__);
+tester.testSrc(abcd+"A.D()",Void,Void,"ABCDDinit",__LINE__);
+tester.testSrc(abcd+"R=A.D().container.id; R = (R==A.id)",
+    Void,Void,True,__LINE__);
+
+tester.testSrc("class A{} var R = A.parents;", Void,Void,ROList,__LINE__);
+tester.testSrc("class A{} class B(A) {} var R = B.parents.toString();",
+	Void,Void,"L(Class(A))",__LINE__);
+
+
+tester.testSrc("class B(A) {} class A {}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc(
+   "var R;"
+   "class A { var a = A2; class A2 { var c = 123; }}"
+   "class B(A) { fcn b { R = a.c; } }"
+   "B.b();",
+   Void,Void,123,__LINE__);
+
+
+			//////////////////////////////////// .topdog
+tester.testSrc(
+   "var R;"
+   "class A      { if (R) R += self.topdog; }"
+   "class B(A)   { if (R) R += self.topdog; }"
+   "class C(B,A) { if (R) R += self.topdog; }"
+   "R=\"*\"; C();",
+   Void,Void,"*Class(C)Class(C)Class(C)Class(C)",__LINE__);
+
+tester.testSrc("class A{} class B(A){} class C(B){}"
+	"var R = C.B.A.topdog.toString();",
+	Void,Void,"Class(C)",__LINE__);
+
+tester.testSrc("class A {} class B{} var R = (A == B);",Void,Void,False,__LINE__);
+tester.testSrc("class A {} var R = (A == A);",Void,Void,True,__LINE__);
+tester.testSrc("class A {} var R = (A == A());",Void,Void,False,__LINE__);
+tester.testSrc("class [static] A {} var R = (A == A());",Void,Void,True,__LINE__);
+
+tester.testSrc("class C{ fcn f{ self.topdog }} class D(C){} class E(D){}"
+   "var R = (E.f().isInstanceOf(E))",Void,Void,True,__LINE__);
+tester.testSrc("class C { fcn f { self.topdog }} class D(C){} class E(D){}"
+   "var R = (D.f().isInstanceOf(D))",Void,Void,True,__LINE__);
+tester.testSrc("class C { fcn f { self.topdog }} class D(C){} class E(D){}"
+   "var R = (E.D.f().isInstanceOf(E))",Void,Void,True,__LINE__);
+
+tester.testSrc("class A{ var a } class B(A){ var b } class C(A){ var c }"
+   "var R=(A.topdog == A);",Void,Void,True,__LINE__);
+tester.testSrc("class A{ var a } class B(A){ var b } class C(A){ var c }"
+   "var R=(B.A.topdog == B);",Void,Void,True,__LINE__);
+tester.testSrc("class A{ var a } class B(A){ var b } class C(A){ var c }"
+   "var R=(C.A.topdog == C);",Void,Void,True,__LINE__);
+
+tester.testSrc("class [static] A{} class B(A){var b;} class C(A){ var c;}"
+   "var R=(A.topdog == A);",Void,Void,True,__LINE__);
+tester.testSrc("class [static] A{} class B(A){var b;} class C(A){var c;}"
+   "var R=(B.A.topdog == A);",Void,Void,True,__LINE__);
+tester.testSrc("class [static] A{} class B(A){var b;} class C(A){var c;}"
+   "var R=(C.A.topdog == A);",Void,Void,True,__LINE__);
+
+tester.testSrc("class A{var a;} class B(A){var b;} class C(B){var c;}"
+   "var R=(C.A.topdog == C);",Void,Void,True,__LINE__);
+#if 0
+tester.testSrc("class A{} class [static] B(A){} class C(B){}"
+   "var R=(C.A.topdog == B);",Void,Void,True,__LINE__);
+tester.testSrc("class A{} class [static] B(A){} class C(B){}"
+   "var R=(C().A.topdog == B);",Void,Void,True,__LINE__);
+#endif
+
+tester.testSrc("class A{ var a; } class B(A){ var b; }"
+   "var R=B.A().topdog.name;",Void,Void,"A",__LINE__);
+tester.testSrc("class A{ var a; } class B(A){ var b; } class C(B) { var c; }"
+   "var R=C().A.topdog.name;",Void,Void,"C",__LINE__);
+
+
+			///////////////////////////// .isInstanceOf
+tester.testSrc(
+   "class Stream {}"
+   "var R = Utils.Helpers.Stream.isInstanceOf(Stream);",Void,Void,False,__LINE__);
+tester.testSrc(
+   "class A {} class B(A) {} var R = B.A.isInstanceOf(A);",Void,Void,True,__LINE__);
+tester.testSrc(
+   "class A {} class B(A) {} var R = B().A.isInstanceOf(A);",Void,Void,True,__LINE__);
+tester.testSrc(
+   "class A {} a := A(); a = a(); var R = a.isInstanceOf(A);",Void,Void,True,__LINE__);
+tester.testSrc(
+   "class A {} class B{} var R = A.isInstanceOf(B,A);",Void,Void,True,__LINE__);
+tester.testSrc(
+   "class A {} class B{} var R = A.isInstanceOf(B,B);",Void,Void,False,__LINE__);
+tester.testSrc(
+   "class B(Exception.BadDay) { fcn init{} }"
+   "var R = B().BadDay.isInstanceOf(Exception.BadDay);",
+   Void,Void,True,__LINE__);
+tester.testSrc("var R = self.isInstanceOf(self);",Void,Void,True,__LINE__);
+/* !!!
+tester.testSrc("fcn f { return(self().isInstanceOf(self)); } var R=f();",
+	Void,Void,True);
+*/
+
+tester.testSrc("class A {} class B { class C(A) {} }"
+   "var R = B.C.A.isInstanceOf(A);",
+   Void,Void,True,__LINE__);
+tester.testSrc("class A {} class B { class C(A) {} }"
+   "var R = A.isInstanceOf(B.C.A);",
+   Void,Void,True,__LINE__);
+
+
+X := "class A {} class B {} class C(A) {} class E(B) {} class F(E,C) {}";
+tester.testSrc(X + "var R = A.isChildOf(A);",Void,Void,True,__LINE__);
+tester.testSrc(X + "var R = A.isChildOf(B);",Void,Void,False,__LINE__);
+tester.testSrc(X + "var R = B.isChildOf(A);",Void,Void,False,__LINE__);
+tester.testSrc(X + "var R = C.isChildOf(A);",Void,Void,True,__LINE__);
+tester.testSrc(X + "var R = A.isChildOf(C);",Void,Void,False,__LINE__);
+tester.testSrc(X + "var R = C.isChildOf(B);",Void,Void,False,__LINE__);
+tester.testSrc(X + "var R = E.isChildOf(A);",Void,Void,False,__LINE__);
+tester.testSrc(X + "var R = E.isChildOf(B);",Void,Void,True,__LINE__);
+tester.testSrc(X + "var R = E.isChildOf(C);",Void,Void,False,__LINE__);
+tester.testSrc(X + "var R = F.isChildOf(A);",Void,Void,True,__LINE__);
+tester.testSrc(X + "var R = F.isChildOf(B);",Void,Void,True,__LINE__);
+tester.testSrc(X + "var R = F.isChildOf(C);",Void,Void,True,__LINE__);
+tester.testSrc(X + "var R = F.isChildOf(E);",Void,Void,True,__LINE__);
+
+tester.testSrc(0'|class C { var name = "FOO"; } var R = C.BaseClass.name;|,
+	Void,Void,"C",__LINE__);
+
+tester.testSrc(
+   "var R;"
+   "class c1 {"
+   "   var v1;"
+   "   class c2 {"
+   "	 class c3 {"
+   "	    class c4 {"
+   "	       c1.v1 = 123;"
+   "	       R = c1.v1;"
+   "	    }"
+   "	 }"
+   "  }"
+   "}", Void,Void,123);
+
+tester.testSrc(
+   "var R;"
+   "class c1 {"
+   "   class c2 {"
+   "	 class c3 {"
+   "	    class c4 {"
+   "	       d1.v1 = 456;"
+   "	       R = d1.v1;"
+   "	    }"
+   "	 }"
+   "  }"
+   "  class d1 { var v1; }"
+   "}", Void,Void,456,__LINE__);
+
+
+c := "var klass, R; class C { var a; fcn c { return(\"c\"); } }";
+tester.testSrc(c + "var z = \"c\"; C.z;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc(c + "klass = C; var z = \"c\"; klass.z;",Void,"NotFoundError",Void,__LINE__);
+tester.testSrc(c + "klass = C; var z = \"c\"; klass.z();",Void,"NotFoundError",Void,__LINE__);
+
+
+		////////////////////////////////// .resolve
+tester.testSrc(c + "klass = C; var z = \"c\"; R = klass.resolve(z)();",
+	Void,Void,"c",__LINE__);
+tester.testSrc(c + "var z = \"c\"; R = C.resolve(z)();", Void,Void,"c",__LINE__);
+
+tester.testSrc("var R = Exception.resolve(\"foo\");",Void,"NotFoundError",Void,__LINE__);
+tester.testSrc("var R = Exception.resolve(\"foo\",0);",Void,Void,False,__LINE__);
+tester.testSrc("var R = Exception.resolve(\"foo\",False);",Void,"NotFoundError",Void,__LINE__);
+tester.testSrc("var R = Exception.resolve(\"foo\",Void);",Void,"NotFoundError",Void,__LINE__);
+
+tester.testSrc("var R = Exception.resolve(\"BadDay\");"
+   "R=R.isInstanceOf(Exception.BadDay);",Void,Void,True,__LINE__);
+tester.testSrc("var R = Import.resolve(\"import\",False).toString();",
+    Void,Void,"Fcn(import)",__LINE__);
+tester.testSrc("var R = Exception.BadDay.resolve(\"name\",Void)",
+    Void,Void,"BadDay",__LINE__);
+
+tester.testSrc("var R = Exception.resolve(\"BadDay\",4);",Void,Void,True,__LINE__);
+tester.testSrc("var R = Exception.resolve(\"BadDay\",*);",Void,Void,True,__LINE__);
+tester.testSrc("var R = Exception.resolve(\"BadDay\",1);",Void,Void,False,__LINE__);
+tester.testSrc("var R = Exception.resolve(\"BadDay\",2);",Void,Void,False,__LINE__);
+
+tester.testSrc("var R = Exception.resolve(\"Exception\",4);",Void,Void,True,__LINE__);
+
+tester.testSrc("var R = Import.resolve(\"compileFile\",*);",Void,Void,False,__LINE__);
+
+tester.testSrc("var R = Exception.resolve(\"Method\",1);",Void,Void,MethodType,__LINE__);
+tester.testSrc("var R = Exception.resolve(\"Method\",2);",Void,Void,False,__LINE__);
+tester.testSrc("var R = Exception.resolve(\"Method\",4);",Void,Void,False,__LINE__);
+tester.testSrc("var R = Exception.resolve(\"Method\",*);",Void,Void,MethodType,__LINE__);
+tester.testSrc("var R = Exception.resolve(\"Method\",3);",Void,Void,MethodType,__LINE__);
+
+tester.testSrc("var R = Exception.resolve(\"vm\",1);",Void,Void,False,__LINE__);
+tester.testSrc("var R = Exception.resolve(\"vm\",2);",Void,Void,PropertyType,__LINE__);
+tester.testSrc("var R = Exception.resolve(\"vm\",4);",Void,Void,False,__LINE__);
+tester.testSrc("var R = Exception.resolve(\"vm\",*);",Void,Void,PropertyType,__LINE__);
+
+tester.testSrc("var R = Exception.BadDay.resolve(\"payload\",4,True);",
+    Void,Void,True,__LINE__);
+tester.testSrc("var R = Exception.BadDay.resolve(\"payload\",4,0);",
+    Void,Void,False,__LINE__);
+tester.testSrc("var R = Exception.BadDay.resolve(\"payload\",8,True);",
+    Void,Void,True,__LINE__);
+tester.testSrc("var R = Exception.BadDay.resolve(\"payload\",8,False);",
+    Void,Void,False,__LINE__);
+tester.testSrc("var R = Exception.BadDay.resolve(\"payload\",*,False);",
+    Void,Void,False,__LINE__);
+
+tester.testSrc("var R = Exception.BadDay.resolve(\"notCatchable\",0x20);",
+    Void,Void,True,__LINE__);
+tester.testSrc("var R = Exception.OSError.resolve(\"notCatchable\",0x20,1);",
+    Void,Void,True,__LINE__);
+tester.testSrc("var R = Exception.OSError.resolve(\"notCatchable\",4,1);",
+    Void,Void,True,__LINE__);
+tester.testSrc("var R = Exception.BadDay.resolve(\"notCatchable\",0x20,0);",
+    Void,Void,False,__LINE__);
+
+tester.testSrc("var R = Exception.BadDay.resolve(\"Exception\",0x10);",
+    Void,Void,True,__LINE__);
+tester.testSrc("var R = Exception.BadDay.resolve(\"Exception\",0x10,False);",
+    Void,Void,True,__LINE__);
+tester.testSrc("var R = Exception.OSError.resolve(\"Exception\",0x10);",
+    Void,Void,True,__LINE__);
+tester.testSrc(0'|var R=Exception.OSError.resolve("Exception",0x10,False);|,
+    Void,Void,False,__LINE__);
+
+tester.testSrc("class A{class AA {}} class B(A) {}"
+    "var R = A.resolve(\"AA\",0x40,1);",Void,Void,True,__LINE__);
+tester.testSrc("class A{class AA {}} class B(A) {}"
+    "var R = B.resolve(\"AA\",0x40,1);",Void,Void,True,__LINE__);
+tester.testSrc("class A{class AA {}} class B(A) {}"
+    "var R = B.resolve(\"AA\",0x40,0);",Void,Void,False,__LINE__);
+
+tester.testSrc("class A{} class B{} class C(A,B){} class D(C){}"
+    0'|var R=D.resolve("A",0x10,False);|,Void,Void,False,__LINE__);
+tester.testSrc("class A{} class B{} class C(A,B){} class D(C){}"
+    0'|var R=D.resolve("B",0x10,False);|,Void,Void,False,__LINE__);
+tester.testSrc("class A{} class B{} class C(A,B){} class D(C){}"
+    0'|var R=D.resolve("A",0x10,True);|,Void,Void,True,__LINE__);
+tester.testSrc("class A{} class B{} class C(A,B){} class D(C){}"
+    0'|var R=D.resolve("B",0x10,True);|,Void,Void,True,__LINE__);
+tester.testSrc("class A{} class B{} class C(A,B){} class D(C){}"
+    0'|var R=D.resolve("B",*,False);|,Void,Void,False,__LINE__);
+
+tester.testSrc("class A{} class B{} class C(A,B){} class D(C){}"
+    0'|var R=fcn(d){ d.B.name }(D);|,Void,Void,"B",__LINE__);
+
+			// .resolve(?,?,Void)
+//tester.testSrc("var R = self.resolve(\"A1\",*,Void);",Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|class A { var v; } var R = A.resolve("v",*,Void);|,
+    Void,"ValueError",Void,__LINE__);
+tester.testSrc("class A{class A2 {} class A1{}}"
+    "var R = A.resolve(\"A1\",0xFF,Void);",Void,Void,Void,__LINE__);
+
+tester.testSrc("class A{class A2 {} class A1{}}"
+    "var R = A.resolve(\"A1\",0x40,Void);",Void,Void,1,__LINE__);
+tester.testSrc("class A{class A2 {} class A1{}}"
+    "var R = A.resolve(\"A\",0x40,Void);",Void,Void,Void,__LINE__);
+
+tester.testSrc("class A{fcn f2 {} fcn f1{}}"
+    "var R = A.resolve(\"f1\",0x40,Void);",Void,Void,Void,__LINE__);
+tester.testSrc("class A{fcn f2 {} fcn f1{}}"
+    "var R = A.resolve(\"f1\",0x20,Void);",Void,Void,2,__LINE__);
+
+tester.testSrc("class A{var v2,v1; }"
+    "var R = A.resolve(\"f1\",8,Void);",Void,Void,Void,__LINE__);
+tester.testSrc("class A{var v2,v1; }"
+    "var R = A.resolve(\"v1\",8,Void);",Void,Void,0,__LINE__);
+
+tester.testSrc("var R = Exception.BadDay.resolve(\"Exception\",0x10,Void);",
+   Void,Void,0,__LINE__);
+
+tester.testSrc("class C{ fcn init(a){ var v=a } } cl:=T(C(1),C(2),C(3));"
+   0'|var R=cl.apply("v")|,Void,Void,T(1,2,3),__LINE__);
+tester.testSrc(
+   0'|class C{ fcn init(a){ var v=a } var[const,proxy]p=fcn{ "%d".fmt(v) }; }|
+   0'|cl:=T(C(1),C(2),C(3));|
+   0'|var R=cl.apply("v")|,Void,Void,T(1,2,3),__LINE__);
+tester.testSrc(
+   0'|class C{ fcn init(a){ var v=a } var[const,proxy]p=fcn{ v*11 }; }|
+   0'|cl:=T(C(1),C(2),C(3));|
+   0'|var R=cl.apply("p")|,Void,Void,T(11,22,33),__LINE__);
+tester.testSrc(
+   0'|class C{ fcn foo{ 123 } } cl:=T(C(1),C(2),C(3));|
+   0'|var R=cl.apply("foo")|,
+   Void,Void,T(123,123,123),__LINE__);
+
+
+			///////////////////////////////////// .whatIsThis
+tester.testSrc(0'|class C { var v; } var R = C.whatIsThis("v");|
+    0'|R=R.apply("toString");|,
+    Void,Void,T("103","Class(C)","0","Void"),__LINE__);
+tester.testSrc(0'|var [proxy]p=f; fcn f{123} var R=whatIsThis("p");|
+    0'|R=R.apply("toString");|,
+    Void,Void,T("103","Class(RootClass#)","1","Void"),__LINE__);
+
+tester.testSrc(0'|class C { } var R = C.whatIsThis("__constructor");|,
+    Void,Void,T(Void,Void,Void,Void),__LINE__);
+tester.testSrc(0'|class C { fcn {} } var R = C.whatIsThis("__fcn#1");|,
+    Void,Void,T(Void,Void,Void,Void),__LINE__);
+tester.testSrc(0'|class C { fcn f{} } var R = C.whatIsThis("f");|
+    0'|R=R.apply("toString");|,
+    Void,Void,T("3","Class(C)","1","Fcn(f)"),__LINE__);
+tester.testSrc(0'|class C{fcn f{}} class D(C){} var R=D.whatIsThis("f",False);|,
+    Void,Void,T(Void,Void,Void,Void),__LINE__);
+tester.testSrc(0'|class C{fcn f{}} class D(C){} var R=D.whatIsThis("f",True);|
+    0'|R=R.apply("toString");|,
+    Void,Void,T("3","Class(C)","1","Fcn(f)"),__LINE__);
+tester.testSrc(0'|class C{fcn [private] f{}} var R=C.whatIsThis("f",True);|,
+    Void,Void,T(Void,Void,Void,Void),__LINE__);
+
+tester.testSrc(0'|class C{fcn f{}} class D(C){} var R=D.whatIsThis("C",True);|
+    0'|R=R.apply("toString");|,
+    Void,Void,T("112","Class(D)","0","Class(C)"),__LINE__);
+tester.testSrc(0'|class C{class D{}} var R=C.whatIsThis("D",True);|
+    0'|R=R.apply("toString");|,
+    Void,Void,T("2","Class(C)","0","Class(D)"),__LINE__);
+tester.testSrc(0'|class C{class [private] D{}} var R=C.whatIsThis("D");|,
+    Void,Void,T(Void,Void,Void,Void),__LINE__);
+
+	// uncooded
+tester.testSrc(0'|c:=embryo(T("C","","v"),0,0,T);|
+    0'|var R=c.whatIsThis("v")[0];|, Void,"AssertionError",Void,__LINE__);
+
+	// cooked
+tester.testSrc(0'|c:=embryo(T("C","","v"),0,0,T);|
+    0'|c.cook(); var R=c.whatIsThis("v")[0];|, Void,Void,103,__LINE__);
+tester.testSrc(0'|c:=embryo(T("C",""),2,0,T); c.addFcn(fcn f {},1);|
+    0'|c.cook(); var R=c.whatIsThis("f")[0];|,Void,Void,3,__LINE__);
+tester.testSrc(0'|c:=embryo(T("C",""),0,1,T); d:=embryo(T("D",""),0,0,T);|
+    0'|c.addClass(d); c.cook(); var R=c.whatIsThis("D")[0];|,Void,Void,2,__LINE__);
+tester.testSrc(0'|class D {} c:=embryo(T("C",""),0,0,T(D));|
+    0'|c.cook(); var R=c.whatIsThis("D")[0];|,Void,Void,112,__LINE__);
+
+
+    			////////////////////////////////////////
+classA = "var R;"
+	 "class A { fcn foo { R = \"FOO\"; }}"
+	 "class B(A) {}";
+
+tester.testSrc(classA + "B().foo();", Void,Void,"FOO",__LINE__);
+tester.testSrc(classA + "B.foo();",   Void,Void,"FOO",__LINE__);
+
+tester.testSrc("var R=1; class Foo(TheVault.Exception.Exception) { fcn init {} } ",
+   Void,Void,1,__LINE__);
+
+tester.testSrc(
+   "var R;"
+   "class(Exception.BadDay){ fcn init { Exception.init(\"123\"); R = init;}}();"
+   "R = R.toString();",
+   Void,Void,"Fcn(init)",__LINE__);
+
+tester.testSrc(
+   "var R;"
+   "class(TheVault.Exception.BadDay){ fcn init { BadDay.init(\"123\"); R = init;}}();"
+   "R = R.toString();",   Void,Void,"Fcn(init)",__LINE__);
+
+tester.testSrc(
+   "var R;"
+   "class(Exception.StreamError)"
+   "{ fcn init { StreamError.init(Void); R = StreamError;}}();"
+   "R = R.toString();",
+   Void,Void,"StreamError : ",__LINE__);
+
+tester.testSrc(
+   "var R;"
+   "class(Exception.StreamError)"
+   "{ fcn init { StreamError.init(Void); R = catchable;}}();",
+   Void,Void,True,__LINE__);
+
+tester.testSrc(
+   "var R;"
+   "class(Exception.StreamError) {"
+   "  fcn init { StreamError.init(Void);"
+   "      R = StreamError(TheVault.Exception.IndexError()); }"
+   "}();"
+   "R = R.toString();",
+   Void,Void,"StreamError : IndexError(Index out of sequence bounds)",__LINE__);
+
+tester.testSrc("class(Time)		{}", "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class(Foo)		{}", "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class(self)		{}", "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class(Native.String)	{}", "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class(TheVault.Foo)	{}", "SyntaxError",Void,Void,__LINE__);
+
+
+tester.testSrc("var R; class Foo { R = self.fcn; R = R.container.toString(); }",
+   Void,Void,"Class(Foo)",__LINE__);
+
+tester.testSrc("var R; class One { class Two {} } R = One.Two.toString();",
+   Void,Void,"Class(Two)",__LINE__);
+tester.testSrc("var R; class One { class Two {} } R = One().Two.toString();",
+   Void,Void,"Class(Two)",__LINE__);
+tester.testSrc("var R; class One { class Two {} } R = One.Two().toString();",
+   Void,Void,"Class(Two)",__LINE__);
+tester.testSrc("var R; class One { class Two {} } R = One().Two().toString();",
+   Void,Void,"Class(Two)",__LINE__);
+
+tester.testSrc(
+   "class A{ var z; fcn init{ z = 123; }}"
+   "class B(A){ fcn init{ A.init(); z = 666; }}"
+   "b := B(); var R = b.z;",Void,Void,666,__LINE__);
+
+tester.testSrc("class C { var c; } C.c = 123; d := C(); var R = d.c;",Void,Void,Void,__LINE__);
+tester.testSrc("class C { var c; } C.c = 123; d := C.copy(); var R = d.c;",
+    Void,Void,Void,__LINE__);
+tester.testSrc("class C { var c=123; } d := C.copy(); var R = d.c;",
+    Void,Void,Void,__LINE__);
+tester.testSrc("class C { var c=123; } d := C.copy().__constructor();"
+    "var R = d.c;",Void,Void,123,__LINE__);
+
+	// old block stack memory stomper
+tester.testSrc(0'|var R; class { fcn { println("X",1); }}|,Void,Void,Void,__LINE__);
+
+
+    	///////////////////////// Contained classes
+tester.testSrc("class A { var a; class B { var b; } }"
+    "var R = (A.id == A.B.container.id);",Void,Void,True,__LINE__);
+tester.testSrc("class A { var a; class B { var b; } }"
+    "var R = (A.id == A().B.container.id);",Void,Void,False,__LINE__);
+//tester.testSrc("class A { var a; class [static] B { var b; } }"
+//    "var R = (A.id == A().B.container.id);", Void,Void,True,__LINE__);
+tester.testSrc("class A { var a; class [static] B { var b; } }"
+    "var R = A().B.container;", Void,Void,Void,__LINE__);
+
+tester.testSrc("class A { var a; class B { fcn f { a } } }"
+    "var R = (A.B.f.id != A().B.f.id);", Void,Void,True,__LINE__);
+//tester.testSrc("class A { var a; class [static] B { fcn f { a } } }"
+//    "var R = (A.B.f.id == A().B.f.id);", Void,Void,True,__LINE__);
+tester.testSrc("class A { var a; class [static] B { fcn f { a } } }",
+    "SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("class [static] A { class B { var b; } }"
+    "var R = (A.B.container.id == A().B.container.id);", Void,Void,True,__LINE__);
+tester.testSrc("class [static] A { class B { var b; } }"
+    "var R = (A.B.id == A().B.id);", Void,Void,True,__LINE__);
+tester.testSrc("class [static] A { class B { var b; } }"
+    "var R = (A.B.id == A.B().id);", Void,Void,False,__LINE__);
+tester.testSrc("class [static] A { class B { var b; } }"
+    "var R = (A.B.container.id == A.B().container.id);", Void,Void,True,__LINE__);
+
+tester.testSrc("class [static] A { class B { var b; } } class C(A) { var c; }"
+    "var R = (C.A.id == C().A.id);",Void,Void,True,__LINE__);
+
+
+	////////////////////////// Ops
+tester.testSrc("var R; class Foo {} R= Foo == 123;",Void,Void,False,__LINE__);
+tester.testSrc("var R; class Foo {} R= Foo == Foo;",Void,Void,True,__LINE__);
+tester.testSrc("var R; class Foo {} R= Foo == Foo();",Void,Void,False,__LINE__);
+tester.testSrc("var R; class Foo {} R = Foo != 123;",Void,Void,True,__LINE__);
+tester.testSrc("var R; class Foo {} R = Foo != Foo;",Void,Void,False,__LINE__);
+tester.testSrc("var R; class Foo {} Foo < 123;",Void,"NotImplementedError",Void,__LINE__);
+tester.testSrc("var R; class Foo {} Foo <= 123;",Void,"NotImplementedError",Void,__LINE__);
+tester.testSrc("var R; class Foo {} Foo > 123;",Void,"NotImplementedError",Void,__LINE__);
+tester.testSrc("var R; class Foo {} Foo >= 123;",Void,"NotImplementedError",Void,__LINE__);
+
+tester.testSrc("var R; class Foo {} -Foo;",     Void,"NotImplementedError",Void,__LINE__);
+tester.testSrc("var R; class Foo {} Foo + 123;",Void,"NotImplementedError",Void,__LINE__);
+tester.testSrc("var R; class Foo {} Foo - 123;",Void,"NotImplementedError",Void,__LINE__);
+tester.testSrc("var R; class Foo {} Foo * 123;",Void,"NotImplementedError",Void,__LINE__);
+tester.testSrc("var R; class Foo {} Foo / 123;",Void,"NotImplementedError",Void,__LINE__);
+tester.testSrc("var R; class Foo {} Foo % 123;",Void,"NotImplementedError",Void,__LINE__);
+
+const opper = fcn(opName,symbol) {
+   "var R; class Foo { fcn %s(x) { R=\"%s\"+x; }} Foo %s 123;"
+   .fmt(opName,symbol,symbol,symbol,symbol);
+};
+tester.testSrc(opper("__opLT", "<"), Void,Void,"<123",__LINE__);
+tester.testSrc(opper("__opLTE","<="),Void,Void,"<=123",__LINE__);
+tester.testSrc(opper("__opGT", ">"), Void,Void,">123",__LINE__);
+tester.testSrc(opper("__opGTE",">="),Void,Void,">=123",__LINE__);
+
+tester.testSrc(opper("__opAdd","+"),Void,Void,"+123",__LINE__);
+tester.testSrc(opper("__opSub","-"),Void,Void,"-123",__LINE__);
+tester.testSrc(opper("__opMul","*"),Void,Void,"*123",__LINE__);
+tester.testSrc(opper("__opDiv","/"),Void,Void,"/123",__LINE__);
+tester.testSrc(opper("__opMod","%"),Void,Void,"%123",__LINE__);
+
+tester.testSrc("class C { fcn __opAdd(X){X+5} } class D(C) {} d:=D;"
+    "var R=(d+1);",Void,Void,6,__LINE__);
+
+tester.testSrc("class C { var n=0; fcn __opAdd(x) { n += x } } "
+    "C + 3; var R = C.n;", Void,Void,3,__LINE__);
+
+tester.testSrc("var R; class Foo { fcn __opNegate(X) { R=\"---\" }} -Foo;",
+    Void,Void,"---",__LINE__);
+
+tester.testSrc("var R; class A { var v=123; fcn __opAdd(X) { v+X }}"
+    "class B(A){} class C(B){} R=C+1;",Void,Void,124,__LINE__);
+
+
+	/////////////////////////// .toBool
+tester.testSrc("var R; class Foo {} R = Foo.toBool();",Void,Void,True,__LINE__);
+tester.testSrc("var R; class Foo { fcn toBool { 5 }} R = Foo.toBool();",
+	Void,Void,5,__LINE__);
+tester.testSrc("var R; class Foo { fcn toBool { 5 }} (not Foo)",
+	Void,"TypeError",Void,__LINE__);
+tester.testSrc("var R; class Foo { fcn toBool {False}} R = Foo.toBool();",
+	Void,Void,False,__LINE__);
+tester.testSrc("var R; class Foo{ fcn toBool{ False }}"
+	"R = Foo.BaseClass.toBool();",Void,Void,True,__LINE__);
+
+
+	////////////////////////// .toString
+tester.testSrc("class Foo {}"
+    "var R=Foo.toBool.toString();",	Void,Void,"Method(Foo.toBool)",__LINE__);
+tester.testSrc("class Foo { fcn toBool {} }"
+    "var R=Foo.toBool.toString();",	Void,Void,"Fcn(toBool)",__LINE__);
+
+tester.testSrc("var R; class Foo { fcn toString { 5 }} R = Foo.toString();",
+    Void,Void,5,__LINE__);
+tester.testSrc("var R; class Foo { fcn toString { 5 }}"
+    "R = Foo.BaseClass.toString();",Void,Void,"Class(Foo)",__LINE__);
+tester.testSrc("var R, Foo = class C { fcn toString { 5 }};"
+    "R = Foo.BaseClass.toString();",Void,Void,"Class(C)",__LINE__);
+tester.testSrc("var R, Foo = class C { fcn toString { \"Z\" }};"
+    "R = Foo.BaseClass.toString();",Void,Void,"Class(C)",__LINE__);
+tester.testSrc("var R, Foo = class C { fcn toString { \"Z\" }};"
+    "R = Foo.toString();",Void,Void,"Z",__LINE__);
+tester.testSrc("class Foo { fcn toString { 5 }} println(Foo);",
+    Void,"TypeError",Void,__LINE__);
+tester.testSrc("class Foo { fcn toString { \"BAR\" }} var R = println(Foo);",
+    Void,Void,"BAR",__LINE__);
+
+
+	////////////////////////// .BaseClass
+tester.testSrc("class Foo { fcn toBool {False} }"
+	"var R=Foo.BaseClass.toBool();", Void,Void,True,__LINE__);
+tester.testSrc("class Foo { fcn foo {} }"
+	"var R=Foo.BaseClass.foo.toString();",Void,"NotFoundError",Void,__LINE__);
+tester.testSrc("var R; class Foo { fcn toString { 5 }} "
+	"R = Foo.BaseClass.toString();",Void,Void,"Class(Foo)",__LINE__);
+tester.testSrc("var R; class Foo {} R = Foo.BaseClass.name;",
+	Void,Void,"Foo",__LINE__);
+tester.testSrc("var R; class Foo {} R = Foo.BaseClass(\"name\");",
+	Void,Void,"Foo",__LINE__);
+tester.testSrc("var R = self.BaseClass.embryo.toString();",
+	Void,Void,"Method(RootClass#.embryo)",__LINE__);
+tester.testSrc("var R = self.BaseClass(\"embryo\").toString();",
+	Void,Void,"Method(RootClass#.embryo)",__LINE__);
+tester.testSrc("var R = self.BaseClass(foo()); fcn foo { \"name\" }",
+	Void,Void,"RootClass#",__LINE__);
+tester.testSrc("var R = self.BaseClass.foo(); fcn foo { \"name\" }",
+	Void,"NotFoundError",Void,__LINE__);
+tester.testSrc("var x = \"name\"; var R = self.BaseClass(x);",
+	Void,Void,"RootClass#",__LINE__);
+tester.testSrc("class C {var x;} var R = C.BaseClass.x;",
+	Void,"NotFoundError",Void,__LINE__);
+
+tester.testSrc("class C {} var R = C.BaseClass; R=R.toString();",
+	Void,Void,"Method(C.BaseClass)",__LINE__);
+
+
+	/////////////////////////////////////// methods/properties
+tester.testSrc("var R = self.methods; R = R.holds(\"addFcn\");",
+	Void,Void,True,__LINE__);
+tester.testSrc("class C {} var R = C.methods; R = R.holds(\"addFcn\");",
+	Void,Void,True,__LINE__);
+tester.testSrc("var R = self.methods; R = R.holds(\"setPrototype\");",
+	Void,Void,False,__LINE__);
+tester.testSrc("class C {} var R = C.methods; R = R.holds(\"setPrototype\");",
+	Void,Void,False,__LINE__);
+tester.testSrc("class C {} var R = C.methods();",Void,Void,T,__LINE__);
+
+
+	///////////////////////////// test running class with no functions
+tester.testSrc("NullClass()",Void,"AssertionError",Void,__LINE__);
+tester.testSrc(0'|c := self.embryo(T("C",""),0,0,T); c=c.cook(); c();|,
+    Void,"AssertionError",Void,__LINE__);
+
+
+	///////////////////////////////// Attributes: static
+tester.testSrc("fcn f { Attributes(static); }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("{ Attributes(static); }","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("class C { } var R = C.createReturnsSelf;",
+	Void,Void,True,__LINE__);
+tester.testSrc("class C {returnClass(True)} var R = C.createReturnsSelf;",
+	Void,Void,False,__LINE__);
+tester.testSrc("class C { Attributes(static); } var R = C.isStatic;",
+	Void,Void,True,__LINE__);
+tester.testSrc("class C { Attributes(static); } var R = C.attributes;",
+	Void,Void,"static createReturnsSelf",__LINE__);
+tester.testSrc("class C {var v} c := C(); var R = (c == C);",
+	Void,Void,False,__LINE__);
+tester.testSrc("class C { Attributes(static); } c := C(); var R = (c == C);",
+	Void,Void,True,__LINE__);
+tester.testSrc("class C{ class [static] C2{}}c := C(); var R = (c.C2 == C.C2);",
+	Void,Void,True,__LINE__);
+tester.testSrc("class C { class C2 { Attributes(static); class C3 {}}}"
+	"c := C(); var R = (c.C2.C3 == C.C2.C3);",
+	Void,Void,True,__LINE__);
+tester.testSrc("class C { class [static] C2 { class C3 { var v; }}}"
+	"c := C.C2.C3(); var R = (c == C.C2.C3);",
+	Void,Void,False,__LINE__);
+tester.testSrc("class C { var v; class C2 { var x; }}"
+	"c := C(); c.C2.x = 123; var R = L(C.C2.x,c.C2.x);",
+	Void,Void,L(Void,123),__LINE__);
+tester.testSrc("class C { class [static] C2 { var x; }}"
+	"c := C(); c.C2.x = 123; var R = L(C.C2.x,c.C2.x);",
+	Void,Void,L(123,123),__LINE__);
+tester.testSrc("class C { Attributes(static); var x = 123}"
+	"class C2(C) {} class C3(C) {} c2 := C2(); c3 := C3();"
+	"c2.x= 5; var R = c3.x",
+	Void,Void,5,__LINE__);
+tester.testSrc("class [static] C { var x = 3 }"
+	"C().x = 5; var R = C().x",Void,Void,3,__LINE__);
+tester.testSrc("class C{ Attributes(static); }"
+	"var R = (C().id == C().id == C.id)",Void,Void,True,__LINE__);
+tester.testSrc("class C {var v} var R = (C().id == C().id)",Void,Void,False,__LINE__);
+
+tester.testSrc("var R; class [static] C { fcn f{} } R = (C().f.id == C.f.id);",
+    Void,Void,True,__LINE__);
+tester.testSrc(0'|var R; class C { fcn f{self} } R = (C().f.id == C.f.id);|,
+    Void,Void,False,__LINE__);
+
+tester.testSrc("class [static] C{ } var R=(C().id==C.id)",Void,Void,True,__LINE__);
+
+tester.testSrc("class [static] C {}"
+    "var R=C.container;",Void,Void,Void,__LINE__);
+tester.testSrc("var R; class [static] C {R=1}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class [static] C {var r=1} var R=C.r;",Void,Void,1,__LINE__);
+tester.testSrc("var R; R=4; R=C();"
+    "class [static] C{ var R=1; fcn init{ R+=2; returnClass(R); }}",
+    Void,"NotImplementedError",Void,__LINE__);
+tester.testSrc("var R; R=4;"
+    "class [static] C{ var R=1; class D{fcn init{ R+=2; returnClass(R); }}}"
+     "R=C.D();",Void,Void,3,__LINE__);
+tester.testSrc("class [static] C{ var R=1; fcn init{ R+=2; returnClass(R); }}"
+   "var R; R=4; R=C();",Void,Void,3,__LINE__);
+tester.testSrc("class [static] C{ fcn init{ R+=2; returnClass(R); var R=1; }}"
+    "var R; R=4; R=C();",Void,"NotImplementedError",3,__LINE__);
+tester.testSrc("fcn f{} class [static] C { f }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class A {} class [static] C { A }","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var R; class [static] C {}"
+    "R = (C.__constructor.id == C().__constructor.id)",Void,Void,True,__LINE__);
+
+tester.testSrc("var R; class [static] C{ fcn f{} fcn g{} }"
+    "R=C.fcns.zipWith(fcn(a,b){ a.id==b.id },C().fcns);",
+    Void,Void,T(True,True,True),__LINE__);
+tester.testSrc("var R; class C{ fcn f{ self } fcn g{ self } }"
+    "R=C.fcns.zipWith(fcn(a,b){ a.id==b.id },C().fcns);",
+    Void,Void,T(False,False,False),__LINE__);
+
+tester.testSrc("var R; class [static] C { fcn f {return(g)} fcn g{} }"
+    "R = (C.g.id == C().f().id);",Void,Void,True,__LINE__);
+tester.testSrc("var R; class C { fcn f {self; return(g)} fcn g{self} }"
+    "R = (C.g.id != C().f().id);",Void,Void,True,__LINE__);
+tester.testSrc("var R; class C { fcn f {return(g)} fcn g{} }"
+    "R = (C.g.id == C.f().id);",Void,Void,True,__LINE__);
+tester.testSrc("class C { fcn f {return(D.g)} } class [static] D { fcn g{} }"
+    "var R = (D.g.id == C.f().id);",Void,Void,True,__LINE__);
+
+tester.testSrc("class A{ var v;} class [static] C(A) {}",
+    "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class A{ var v;} class [static] C { class D(A) {} }",
+    "SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var R; class C{}      class [static] D(C){}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R; class C{var c} class [static] D(C){}","SyntaxError",Void,Void,__LINE__);
+
+
+    			//////// auto static
+tester.testSrc("class C {} var R = C.isStatic;",Void,Void,False,__LINE__);
+tester.testSrc("class C { class C2 {}} var R = C.C2.isStatic;",
+    Void,Void,False,__LINE__);
+tester.testSrc("class [static] C { class C2 {}} var R = C.C2.isStatic;",
+    Void,Void,True,__LINE__);
+tester.testSrc("class[static] C { class D {} class E(D) {} }"
+     "var R = C.E.isStatic;",Void,Void,False,__LINE__);
+tester.testSrc("class[static] C { class D(Exception.BadDay) { fcn init{}} }"
+     "var R = C.D.isStatic;",Void,Void,False,__LINE__);
+tester.testSrc("class[static] C { class D { var v} class E(D) {} }"
+     "var R = C.E.isStatic;",Void,Void,False,__LINE__);
+tester.testSrc("class[static] C { class D { var v; class D2 {} }}"
+     "var R = C.D.D2.isStatic;",Void,Void,False,__LINE__);
+tester.testSrc("class[static] C { class D { class D2 {} }}"
+     "var R = C.D.D2.isStatic;",Void,Void,True,__LINE__);
+tester.testSrc("class[static] C { class D { var v; class E { class E2 {v}} }}"
+     "var R = C.D.E.E2.isStatic;",Void,Void,False,__LINE__);
+tester.testSrc("class [static] C { class D { class E { var v } } }"
+     "var R = C.D.isStatic;",Void,Void,True,__LINE__);
+
+tester.testSrc("class [static] C { var v; class D { v } }"
+     "var R = C.D.isStatic;",Void,Void,False,__LINE__);
+tester.testSrc("class [static] C { var v; class D {} }"
+     "var R = C.D.isStatic;",Void,Void,False,__LINE__);
+tester.testSrc("class A { var v; class [static] C { class D { v } } }"
+//     "R = A.C.D.isStatic;",Void,Void,False,__LINE__);
+     ,"SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class A { var v; class [static] C { class D { var r; v } } }",
+     "SyntaxError",Void,Void,__LINE__);
+
+
+	////////////////////////////////////// Attributes: script
+tester.testSrc("class C { Attributes(script); }", "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("Attributes(script); var R = attributes;",
+	Void,Void,"static script noChildren createReturnsSelf",__LINE__);
+
+
+	/////////////////////////////////////// .isScript
+tester.testSrc("var R = isScript;",Void,Void,False,__LINE__);
+tester.testSrc("Attributes(script); var R = isScript;",
+	Void,Void,True,__LINE__);
+
+
+	/////////////////////////////////////// Attributes: noChildren
+tester.testSrc("class C(Exception){}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class CS{ Attributes(noChildren); } class C(CS){}",
+	"SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class [noChildren] CS{} class C(CS){}",
+	"SyntaxError",Void,Void,__LINE__);
+
+
+	/////////////////////////////////////// Attributes: private/public
+tester.testSrc("class C{ class [private] c{ 4 }}"
+    "var R = C.c.name;",Void,Void,"c",__LINE__);
+tester.testSrc("class C{ class [private] c{ 4 }}"
+    "var R = C.resolve(\"c\")();",Void,"NotFoundError",Void,__LINE__);
+tester.testSrc("c:=class C{ class [private] c{ 4 }};"
+    "var R = c.c;",Void,"NotFoundError",Void,__LINE__);
+tester.testSrc("class [private] C {}"
+    "var R = C.attributes.holds(\"private\");",Void,Void,True,__LINE__);
+tester.testSrc("class [private] C {} var R = C.isPrivate;",Void,Void,True,__LINE__);
+
+tester.testSrc("class [public] C {} var R = C.isPrivate;",Void,Void,False,__LINE__);
+
+
+	/////////////////////////////////////// Attributes: 
+tester.testSrc("class C {} var R = C.isStatic;",Void,Void,False,__LINE__);
+
+tester.testSrc("class C{var v} var R = C.isEve;",Void,Void,True,__LINE__);
+tester.testSrc("class C{var v} var R = C().isEve;",Void,Void,False,__LINE__);
+tester.testSrc("class [static]C {} var R = C.isEve;",Void,Void,True,__LINE__);
+tester.testSrc("class [static]C {} var R = C().isEve;",Void,Void,True,__LINE__);
+tester.testSrc("class C{var c;class D{var d}}var R=C.isEve;",Void,Void,True,__LINE__);
+tester.testSrc("class C{var c;class D{var d}}var R=C().isEve;",Void,Void,False,__LINE__);
+tester.testSrc("class C{var c;class D{var d}}var R=C.D.isEve;",Void,Void,True,__LINE__);
+tester.testSrc("class C{var c;class D{var d}}var R=C().D.isEve;",Void,Void,False,__LINE__);
+tester.testSrc("class C{var c;class D{var d}}var R=C.D().isEve;",Void,Void,False,__LINE__);
+tester.testSrc("class C{var c;class D{var d}}var R=C().D().isEve;",Void,Void,False,__LINE__);
+
+tester.testSrc("class C{var c;class D{var d}}var R=C.copy().isEve;",
+    Void,Void,False,__LINE__);
+tester.testSrc("class C{var c;class D{var d}}var R=C.copy().D.isEve;",
+    Void,Void,False,__LINE__);
+tester.testSrc("class [static]C{class D{var d}}var R=C.copy().isEve;",
+    Void,Void,True,__LINE__);
+tester.testSrc("class [static]C{class D{var d}}var R=C.copy().D.isEve;",
+    Void,Void,True,__LINE__);
+tester.testSrc("class [static]C{class D{var d}}var R=C.D.isStatic;",
+    Void,Void,False,__LINE__);
+tester.testSrc("class [static]C{class D{var d}}var R=C.D.copy().isEve;",
+    Void,Void,False,__LINE__);
+
+
+	/////////////////// test to see if vars, fcns and classes are sorted
+tester.testSrc("var b,c,a; var R = self.varNames;",
+	Void,Void,ROList("R","a","b","c"),__LINE__);
+#if 0
+tester.testSrc("fcn b{} fcn a{} fcn c{} var R = self.fcns.apply(\"name\");",
+	Void,Void,L("__constructor","a","b","c"));
+tester.testSrc("class c{} class b{} class a{}"
+	"var R = self.classes.apply(\"name\");",
+	Void,Void,L("a","b","c"));
+#endif
+
+	/////////////////// see if sorting names messes up code generator
+tester.testSrc("var b=1,c=2,a=3;"
+    "var R = self.vars.apply(fcn(x){x[1]});", Void,Void,L(Void,3,1,2),__LINE__);
+
+class B { fcn c { return(4) } fcn b { return(3) } }
+class A { fcn b { return(2) } fcn a { return(1) } }
+
+tester.testRun(A.a,Void,1,__LINE__); tester.testRun(A.b,Void,2,__LINE__);
+tester.testRun(B.b,Void,3,__LINE__); tester.testRun(B.c,Void,4,__LINE__);
+
+		/////////////////////// .embryo
+tester.testSrc(0'|var R= self.embryo(T("C",""),0,0,T).isClassified;|,
+    Void,Void,True,__LINE__);
+tester.testSrc(0'|var R= self.embryo(T("C","","v"),0,0,T).isClassified;|,
+    Void,Void,True,__LINE__);
+tester.testSrc(0'|var R= self.embryo(T("C","","v"),1,0,T).isClassified;|,
+    Void,Void,True,__LINE__);
+tester.testSrc(0'|var R= self.embryo(T("C","","v"),0,1,T).isClassified;|,
+    Void,Void,False,__LINE__);
+tester.testSrc(0'|var R= self.embryo(T("C","","v"),0,0,T(NullClass)).isClassified;|,
+    Void,Void,True,__LINE__);
+
+			// embryo fcns
+tester.testSrc(0'|var R= self.embryo(T("C",""),2,0,T);|
+    "R.addFcn(fcn f{123},1); R=R.cook(); R=R.f()",  Void,Void,123,__LINE__);
+tester.testSrc(0'|c := self.embryo(T("C",""),1,0,T);|
+    "c.addFcn(self,0);",  Void,"TypeError",Void,__LINE__);
+tester.testSrc(0'|c := self.embryo(T("C",""),1,0,T);|
+    "c.addFcn(self.fcn,1);",  Void,"IndexError",Void,__LINE__);
+tester.testSrc(0'|c := self.embryo(T("C",""),2,0,T);|
+    0'|c.addFcn(fcn f{}); c.addFcn(fcn g{}); var R = c.fcns.toString();|,
+     Void,Void,"L(Fcn(f),Fcn(g))",__LINE__);
+tester.testSrc(0'|var R; c := self.embryo(T("C",""),1,0,T);|
+    "f:=self.fcn.nullFcn; c.addFcn(f,0);c.addFcn(f,0);",Void,"AssertionError",Void,__LINE__);
+tester.testSrc("class C { fcn f {} }"
+    "f:=self.fcn.nullFcn; C.addFcn(f,1);",Void,"AssertionError",Void,__LINE__);
+
+    			// embryo classes
+tester.testSrc(0'|c := self.embryo(T("C",""),0,1,T);|
+    "c.addClass(Void);",  Void,"TypeError",Void,__LINE__);
+tester.testSrc(0'|c := self.embryo(T("C",""),0,1,T);|
+    "c.addClass(c);",  Void,"AssertionError",Void,__LINE__);
+tester.testSrc(0'|class[static]A{} class [static] B {}|
+    0'|c := self.embryo(T("C",""),0,1,T);|
+    "c.addClass(A);c.addClass(B);",  Void,"AssertionError",Void,__LINE__);
+tester.testSrc(0'|var R; class [static]A{} c := self.embryo(T("C",""),0,1,T);|
+    "c.addClass(A);c.addClass(A);",Void,"AssertionError",Void,__LINE__);
+tester.testSrc(0'|var R; c := self.embryo(T("C",""),0,1,T);|
+    "c.addClass(c.container);",Void,"TypeError",Void,__LINE__);
+tester.testSrc(0'|var R; c := self.embryo(T("C",""),0,1,T);|
+    0'|d := self.embryo(T("D",""),0,1,T);|
+    "c.addClass(d); d.addClass(c);",Void,"AssertionError",Void,__LINE__);
+tester.testSrc(0'|var R; C := self.embryo(T("C",""),0,1,T);|
+    "class E {} C.addClass(E);", Void,"AssertionError",Void,__LINE__);
+tester.testSrc(0'|var R; C := self.embryo(T("C",""),0,1,T);|
+    0'|D := self.embryo(T("D",""),0,1,T); E := self.embryo(T("E",""),0,0,T);|
+    "E=E.cook(); C.addClass(E); D.addClass(E);",
+    Void,"AssertionError",Void,__LINE__);
+tester.testSrc(0'|var R; C := self.embryo(T("C",""),0,1,T);|
+    0'|D := self.embryo(T("D",""),0,1,T); E := self.embryo(T("E",""),0,0,T);|
+    "E=E.cook();"
+    "C.addClass(E.copy()); D.addClass(E.copy()); C=C.cook(); D=D.cook();"
+    "R = (D.E.container.id == D.id)", Void,Void,True,__LINE__);
+tester.testSrc(0'|var R; C := self.embryo(T("C",""),0,1,T);|
+    0'|D := self.embryo(T("D",""),0,1,T);|
+    "C.addClass(D); D.addClass(C);", Void,"AssertionError",True,__LINE__);
+tester.testSrc(0'|var R; C := self.embryo(T("C",""),0,0,T);|
+    0'|D := self.embryo(T("D",""),0,0,T); D=D.cook();|
+    "C.addClass(D);", Void,"AssertionError",True,__LINE__);
+tester.testSrc(0'|D := self.embryo(T("D",""),0,1,T);|  // missing class
+    0'|var R; C := self.embryo(T("C",""),0,0,T(D));|,
+    Void,"AssertionError",True,__LINE__);
+
+
+    	/////////////////// embryo parents
+tester.testSrc(0'|c := self.embryo(T("C",""),0,0,1); c.addParent(Void);|,
+    Void,"TypeError",Void,__LINE__);
+tester.testSrc(0'|c := self.embryo(T("C",""),0,0,T(c));|,
+    Void,"TypeError",Void,__LINE__);
+tester.testSrc(0'|var R; class A{} self.embryo(T("C",""),0,0,T(A));|,
+    Void,Void,Void,__LINE__);
+tester.testSrc(0'|var R; class A{ var a } C:=self.embryo(T("C",""),0,0,T(A));|
+    0'|D:=self.embryo(T("D",""),0,0,T(A));|
+    "C=C.cook(); D=D.cook(); R = (C.A != D.A);",
+    Void,Void,True,__LINE__);
+tester.testSrc(0'|var R; class A {} C := self.embryo(T("C",""),0,0,T(A));|
+    0'|D:=self.embryo(T("D",""),0,0,T(A.copy()));|,
+    Void,Void,Void,__LINE__);
+
+//!!!!this doesn't seem like a good thing
+tester.testSrc(0'|var R; class AP{}  A:=self.embryo(T("A",""),0,0,T(AP));|
+    0'|C := self.embryo(T("C",""),0,1,T(A));|
+    "C.addClass(A);",Void,Void,Void,__LINE__);
+tester.testSrc(0'|var R; A:=self.embryo(T("A",""),0,0,T);|
+    0'|C := self.embryo(T("C",""),0,1,T(A));|
+    "C.addClass(A);",Void,Void,Void,__LINE__);
+tester.testSrc(0'|var R; class AP{} A:=self.embryo(T("A",""),0,1,T(AP));|
+    0'|C:=self.embryo(T("C",""),0,1,T(A));|	// A is missing classes
+    "C.addClass(A);",Void,"AssertionError",Void,__LINE__);
+
+    	//  all parents in parent tree copies?
+tester.testSrc(0'|var R = Compiler.Parser.RootClass.BaseClass.linearizeParents|
+    0'|.apply("isEve");|,Void,Void,T(True,False,False),__LINE__);
+
+
+	// what is a blank embryo made of?
+tester.testSrc(0'|c := self.embryo(L("C","","v"),0,0,T);|	// 1 var
+    "var R = (L()+c.vars+c.fcns+c.classes+c.parents).toString(*,10)",
+    Void,Void,0'|L(L(L("v",Void)),L(),L(),L())|,__LINE__);
+tester.testSrc(0'|c := self.embryo(L("C",""),2,0,T);|		// 2 fcns
+    "var R = (L()+c.vars+c.fcns+c.classes+c.parents).toString()",
+    Void,Void,"L(L(),L(Fcn(nullFcn),Fcn(nullFcn)),L(),L())",__LINE__);
+
+tester.testSrc(0'|c := self.embryo(L("C",""),0,2,T);|		// 2 classes
+    "var R = (L()+c.vars+c.fcns+c.classes+c.parents).toString()",
+    Void,Void,"L(L(),L(),L(Class(NullClass),Class(NullClass)),L())",__LINE__);
+tester.testSrc(0'|c := self.embryo(L("C",""),0,2,T);|		// 2 classes
+    "var R = c.classes[0].container",Void,Void,Void,__LINE__);
+tester.testSrc(0'|c := self.embryo(L("C",""),0,2,T);|		// 2 classes
+    "var R = c.classes[1].container",Void,Void,Void,__LINE__);
+
+tester.testSrc(0'|c:=self.embryo(L("C",""),0,0,T(NullClass,NullClass));|, // 2 parents
+   Void,"AssertionError",Void,__LINE__);	// dup parent
+tester.testSrc(0'|c:=self.embryo(L("C",""),0,0,T(NullClass,self));| // 2 parents
+    "var R = c.parents[0].container",Void,Void,Void,__LINE__);
+tester.testSrc(0'|c := self.embryo(L("C",""),0,0,T(NullClass));|
+    "var R = c.parents[0].topdog.name",Void,Void,"NullClass",__LINE__);
+
+	// copy an incomplete embryo
+tester.testSrc(0'|c := self.embryo(L("C",""),2,0,T); c=c.cook();|  // 2 fcns
+    "var R = c.copy().toString()",Void,Void,"Class(C)",__LINE__);
+
+tester.testSrc(0'|c := self.embryo(L("C",""),0,1,T);|	// 1 class
+    "var R = c.copy()",Void,"AssertionError",Void,__LINE__);
+tester.testSrc(0'|c := self.embryo(L("C",""),0,1,T);|	// 1 class
+    "class [static] D{} c.addClass(D); c=c.cook(); c.copy(); var R;",
+    Void,Void,Void,__LINE__);
+tester.testSrc(0'|c := self.embryo(L("C",""),0,1,T);|	// 1 class
+    "class D { var v; } c.addClass(D.copy()); var R;",
+    Void,"AssertionError",Void,__LINE__);
+#if 0
+tester.testSrc(0'|c := self.embryo(L("C",""),0,1,T);|	// 1 class
+    "var R = c.copy().name",Void,Void,"C",__LINE__);
+tester.testSrc(0'|c := self.embryo(L("C",""),0,1,T);|	// 1 class
+    "var R = c.copy().container",Void,Void,Void,__LINE__);
+tester.testSrc(0'|c := self.embryo(L("C",""),0,1,T);|	// 1 class
+    "var R = c.copy().classes[0]",Void,Void,NullClass,__LINE__);
+#endif
+
+tester.testSrc(0'|class A{} c:=self.embryo(L("C",""),0,0,T(A));| // 1 parent
+    "var R = c.copy()",Void,"AssertionError",Void,__LINE__);
+tester.testSrc(0'|class [static] A{}|				 // 1 parent
+    0'|c:=self.embryo(L("C",""),0,0,T(A)); c=c.cook(); c.copy(); var R;|,
+    Void,Void,Void,__LINE__);
+tester.testSrc("class D { var v; } var R;"
+    0'|c:=self.embryo(L("C",""),0,0,T(D));|,		// 1 parent
+    Void,Void,Void,__LINE__);
+tester.testSrc("class D { var v; } var R;"
+    0'|c:=self.embryo(L("C",""),0,0,T(D.copy()));|,	// 1 parent
+    Void,Void,Void,__LINE__);
+
+tester.testSrc("class [static] D{}"
+    0'|c:=self.embryo(L("C",""),0,1,T(D));|	// 1 class, 1 parent
+    "var R = c.copy()",Void,"AssertionError",Void,__LINE__);
+
+    	// embryo topdog
+tester.testSrc(0'|A := self.embryo(T("A",""),0,1,T);|
+    0'|B := self.embryo(T("B",""),0,0,T); B=B.cook();|
+    "A.addClass(B);A=A.cook(); var R = A.B.topdog.name;",
+    Void,Void,"B",__LINE__);
+tester.testSrc(0'|A := self.embryo(T("A",""),0,1,T);|
+    0'|B := self.embryo(T("B",""),0,0,T); B=B.cook();|
+    "A.addClass(B); A=A.cook(); var R = A.copy().B.topdog.name;",
+    Void,Void,"B",__LINE__);
+
+tester.testSrc(0'|class C{ var v; class D{ var v }}|
+    0'|var e=embryo(T("E",""),0,0,T(C.D)); e=e.cook();|
+    "var R=C.D.topdog.name",Void,Void,"D",__LINE__);
+tester.testSrc(0'|class C{ var v; class D{ var v }}|
+    0'|var e=embryo(T("E",""),0,0,T(C.D.copy())); e=e.cook();|
+    "var R=C.D.topdog.name",Void,Void,"D",__LINE__);
+
+tester.testSrc(0'|klass:=self.embryo(L("","","foo"),0,0,T);|
+    0'|klass.cook().resolve("badbadbad");|, Void,"NotFoundError",Void,__LINE__);
+
+
+		///////////////////////////////////// AKA
+tester.testSrc("AKA(X); X();","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("AKA(X); class C {}; var R = X.C; R = R.name;",Void,Void,"C",__LINE__);
+tester.testSrc("AKA(C); { var R; L(C.R = 5); }",Void,Void,5,__LINE__);
+
+
+	//////////////////////////// Late binding
+	////////////////// Class() doesn't need to force late binding
+tester.testSrc("class C{ } C.foo;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class C{ var foo=123; } var R=C.foo;",Void,Void,123,__LINE__);
+tester.testSrc("class C{ } C().foo;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class C{ var foo=123; } var R=C().foo;",Void,Void,123,__LINE__);
+tester.testSrc("class C{ class D{} } C.D.foo;","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("class C{ returnClass(self) } C.foo;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class C{ returnClass(self) } C().foo;",Void,"NotFoundError",Void,__LINE__);
+
+tester.testSrc("class C{ class D{} } C().D().foo;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class C{ class D{ var d=123; } } var R=C.D.d;",Void,Void,123,__LINE__);
+tester.testSrc("class C{ class D{ var d=123; } } var R=C.D().d;",Void,Void,123,__LINE__);
+tester.testSrc("class C{ class D{ var d=123; } } var R=C().D.d;",Void,Void,123,__LINE__);
+tester.testSrc("class C{ class D{ var d=123; } } var R=C().D().d;",Void,Void,123,__LINE__);
+
+tester.testSrc("Exception.Generic().foo;",Void,"NotFoundError",Void,__LINE__);
+
+tester.testSrc("class C(Exception.Generic) { fcn init{} }"
+	"C().Generic.foo;","SyntaxError",Void,Void,__LINE__);
+
+
+#if 0
+	////////////////////////////// asILayDying, GC
+tester.testSrc("var R; class { fcn asILayDying {R=1} }();"
+    "do(2) { GarbageMan.collect(); }", Void,Void,1);
+tester.testSrc("var R; class C { fcn asILayDying {R=1}}class C2(C){}();"
+    "do(2) { GarbageMan.collect(); }", Void,Void,1);
+tester.testSrc("var R=0;"
+    "class C { fcn asILayDying {R+=1} class C2 { fcn asILayDying { R+=10 }}}"
+    "class C2(C){}();"
+    "do(2) { GarbageMan.collect(); }", Void,Void,11);
+tester.testSrc("var R; class C { var v=3; fcn asILayDying {R=v} }();"
+    "do(2) { GarbageMan.collect(); }", Void,Void,3);
+#endif
+
+
+	////////////////////////////// .setVar
+tester.testSrc("var R; class C {var x=55} R = C.setVar(0,123);",
+   Void,Void,123,__LINE__);
+tester.testSrc("var R; class C {var x} C.setVar(0,123); R = C.x",
+   Void,Void,123,__LINE__);
+tester.testSrc("var R; class C {var x} C.setVar(1);", Void,"IndexError",Void,__LINE__);
+tester.testSrc("var R; class C {var x} C.setVar(1,5);",Void,"IndexError",Void,__LINE__);
+
+tester.testSrc("var R; class C {var x} C.setVar(\"x\",123); R=C.x",
+   Void,Void,123,__LINE__);
+tester.testSrc("var R; class C {var x=3} R = C.setVar(\"x\")",Void,Void,3,__LINE__);
+tester.testSrc("class C {var x} C.setVar(\"y\",123);",Void,"NotFoundError",Void,__LINE__);
+tester.testSrc("class C {var x} C.setVar(\"y\");",    Void,"NotFoundError",Void,__LINE__);
+
+tester.testSrc("class C{var x} class C2(C){} C2.setVar(\"x\",5);"
+   "var R = C2.x;",Void,Void,5,__LINE__);
+tester.testSrc("class C(Exception.Exception){ fcn init{}}"
+   "var R = C.setVar(\"text\",123);", Void,Void,123,__LINE__);
+
+tester.testSrc("class C { fcn f{var v; v}}"
+   0'|C.setVar("",123); var R=C.f();|, Void,"NotFoundError",Void,__LINE__);
+
+tester.testSrc("class C { fcn f{ var v; }}"
+   0'|C.setVar(0,123);|, Void,"AssertionError",Void,__LINE__);
+tester.testSrc("class C { var [private] v }"
+   0'|C.setVar(0,123);|, Void,"AssertionError",Void,__LINE__);
+tester.testSrc("class C { var [const] v }"
+   0'|C.setVar(0,123);|, Void,"AssertionError",Void,__LINE__);
+
+
+	//////////////////////////////////////////////// NullClass
+tester.testSrc("var R = NullClass.container;",Void,Void,Void,__LINE__);
+tester.testSrc("var R = NullClass.topdog;",Void,Void,NullClass,__LINE__);
+tester.testSrc("var R = NullClass.isStatic;",Void,Void,True,__LINE__);
+tester.testSrc("NullClass();",Void,"AssertionError",Void,__LINE__);
+tester.testSrc("var R=(NullClass.id==NullClass.copy().id);",
+   Void,Void,True,__LINE__);
+
+
+	//////////////////////////////////////////////////////// sGet
+tester.testSrc("class C {} var R = C[0]", Void,"NotImplementedError",Void,__LINE__);
+tester.testSrc("class C { fcn __sGet(n) { 3 + n }} var R = C[5]",
+    Void,Void,8,__LINE__);
+tester.testSrc("class C { fcn __sGet{return(1,2,3)}} a,b,c:=C[10];"
+     "var R=String(a,b,c);",Void,Void,"123",__LINE__);
+
+
+	//////////////////////////////////////////////////////// Optomize
+tester.testSrc("class C { fcn init{} } var R=C.init.code.code.bytes();",
+   Void,Void,L(171,0),__LINE__);		// --> self/done
+tester.testSrc("class C { fcn init{ var r; }} var R=C.init.code.code.bytes();",
+   Void,Void,L(171,0),__LINE__);		// --> self/done
+tester.testSrc("class C { fcn init{reg r=1;}} var R=C.init.code.code.bytes();",
+   Void,Void,	// --> allocRegisters(1)/1/setReg0/self/done
+   L(150,1,201,226,171,0),__LINE__);
+tester.testSrc("class [static] C {fcn init{}} var R=C.init.code.code.bytes();",
+   Void,Void,L(171,0),__LINE__);		// self/done
+
+   	// bug: try/catch isn't relocatable
+tester.testSrc("var R; class C { fcn init { try { throw(Exception.BadDay) }"
+   "catch(one){} catch(BadDay) { R=5 }}} C();",
+   Void,Void,5,__LINE__);
+
+
+tester.testSrc("class C {} var R=C.__constructor.container().isInstanceOf(C);",
+   Void,Void,True,__LINE__);
+
+
+#if 0
+   	////////////////////////////////////////////// runMe functions
+tester.testSrc(0'|class C { fcn runMe { 123 } }|
+    "var R = C().toString();",Void,Void,"Class(C)",__LINE__);
+tester.testSrc(0'|class C { var v; fcn runMe { 123 } }|
+    "var R = C().toString();",Void,Void,"Class(C)",__LINE__);
+tester.testSrc(0'|class C { fcn runMe { 123 } } var R = C()();|,
+    Void,Void,123,__LINE__);
+tester.testSrc(0'|var R; class C { R=5; fcn runMe { R=666 } }|,Void,Void,5,__LINE__);
+
+tester.testSrc("class FComp{"
+    0'|fcn init{var [const] fs = vm.arglist.reverse(); }|
+    0'|fcn runMe(_) { return(vm.arglist.apply(fs)[0]) }}|
+    0'|var R=FComp(Op("+",1),Op("*",2),Op("-",3)); R=R(10);|,
+    Void,Void,15,__LINE__);
+#endif
+
+    	////////////////////////////////////////////// .fullName
+tester.testSrc("var R = Exception.IndexError.fullName;",
+    Void,Void,"TheVault.Exception.IndexError",__LINE__);
+tester.testSrc("var R = TheVault.Exception.IndexError.fullName;",
+    Void,Void,"TheVault.Exception.IndexError",__LINE__);
+
+
+    	/////////////////////////////////////////// trampolines
+tester.testSrc("class C { fcn len {5}} c := C; var R=c.len()",
+    Void,Void,5,__LINE__);
+tester.testSrc("class C { fcn len {5}} c := C; var R=c.len.toString()",
+    Void,Void,"Fcn(len)",__LINE__);
+tester.testSrc("class C { var len=5} c := C; var R=c.len",Void,Void,5,__LINE__);
+
+tester.testSrc("class C {} c := C; var R=c.len()",Void,Void,0,__LINE__);
+tester.testSrc("class C{ fcn len{ 5 }} c:=C; var R=c.BaseClass.len()",
+    Void,Void,0,__LINE__);
+
+tester.testSrc("class C {fcn toInt{5}} c := C; var R=c.toInt()",
+    Void,Void,5,__LINE__);
+tester.testSrc("class C {fcn toInt{5}} class D(C) {} d:=D; var R=d.toInt()",
+    Void,Void,5,__LINE__);
+tester.testSrc("class C {fcn toInt{5}} c := C; var R=c.BaseClass.toInt()",
+    Void,"NotImplementedError",Void,__LINE__);
+
+tester.testSrc("class C { fcn toFloat{1.0}} c := C; var R=c.toFloat()",
+    Void,Void,1.0,__LINE__);
+tester.testSrc("class C { fcn toFloat{1.0}} c := C; var R=c.BaseClass.toFloat()",
+    Void,"NotImplementedError",Void,__LINE__);
+
+tester.testSrc("class C { fcn isType{123}} c := C; var R=c.isType(4)",
+    "SyntaxError",Void,123,__LINE__);
+tester.testSrc("class C{fcn isInstanceOf{123}} c:=C; var R=c.isInstanceOf(4)",
+    "SyntaxError",Void,123,__LINE__);
+
+    	/////////////////////////////////////////// .copy(True)
+tester.testSrc("class C{ var v=5 } var R=C.copy(True).v;",Void,Void,5,__LINE__);
+tester.testSrc("class C{ var v=5 } var R=C.copy(False).v;",Void,Void,Void,__LINE__);
+tester.testSrc("class C{ var v=T } var R=C.copy(True).v;",Void,Void,T,__LINE__);
+
+
+    			////////////// bug
+tester.testSrc("class C{} var R = C()().toString();",Void,Void,"Class(C)",__LINE__);
+tester.testSrc("var R=class C{}()(); R=R.toString();",Void,Void,"Class(C)",__LINE__);
+
+
+
+tester.stats();
+returnClass(tester);

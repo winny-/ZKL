@@ -1,0 +1,409 @@
+/* -*-c-*-
+ manifest.zkl : manage a bunch of files
+ sync dir:  build dir (ie install to dir)
+ build zip archive (--zip)
+ */
+
+/* Take a look at manifest (in this directory) for an example, this doc
+ *   sucks.
+ * Manifest format:
+ * # comment, blank lines ignored
+ * File names:
+ *   bunch per line, can be globs
+ *   "foo bar" : file name with blanks: one per line, with quotes
+ *    C:/ZKL/VM/Release/::zkl.exe
+ *       src is C:/ZKL/VM/Release/zkl.exe, dst is $dst/zkl.exe
+ *       No wildcards
+ *    (src,dst), one per line Can contain vars.  If dst doesn't have vars,
+ *      $zipDst is prepended 
+ *      No wildcards
+ * Vars:
+ *   Defining: $name=value, white space around = is fine, one per line
+ *   Using: ${name}  can be buried
+ *   Predefined:
+ *     $here: Directory manifest file is in. Set for each manfest file,
+ *        which can be nested.
+ *     $packageName: filename.zip, where to store bits. No quotes
+ *       Default is "package.zip", you might want something like
+ *       $packageName = zkl_tests.zip
+ *     $root: cwd
+ *     $zipDst: Directory, where you want to unpack a zip file to.
+ *       Usually determined by the current directory, redefine to change.
+ * [files]
+ *     file names, globs OK, one or many on line, blank lines OK
+ *     "file name with spaces in it", one per line, quotes mandatory
+ * [manifests]
+ *    Other manifest files to parse
+ * ????{ zkl code } --> String | ?, if string, parse in place
+ * ??? ! fcn foo(manifest) { }!
+ * ??? !foo(self)!
+ */
+
+argh := Utils.Argh(
+L("+sync","","Sync manifest files to a directory"),
+L("+pull","","Pull manifest files from a directory"),
+L("+check","","Check manifest against a directory"),
+L("zip","z","Package files into a zip file"),
+L("+since","","List files newer than date (yyyy-mm-dd)"),
+L("+mkdirs","","Create the directory skeleton rooted at arg"),
+L("+dir","","Glob the found files. eg --dir '*.zkl'. Case sensitive."),
+);
+parsedArgs := argh.parse(vm.arglist);
+
+    // a wacked hack: am I going to zip up a package?
+var [const] zipptyDooDah = parsedArgs.filter1(fcn(v){v[0]=="zip"});
+
+include(zkl.h.zkl);
+
+const c2 = "::";	// rather rank
+const PACKAGE_NAME = "package.zip";	// default
+
+var files = L(), manifests = L(), packageName, zipDst;
+
+var [const] varRE = RegExp(0'|($\S+)\s*=\s*(\S*)|);	// $name = [value]
+var [const] vars  = Dictionary("$packageName",PACKAGE_NAME, "$zipDst",Void,
+		      "$root",System.cwd);
+selfVars := T("$packageName","$zipDst");
+
+var [const] buffer = Data(0d50_000);
+
+fcn parseManifest(mname,filenames,manifests,preamble){
+   vars["$here"] = String(System.cwd,"/",File.splitFileName(mname)[1]);
+   dst  := Utils.BlackHole;
+   file := File(mname,"r");
+   foreach lineNum,line in ([1..].zip(file)){
+      line = line.strip();
+      if (not line or line[0] == "#") continue;
+      if (line[0] == "[") switch(line){
+	 case("[files]")     { dst = filenames; continue; }
+	 case("[manifests]") { dst = manifests; continue; }
+	 else throw(Exception.NameError("%s: Line %d: %s: Unknown directive"
+	            .fmt(mname,lineNum,line)));
+      };
+      if (line[0] == "$") addVar(vars,line);
+      else if (line.matches(0'|(*)|)){		// (foo,bar)
+	 if (zipptyDooDah) dst.append(line[1,-1].split(",").apply("strip"));
+	 else
+	    line[1,-1].split(",").apply("strip").apply(expandVars)
+		    .apply(canonize) : dst.append(_);
+      }
+      else if (line.matches(0'|"*"|)) dst.extend(line[1,-1]);	// "foo bar"
+      else dst.extend(line.split());
+   }
+   file.close();
+}
+
+if (not argh.loners){
+   argh.usage("manifest manifestFile option");
+   throw(Exception.BadDay("Hey, where is that manifest file?!?"));
+}
+manifestFile := argh.loners[0];
+parseManifest(manifestFile,files,manifests,"");
+
+    // propagate select user vars back into self
+    // eg $packageName=foo --> self.setVar("packageName","foo")
+selfVars.apply2(fcn(nm) { self.setVar(nm[1,*],vars[nm]) });
+
+fcn addVar(d,text){
+   if (not varRE.search(text)) 
+      throw(Exception.BadDay("I don't understand this var: %s".fmt(text)));
+   matched:=varRE.matched;
+   d.add(matched[1],expandVars(matched[2]));
+}
+
+fcn getPath(fname){ File.splitFileName(fname)[0,2].concat(); }
+preamble := getPath(manifestFile);
+
+files = normalizeNames(files,preamble);
+
+while(manifests){	// works for nested manifests
+   reg names = L(), m2 = L();
+   foreach manifest in (manifests){
+      foreach manifest in (File.glob(preamble+manifest))
+      {
+	 reg f=L(), m=L();
+	 parseManifest(manifest,f,m,preamble);
+	 reg path = getPath(manifest);
+//       names.extend(normalizeNames(f,preamble+path));
+	 names.extend(normalizeNames(f,path));
+	 if (m)	// new manifests
+	    m2.extend(m.apply(fcn(name,path){ path+name },path));
+      }
+   }
+   files = files.extend(names);
+   manifests = m2;
+}
+
+if (not files)
+   throw(Exception.BadDay("Hey, what is with that manifest?!? No files"));
+
+origFiles := files.copy();	// save uncanonized file names for zip
+
+fcn dedup(files){    // Remove possible duplicates
+   a,b := files.filter22(String.isType);	// --> T(names,lists)
+   dfiles := Dictionary();
+   a.apply2(dfiles.add,Void);
+   dfiles.keys.extend(b);
+}
+files = dedup(files.apply(canonize));
+println("Found ",files.len()," files.");
+
+    // Expand wildcards, etc.
+    // --> list of valid file names
+fcn normalizeNames(names,path){	// --> ROList
+   newNames := L();
+   names.apply2(
+      fcn(name,path,newNames){
+	 if (T.isType(name)) { newNames.append(name); return(); }
+	 if (Void != name.find(c2)){
+	    a,b := name.split(c2);
+	    return(newNames.append(T(a+b,b)));
+	 }
+	 fn := path + name;
+	 if (not (g := File.glob(fn,FILE.GLOB.NO_DIRS)))	// *.zkl is OK
+	    throw(Exception.ValueError("%s is not a valid file name".fmt(fn)));
+	 newNames.extend(g);
+      }
+      ,path,newNames);
+//   newNames.apply(canonize);
+   newNames
+}
+
+fcn canonize(fname){	// half assed
+   	// not "*../foo" or "*./foo" == no need to modify
+   if (Void == fname.find("../") == fname.find("./")) return(fname);
+
+   newParts := L();
+   parts    := fname.split("/");
+   if (parts and not parts[0]) newParts = L("");	// leading slash
+   foreach part in (parts){
+      switch(part){
+	 case(".","") {}	// ignore
+	 case("..")   { try { newParts.pop() } catch { newParts.append("..") }}
+         else         { newParts.append(part); }
+      }
+   }
+   newParts.concat("/");
+}
+
+if (parsedArgs){
+   a,b := parsedArgs[0];	// L(L("sync","\Transfer\ZKL"))
+   switch(a){
+      case("sync")  { sync(b,files,True);  }
+      case("check") { sync(b,files,False); }
+      case("pull")  { pull(b,files);	   }
+      case("since") { since(b,files);	   }
+      case("mkdirs"){ mktree(b,files);	   }
+      case("zip"){
+	 if (preamble){
+	    p := File.glob(preamble,FILE.GLOB.ONLY_ONE);
+	    if (not preamble)
+	       throw(Exception.ValueError("Uhhh, where is that (%s)?".fmt(preamble)));
+	    preamble = p[0];
+	 }
+	 reg files = origFiles;
+	 if (zipDst){	// files --> L( (src,dst) ... )
+	    if ("/" != zipDst[-1] != "\\") zipDst += "/";
+	    files = origFiles.apply(fcn(f,dst,preamble){
+	       reg f2;
+	       if (T.isType(f)){  // T("C:/ZKL/VM/Release/zkl.exe","zkl.exe")
+//!!! I most likely broke this
+		  f,f2 = f;
+		  if (Void != f .find("$")) f  = expandVars(f);
+		  if (Void != f2.find("$")) f2 = expandVars(f2);
+		  else 			    f2 = String(dst,f2);
+		  return(f,f2);
+	       }
+	       else{	// Tests/loop.zkl --> (Tests.loop.zkl,$zipDst/loop.zkl)
+		  f2 = f.replace(preamble,"",1);
+		  return(f,canonize(String(dst,f2)));
+	       }
+	    },zipDst,preamble);
+	    files = dedup(files);
+	 }
+	 else files = dedup(files.apply(canonize));
+
+	 zipper := Import("LibSrc/ZeeLib/zipper");
+	 zipper.zipFiles(files,packageName);
+      }
+      case("dir"){
+         println("dir ",b,":");
+	 dir:=files.pump(List,'wrap(name){
+	    if(T.isType(name)) name=name[1];
+	    if(b.glob(name,0)) name else Void.Skip;
+	 }).sort();
+	 dir.pump(Console.println);
+	 println(dir.len()," files");
+      }
+   }
+}
+
+fcn expandVars(name){
+    // $n=v ... X${n}Y --> XvY
+   var [const] rev = RegExp(0'|.*${(\w+)}|);
+
+   if (rev.search(name)){
+      k := rev.matched[1]; v := vars["$"+k];
+      name = name.replace(String("${",k,"}"),v);
+      return(self.fcn(name));	// loop for nested vars
+   }
+   return(name);
+}
+
+fcn sync(directory,files,write){
+   if (not File.isDir(directory)){     // just in case the entire tree missing
+      println("Target directory \"",directory,"\" doesn't exist. Use --mkdirs");
+      return(False);
+   }
+
+   println("Will check ",files.len()," files ...");
+
+   if(not checkDirs(directory,files)) System.exit(1);
+
+   foreach srcName in (files){
+      reg inSync = True, srcDate;
+      reg dstName = (directory + "/" + srcName);
+
+      if (T.isType(srcName)){	// T("C:/ZKL/VM/Release/zkl.exe","zkl.exe")
+      				// T(location on disk, location in zip)
+#if 1
+println("Ignoring pair: ",srcName[0]); continue;
+#else
+println("Ignoring: ",srcName);
+	 srcName, dstName = srcName;
+	 dstName = String(directory,"/",dstName);
+#endif
+      }
+
+      if (not File.exists(dstName))
+         { print("File not found: ",dstName); inSync = False; }
+      else{
+	 srcDate =  File.info(srcName)[2];
+	 dstDate := File.info(dstName)[2];
+	 if (srcDate != dstDate)
+	 {
+	    if (srcDate > dstDate) inSync = False;
+	    print("Date mismatch for ",srcName,": Src is ",
+	       (srcDate > dstDate) and "newer" or "older");
+	    if (inSync) println();
+	 }
+      }
+      if (not inSync){
+	 if (write){
+	    print(" ... writing");
+	    fin,fout:= File(srcName,"rb"),File(dstName,"wb");
+	    fin.pump(buffer,fout); fin.close(); fout.close();
+	    if (not srcDate) srcDate = File.info(srcName)[2];
+	    File.setModTime(dstName,srcDate);
+	 }
+	 println();
+      }
+   }
+}
+
+fcn pull(directory,files){
+   if (not File.isDir(directory)){
+      println("Target directory \"",directory,"\" doesn't exist.");
+      return(False);
+   }
+
+   println("Will check ",files.len()," files ...");
+
+   foreach fname in (files){
+      reg inSync = True, srcDate;
+      reg srcName = (directory + "/" + fname);
+      if (not File.exists(srcName)) print("File not found: ",srcName);
+      else{
+	 srcDate = File.info(srcName)[2];
+	 dstDate := File.info(fname)[2];
+	 if (srcDate != dstDate)
+	 {
+	    if (srcDate > dstDate) inSync = False;
+	    print("Date mismatch for ",srcName,". Src is ",
+	       (srcDate > dstDate) and "newer" or "older");
+	    if (inSync) println();
+	 }
+      }
+      if(not inSync){
+	 print(" ... Reading");
+//	 f := File(srcName,"rb"); data := f.read(); f.close();
+//	 f = File(fname,"wb"); f.write(data); f.close();
+	 fin,fout := File(srcName,"rb"), File(fname,"wb");
+	 fin.pump(buffer,fout); fin.close(); fout.close();
+	 if (not srcDate) srcDate = File.info(srcName)[2];
+	 File.setModTime(fname,srcDate);
+      }
+      println();
+   }
+}
+
+fcn since(date,files){
+   Date := Import("Time.Date");
+   Date.parseDate(date) : Time.Clock.mktime((_).xplode(),0,0,0) : day1 := _;
+
+   delta := (Time.Clock.time - day1) / 86400;  // sec --> days
+   println("Files changed since ",Date.ctime(day1)," (",delta," days ago):");
+
+   sinceList := L();
+   foreach srcName in (files){
+      reg srcDate;
+
+      if (T.isType(srcName)){	// T("C:/ZKL/VM/Release/zkl.exe","zkl.exe")
+//here is where we have the problem of multiple manifests defining the same var
+//println("??????????????????? ",srcName);
+	 #if 0
+	    srcName = srcName[1];	// src
+	 //	 if (Void != srcName.find("$")) srcName = canonize(expandVars(srcName));
+	 #else
+	    println("Ignoring ",srcName);
+	    continue;
+	 #endif
+      }
+
+      srcDate =  File.info(srcName)[2];
+//      if (srcDate > day1) println("  ",srcName);
+      if (srcDate > day1) sinceList.append(srcName);
+   }
+   sinceList.sort().apply2(Console.println.fp("  "));
+}
+
+fcn listMissingDirs(dstDir,srcFiles){
+   dirs := Dictionary();	// remove dups of which there are lots
+#if 0
+   srcFiles.pump(dirs.incV, fcn(nm){
+      if(T.isType(nm)) nm = nm[1];  // T("C:/ZKL/VM/Release/zkl.exe","zkl.exe")
+#else
+   srcFiles.pump(dirs.incV, String.isType,Void.Filter, fcn(nm){
+#endif
+      dir:=File.splitFileName(nm)[0,2].concat();
+      dir and dir or Void.Skip
+   });
+   dirs.howza(8).pump(List,'wrap(dir){
+      dir = String(dstDir,"/",dir);
+      if(not File.isDir(dir)) dir else Void.Skip
+   });
+}
+
+fcn mktree(dstDir,srcFiles){
+#if 0
+   File.mkdir_p(dstDir,True);
+   foreach srcName in (files){
+      if (T.isType(srcName))	// T("C:/ZKL/VM/Release/zkl.exe","zkl.exe")
+	 srcName=srcName[1];
+      File.mkdir_p(getPath(String(dstDir,"/",srcName)),True);
+   }
+#else
+   File.mkdir_p(dstDir,True);
+   foreach dir in (listMissingDirs(dstDir,srcFiles)){ File.mkdir_p(dir,True) }
+#endif
+}
+
+fcn checkDirs(dstDir,srcFiles){
+   println("Checking destination directories ...");
+   dirs:=listMissingDirs(dstDir,srcFiles);
+   if(dirs){
+      println(dirs.len()," missing directories:\n   ",dirs.concat("\n   "));
+      println("Use option --mkdirs to create");
+   }
+   (not dirs.toBool())
+}

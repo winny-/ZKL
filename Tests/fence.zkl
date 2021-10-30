@@ -1,0 +1,403 @@
+// -*-c-*-
+// Test onExit, onExitBlock, critical, a little bit of Lock
+
+tester := TheVault.Test.UnitTester.UnitTester(__FILE__);
+
+
+		////////////////////////////////////// critical
+tester.testSrc("var R; critical   { R = 1; }",Void,Void,1,__LINE__);
+tester.testSrc("var R; critical() { R = 1; }",Void,Void,1,__LINE__);
+tester.testSrc("critical(lock) { R = 1; }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("lock = Atomic.Lock(); critical(lock) { }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("reg lock = Atomic.Lock(); critical(lock) { }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R,lock; critical(lock) { R = 1; }",Void,"NotFoundError",Void,__LINE__);
+tester.testSrc("var lock = Atomic.Lock(); critical(lock,foo) { }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var lock = Atomic.Lock(); critical(lock,a,b,c) { }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R,lock = Atomic.WriteLock(); "
+    "critical(lock,acquireForReading,readerRelease) {R=1 }",Void,Void,1,__LINE__);
+tester.testSrc("var R,lock = Atomic.Lock(); "
+    "critical(lock) { R=lock.isLocked }",Void,Void,True,__LINE__);
+tester.testSrc("var R,lock = Atomic.Lock(); "
+    "critical(lock) {} R=lock.isLocked",Void,Void,False,__LINE__);
+tester.testSrc("var R,lock = Atomic.Lock(); "
+    "try{critical(lock) {throw(Exception.BadDay)}} catch {}"
+    "R=lock.isLocked",Void,Void,False,__LINE__);
+tester.testSrc("var R,lock = Atomic.Lock(); "
+    "fcn f { critical(lock) { return() }} f();"
+    "R=lock.isLocked;",Void,Void,False,__LINE__);
+tester.testSrc("var R; { reg lock; } critical(lock) { R = 1; }","SyntaxError",Void,Void,__LINE__);
+
+	// bugs
+tester.testSrc("var R;critical{ foreach n in (7){slider:=L();} }",Void,Void,Void,__LINE__);
+tester.testSrc("var R;fcn f(z){ var foo; foo=z;"
+    "critical{ R=foo } }(123);",Void,Void,123,__LINE__);
+
+
+		////////////////////////////////// Lock
+tester.testSrc("var R,lock=Atomic.Lock(); critical(lock) { R = 1; }",
+	Void,Void,1,__LINE__);
+
+tester.testSrc(
+   "var lock = Atomic.Lock(), R = \"\";"
+   "R += lock.isLocked;"
+   "critical(lock) { R += lock.isLocked; }"
+   "R += lock.isLocked;", Void,Void,"FalseTrueFalse",__LINE__);
+
+tester.testSrc(		// throw in middle of critical
+   "var lock = Atomic.Lock(), R = \"\";"
+   "R += lock.isLocked;"
+   "try { critical(lock) { R.foo(); R += lock.isLocked; }}catch{}"
+   "R += lock.isLocked;", Void,Void,"FalseFalse",__LINE__);
+
+tester.testSrc(		// throw in middle of critical
+   "var lock = Atomic.Lock(), R = \"\";"
+   "R += lock.isLocked;"
+   "try { critical(lock) { throw(Exception.BadDay); }}catch{}"
+   "R += lock.isLocked;", Void,Void,"FalseFalse",__LINE__);
+
+tester.testSrc(		// throw uncatchable in middle of critical
+   "var lock = Atomic.Lock(), R = \"\";"
+   "R += lock.isLocked;"
+   "try { critical(lock) { throw(Exception.KissOfDeath); }}catch(0){}"
+   "R += lock.isLocked;", Void,Void,"FalseFalse",__LINE__);
+
+tester.testSrc(		// return in critical
+   "var lock = Atomic.Lock(), R;"
+   "fcn foo { critical(lock) { return(); } }();"
+   "R = lock.isLocked;", Void,Void,False,__LINE__);
+
+tester.testSrc(		// break in critical
+   "var lock = Atomic.Lock(), R;"
+   "do(10) { critical(lock) { break; } }"
+   "R = lock.isLocked;", Void,Void,False,__LINE__);
+
+tester.testSrc(		// break in critical
+   "var lock = Atomic.Lock(), R;"
+   "while (True) { critical(lock) { break; } }"
+   "R = lock.isLocked;", Void,Void,False,__LINE__);
+
+tester.testSrc(		// continue in critical
+   "var lock = Atomic.Lock(); var R,i=0;"
+   "while (i < 1) { critical(lock) { i += 1; continue; } }"
+   "R = lock.isLocked;", Void,Void,False,__LINE__);
+
+tester.testSrc(
+   "var R = \"\", lock = Atomic.Lock();"
+   "class X {"
+   "  fcn init { critical(lock) { R += lock.isLocked; } returnClass(1); }"
+   "} X(); R += lock.isLocked;",
+   Void,Void,"TrueFalse",__LINE__);
+
+
+   	// see if return can bypass exit fcn (tailcall)
+tester.testSrc("var R; var lock = Atomic.Lock();"
+   "fcn foo { R = lock.isLocked; }"
+   "fcn bar { critical(lock) { foo(); return(); } }();",
+   Void,Void,True,__LINE__);
+tester.testSrc("var R; var lock = Atomic.Lock();"
+   "fcn foo { R = lock.isLocked; }"
+   "fcn bar { critical(lock) { return(foo()); } }();",
+   Void,Void,False,__LINE__);
+tester.testSrc("var R; var lock = Atomic.Lock();"
+   "fcn foo {} fcn bar { critical(lock) { return(foo()); } }();"
+   "R = lock.isLocked;",Void,Void,False,__LINE__);
+
+tester.testSrc("var R;"
+   "fcn f { onExit(fcn{R=1}); } fcn g{return(f())} g();",Void,Void,1,__LINE__);
+tester.testSrc("var R; fcn setR{R=1}"
+   "fcn f { onExit(fcn{return(setR())}); } fcn g{return(f())} g();",Void,Void,1,__LINE__);
+
+
+   		////////////////////////////////////// onExit
+tester.testSrc("var R; fcn f { try { onExit(fcn{R=123}) } catch {}}();",
+    Void,Void,123,__LINE__);
+
+tester.testSrc("var R; fcn f { onExit(fcn{R=123}) }();", Void,Void,123,__LINE__);
+tester.testSrc("var R; fcn f { return(); onExit(fcn{R=123}) }();",
+    Void,Void,Void,__LINE__);
+
+tester.testSrc(0'|fcn {onExit(fcn{1/0});onExit(vm.resolve,"xx");}();|
+    "var R = 123;",Void,Void,123,__LINE__);
+tester.testSrc(0'|var R; fcn {onExit(fcn{1/0; R = 5;})}();|,Void,Void,Void,__LINE__);
+tester.testSrc(0'|var R; fcn {onExit(fcn{1/0}); onExit(fcn{R = 6}); }();|,
+    Void,Void,6,__LINE__);
+
+tester.testSrc("var R; fcn{onExit(fcn{R=vm.xxception.name;})}();"
+    0'|throw(Exception.BadDay("f8"));|,Void,"BadDay",Void,__LINE__);
+
+tester.testSrc(0'|var R="";|
+    "fcn { onExit(fcn{R+=1}); onExit(fcn{R+=2;onExit(fcn{R+=3});});"
+    "      onExit(fcn{R+=4});}();",Void,Void,"1234",__LINE__);
+
+tester.testSrc(0'|var R; fcn f{ onExit(fcn{R=5}); 666}|
+    "R=f();",Void,Void,666,__LINE__);
+tester.testSrc(0'|var R;fcn f { {onExitBlock(fcn{R=5}); return(666)}}|
+    "R=f();",Void,Void,666,__LINE__);
+
+tester.testSrc(0'|var R;|
+    "fcn f{onExit(fcn{R=5; throw(Exception.BadDay); });"
+    "     throw(Exception.Generic);}  try{f()}catch{}",Void,Void,5,__LINE__);
+
+tester.testSrc("var R;"
+   "fcn f{ onExit(fcn{R=vm.xxception.name}); throw(Exception.BadDay); }"
+   "try{f()}catch{}",Void,Void,"BadDay",__LINE__);
+tester.testSrc("var R=2;"
+   "fcn f{ onExit(fcn{R=vm.xxception}); throw(Exception.KissOfDeath); }"
+   "try{f()}catch(0){}",Void,Void,True,__LINE__);
+
+tester.testSrc("var R; class C { onExit(fcn{R=1}); }",Void,Void,1,__LINE__);
+
+tester.testSrc("var R; fcn f(a) { if (a) { onExit(fcn{R=1}) }}"
+    "f(0);", Void,Void,Void,__LINE__);
+tester.testSrc("var R; fcn f(a) { if (a) { onExit(fcn{R=1}) }}"
+    "f(1);", Void,Void,1,__LINE__);
+
+tester.testSrc("a:= Atomic.Bool(); b:= Atomic.Bool(); onExit(a.set());"
+   "var R=self.fcn.idFcn(fcn(b){onExit(b.set);})(b); R=b.value;",
+   Void,Void,True,__LINE__);
+tester.testSrc("a:= Atomic.Bool(); b:= Atomic.Bool(); onExit(a.set);"
+   "var R=self.fcn.idFcn(fcn(b){onExit(b.set);})(b); R=a.value;", 
+   Void,Void,False,__LINE__);
+
+tester.testSrc("a:= Atomic.Bool(); b:= Atomic.Bool(); onExit(a.set);"
+   "var R=self.fcn.idFcn('wrap(a){"
+//      0'|println("HOHO11 ",vm.arglist,self.fcn.prototype);|
+      "onExit(b.set);"
+   "})(666); R=b.value;", Void,Void,True,__LINE__);
+tester.testSrc("a:= Atomic.Bool(); b:= Atomic.Bool(); onExit(a.set);"
+   "var R=self.fcn.idFcn('wrap(a){"
+//      0'|println("HOHO11 ",vm.arglist,self.fcn.prototype);|
+      "onExit(b.set);"
+   "})(666); R=a.value;", Void,Void,False,__LINE__);
+
+
+   		////////////////////////////////////// onExitBlock
+tester.testSrc("var R; onExitBlock(fcn{R=1});",Void,Void,1,__LINE__);
+
+tester.testSrc(0'|var R=0;|
+    "fcn { while(1) { onExitBlock(fcn{R+=1;}); break; }}();",
+    Void,Void,1,__LINE__);
+tester.testSrc(0'|var R=0; do(2) { onExitBlock(fcn{R+=1}); continue; }|,
+    Void,Void,2,__LINE__);
+tester.testSrc(0'|var R,lock = Atomic.Lock();|
+    "do(10) { lock.acquire(); { onExitBlock(lock.release); break; } }"
+    "R = lock.isLocked;",Void,Void,False,__LINE__);
+tester.testSrc(0'|var R;|
+    "do(10){onExitBlock(fcn{R=4}); try{{{{ break; }}}}catch {} }",
+    Void,Void,4,__LINE__);
+
+
+tester.testSrc(0'|var R; fcn { {onExitBlock(fcn{R=12}); return(); } }();|,
+    Void,Void,12,__LINE__);
+
+tester.testSrc(0'|var R="";{ onExitBlock(fcn{R+=1}); }|
+    "try { onExitBlock(fcn{R+=2}); throw(Exception.BadDay)} catch{}",
+    Void,Void,"12",__LINE__);
+
+tester.testSrc(0'|var R="";|
+    "try { onExitBlock(fcn{R+=1}); } catch{}"
+    "{ onExitBlock(fcn{R+=2}); }",Void,Void,"12",__LINE__);
+
+tester.testSrc(0'|var R;|
+    "fcn f{ {onExitBlock(fcn{R=5});throw(Exception.BadDay());}}"
+    "try { f() } catch {}",Void,Void,5,__LINE__);
+
+tester.testSrc(0'|var R="";|
+    "foreach n in (5) { onExitBlock(fcn(x){R+=x},n); }",Void,Void,"01234",__LINE__);
+
+tester.testSrc(0'|var R; fcn f{ try {onExitBlock(fcn{R=5}); 666} catch {}}|
+    "R=f();",Void,Void,666,__LINE__);
+tester.testSrc(0'|var R;|
+    "fcn f { try {onExitBlock(fcn{R=5}); return(666)} catch {}}"
+    "R=f();",Void,Void,666,__LINE__);
+
+tester.testSrc(0'|var R;|
+    "fcn f(a) { if(a) { onExitBlock(fcn(a){R=a},a); }}(0)", Void,Void,Void,__LINE__);
+tester.testSrc(0'|var R;|
+    "fcn f(a) { if(a) { onExitBlock(fcn(a){R=a},a); }}(3)", Void,Void,3,__LINE__);
+
+tester.testSrc("var R;"
+   "try { onExitBlock(fcn{R=vm.xxception.name}); throw(Exception.BadDay); }"
+   "catch {}", Void,Void,"BadDay",__LINE__);
+
+tester.testSrc("var R; class C { onExitBlock(fcn{R=1}); }",Void,Void,1,__LINE__);
+
+tester.testSrc(0'|var R=""; fcn f{} R+=1; { onExitBlock(fcn{R+=2}); f(); R+=3}|,
+    Void,Void,"132",__LINE__);
+
+tester.testSrc("var R; fcn f(a) { if (a) { onExitBlock(fcn{R=1}) }}"
+    "f(0);", Void,Void,Void,__LINE__);
+tester.testSrc("var R; fcn f(a) { if (a) { onExitBlock(fcn{R=1}) }}"
+    "f(1);", Void,Void,1,__LINE__);
+
+
+   		////////////////////////////////////// onExit mixed
+tester.testSrc(0'|var R="";|
+    "fcn{ do(1){ onExitBlock(fcn{R+=1}); } onExit(fcn{R+=2}); }();",
+    Void,Void,"12",__LINE__);
+tester.testSrc(0'|var R="";|
+    "fcn f{ do(1){onExitBlock(fcn{R+=1}); throw(Exception.BadDay);}"
+    "     onExit(fcn{R+=2}); }"
+    "try{f()}catch{}",Void,Void,"1",__LINE__);
+tester.testSrc(0'|var R="";|
+    "fcn f{ onExit(fcn{R+=2});"
+    "       do(1){onExitBlock(fcn{R+=1}); throw(Exception.BadDay);}}"
+    "try{f()}catch{}",Void,Void,"12",__LINE__);
+
+tester.testSrc(0'|var R="";|
+   "fcn { { onExitBlock(fcn{R+=1}); { onExitBlock(fcn{R+=2}); }"
+   "        onExit(fcn{R+=3}) } }();",Void,Void,"213",__LINE__);
+tester.testSrc(0'|var R="";|
+    "fcn{ {onExit(fcn{R+=1}); onExitBlock(fcn{R+=2});"
+    "     {onExitBlock(fcn{R+=3});} } }();",Void,Void,"321",__LINE__);
+
+tester.testSrc(0'|var R="";|
+    "fcn { try{ onExit(fcn{R+=1}); onExitBlock(fcn{R+=2});"
+    "      { onExitBlock(fcn{R+=3}); } }catch{} }();",Void,Void,"321",__LINE__);
+
+
+    		/////////////////////// tail calls
+tester.testSrc(0'|var R="";|
+    0'|fcn g { R+="g" } fcn f{ onExit(fcn{R+="f"}); g(); } |
+    "f();",Void,Void,"gf",__LINE__);
+tester.testSrc(0'|var R="";|
+    0'|fcn g { R+="g" } fcn f{ onExit(fcn{R+="f"}); while(1){return(g());} } |
+    0'|d:=Data(); f.unasm(d); d.index("tailCall");|  // or tailCallZ
+    "f();",Void,Void,"fg",__LINE__);	// 2 tests
+tester.testSrc(0'|var R="";|
+    0'|fcn g { R+="g" } fcn f{ onExit(fcn{R+="f"}); return(g()) } |
+    "f();",Void,Void,"fg",__LINE__);
+tester.testSrc(0'|var R="";|
+    0'|fcn g { R+="g" }|
+    0'|fcn f{ onExit(fcn{R+="f"}); try{ return(g()) }catch {} } |
+    "f();",Void,Void,"gf",__LINE__);
+
+tester.testSrc(0'|var R=""; fcn g{}|
+    "fcn f{ {onExitBlock(fcn{R+=1}); {onExitBlock(fcn{R+=2}); return(g()) }}}"
+    0'|d:=Data(); f.unasm(d); d.index("tailCall");|
+    "f();",Void,Void,"21",__LINE__);	// 2 tests
+tester.testSrc(0'|var R=""; fcn g{}|
+    "fcn f{ {onExitBlock(fcn{R+=1}); {onExitBlock(fcn{R+=2});g();return(); }}}"
+    "f();",Void,Void,"21",__LINE__);
+
+
+    		/////////////////////// tail recursion
+tester.testSrc(0'|var R=""; fcn factTail(n,N=1)|
+   "{ onExit(fcn(n){R+=n},n);"
+   "  if (n == 0) return(N); return(self.fcn(n - 1,n * N)); }"
+   "factTail(5);", Void,Void,"543210",__LINE__);
+tester.testSrc(0'|var R=""; fcn factTail(n,N=1)|
+   "{ onExitBlock(fcn(n){R+=n},n); "
+   "  if (n == 0) return(N); return(self.fcn(n - 1,n * N)); }"
+   "factTail(5);", Void,Void,"543210",__LINE__);
+tester.testSrc(0'|var R=""; fcn factTail(n,N=1)|
+   "{{ onExitBlock(fcn(n){R+=n},n);"
+   "  if (n == 0) return(N); return(self.fcn(n - 1,n * N)); }}"
+   "factTail(5);", Void,Void,"543210",__LINE__);
+
+
+    		/////////////////////// tail call
+tester.testSrc(0'|var R; fcn g{R=1}|
+    "fcn f{ onExit(fcn{return(g())}); } f();",Void,Void,1,__LINE__);
+
+
+
+   		/////////////// fence
+#if 0
+tester.testSrc("fence {}","SyntaxError");
+tester.testSrc("fence {}Exit","SyntaxError");
+tester.testSrc("foo = 1; fence {} exit{ foo; }","SyntaxError");
+
+tester.testSrc("var R; fence {}exit{R = 1;}",Void,Void,1);
+tester.testSrc("var R;"
+   "try { fence { throw(Exception.BadDay); }exit{R = 1;} }catch {}",
+   Void,Void,1,__LINE__);
+tester.testSrc("var R;"
+   "try { fence { throw(Exception.BadDay); }exit{ R=5;} }"
+   "catch {R = __exception.name;}", Void,Void,"BadDay");
+tester.testSrc("var R;"
+  "try { fence { throw(Exception.KissOfDeath); }exit{R = 1;} }catch(0) {}",
+  Void,Void,1,__LINE__);
+tester.testSrc("var R;"
+  "while (True) {fence{fence{ R = 1; break; }exit{R += 1;}}exit{R += 10;} }",
+  Void,Void,12,__LINE__);
+tester.testSrc("var R = 0;"
+  "while (R==0) {fence{fence{ R = 1; continue; }exit{R += 1;}}exit{R += 10;} }",
+  Void,Void,12,__LINE__);
+tester.testSrc("var R; fcn foo { fence { return(); }exit { R = 1; } }();",
+  Void,Void,1,__LINE__);
+tester.testSrc("var R;"
+  "class { fcn init { fence { returnClass(1); } exit { R = 1; } } }();",
+  Void,Void,1,__LINE__);
+tester.testSrc("var R;"
+  "fence{fence{ R = 1; returnClass(1); }exit{R += 1;}}exit{R += 10;}",
+  Void,Void,12,__LINE__);
+tester.testSrc("var R;"
+  "fcn foo { fence { return(1); } exit { return(2); }} R = foo();", 
+  Void,Void,1,__LINE__);
+
+tester.testSrc("var R=\"\";"
+    "fcn {"
+    "   fence {"
+    "      while(1) {"
+    "         fence {"
+    "		fence { break; } exit { R += 3; }"
+    "	      }exit { R+=2; }"
+    "      }"
+    "	}exit { R+=1; }"
+    "}();", Void,Void,"321");
+tester.testSrc("var R=\"\"; fcn bar { R = \"666\" }"
+    "fcn foo {"
+    "   fence {"
+    "      fence {"
+    "         fence {"
+    "		fence { return(bar()); } exit { R += 4; }"
+    "	      }exit { R+=3; }"
+    "      }exit { R+=2; }"
+    "	}exit { R+=1; }"
+    "} R += foo();", Void,Void,"6664321666");
+
+tester.testSrc("while (1) { fence { } exit { break; } }","SyntaxError");
+tester.testSrc("while (1) { fence { } exit { continue; } }","SyntaxError");
+tester.testSrc("class { fence {} exit { returnClass(1); } }","SyntaxError");
+
+tester.testSrc("var R = 0; fcn { fence { } exit { R += 1; } return(4); }()",
+   Void,Void,1,__LINE__);
+
+tester.testSrc("var R; fcn foo { R = 5 }"
+   "fcn bar { fence { return(foo()); } exit { R = 75; } }();",
+   Void,Void,75,__LINE__);
+tester.testSrc("var R; fcn foo { R = 5 }"
+   "fence { returnClass(foo()); } exit { R = 75; }",
+   Void,Void,75,__LINE__);
+tester.testSrc("var R;"
+   "fcn foo { throw(Exception.BadDay); }"
+   "try {"
+   "  fcn bar { fence { return(foo()); }exit { R=5;} }"
+   "  bar();"
+   "}catch { R = __exception.name; }",Void,Void,"BadDay",__LINE__);
+tester.testSrc("var R;"
+   "fcn foo { throw(Exception.BadDay); }"
+   "try {"
+   "  fcn bar { fence { return(foo()); }exit { R = 1;} }"
+   "  bar();"
+   "}catch {}",Void,Void,1,__LINE__);
+
+   	// exitFcn arglist
+tester.testSrc("var R; fence {  } exit { R = vm.arglist }",Void,Void,T,__LINE__);
+tester.testSrc("var R; try { fence { 1/0 }"
+   "exit { R = vm.numArgs } } catch {}", Void,Void,1,__LINE__);
+tester.testSrc("var R; try { fence { 1/0 }"
+   "exit { R = vm.nthArg(0).name } } catch {}", Void,Void,"MathError",__LINE__);
+
+//!!!!???????????? this is "interesting"
+tester.testSrc("fcn f { fence { 123 } exit {666}}var R=f()",
+   Void,Void,666,__LINE__);
+tester.testSrc("fcn f { fence { return(123) } exit {666}}var R=f()",
+   Void,Void,123,__LINE__);
+
+#endif
+
+
+tester.stats();
+returnClass(tester);

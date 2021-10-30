@@ -1,0 +1,539 @@
+//-*-c-*-
+// number.zkl : test numbers
+
+tester := TheVault.Test.UnitTester.UnitTester(__FILE__);
+
+tester.testSrc("var R; 123;",Void,Void,Void,__LINE__);
+
+tester.testSrc("var R=123; R=R()",Void,Void,123,__LINE__);
+tester.testSrc("var R=123; R=R(5)",Void,Void,5,__LINE__);
+
+tester.testSrc("var R=123.0; R=R()",Void,Void,123.0,__LINE__);
+tester.testSrc("var R=123.0; R=R(5)",Void,Void,5.0,__LINE__);
+
+//!!!! hmmmm
+//tester.testSrc("var R=(123 .toString())",Void,Void,"123",__LINE__);
+
+
+tester.testSrc(0'|var R = "%,d".fmt(9223372036854775807)|,	// MAX
+    Void,Void,"9,223,372,036,854,775,807",__LINE__);
+tester.testSrc(0'|var R = ((0).MAX==9223372036854775807)|,	// MAX
+    Void,Void,True,__LINE__);
+tester.testSrc(0'|var R = "%,d".fmt(-9223372036854775808)|,	// MIN
+    Void,Void,"-9,223,372,036,854,775,808",__LINE__);
+tester.testSrc(0'|var R = ((0).MIN == -9223372036854775808)|,	// MIN
+    Void,Void,True,__LINE__);
+tester.testSrc(0'|var R = (-(0).MIN == (0).MIN)|,		// MIN
+    Void,Void,True,__LINE__);
+tester.testSrc(0'|var R = "%,d".fmt(-9223372036854775807)|,	// MIN+1
+    Void,Void,"-9,223,372,036,854,775,807",__LINE__);
+tester.testSrc(0'|var R = 0xffFFffFFffFFffFF|,Void,Void,-1,__LINE__);
+tester.testSrc(0'|var R = 0x7fFFffFFffFFffFF|,Void,Void,(1).MAX,__LINE__);
+tester.testSrc(0'|var R = 0x8000000000000000|,Void,Void,(1).MIN,__LINE__);
+tester.testSrc(0'|var R = (-1).toString(32);|,Void,Void,"fvvvvvvvvvvvv",__LINE__);
+tester.testSrc(0'|var R = (0-1).toInt().toString(32);|,Void,Void,"fvvvvvvvvvvvv",__LINE__);
+tester.testSrc(0'|var R = (123).toString();|,Void,Void,"123",__LINE__);
+tester.testSrc(0'|var R = "fvvvvvvvvvvvv".toInt(32);|,Void,Void,-1,__LINE__);
+tester.testSrc(0'|var R = "7vvvvvvvvvvvv".toInt(32);|,Void,Void,(1).MAX,__LINE__);
+tester.testSrc(0'|var R = (-1).toString(2);|, Void,Void,
+    "1111111111111111111111111111111111111111111111111111111111111111",__LINE__);
+tester.testSrc(0'|var R = (1).MIN.toString(16).toInt(16);|,Void,Void,(1).MIN,__LINE__);
+
+
+tester.testSrc("var R=1_234;",  Void,Void,1234,__LINE__);
+tester.testSrc("var R=0d1_234;",Void,Void,1234,__LINE__);
+tester.testSrc("var R=0d1|234;",Void,Void,1234,__LINE__);
+tester.testSrc("var R=0x12|34;",Void,Void,0x1234,__LINE__);
+tester.testSrc("var R=0b10|01;",Void,Void,0x9,__LINE__);
+tester.testSrc("var R=1_234.5;",Void,Void,1234.5,__LINE__);
+tester.testSrc("var R=_1234;","SyntaxError",Void,1234.5,__LINE__);
+tester.testSrc("var R=(1+_1234);","SyntaxError",Void,1234.5,__LINE__);
+tester.testSrc("var R=(_1234+1);","SyntaxError",Void,1234.5,__LINE__);
+
+
+		/////////////// RosettaCode
+tester.testSrc(0'|var R = -(-9223372036854775807-1);|,
+    Void,Void,-9223372036854775808,__LINE__);
+tester.testSrc(0'|var R = 5000000000000000000+5000000000000000000;|,
+    Void,Void,-8446744073709551616,__LINE__);
+tester.testSrc(0'|var R = -9223372036854775807 - 9223372036854775807;|,
+    Void,Void,2,__LINE__);
+tester.testSrc(0'|var R = 3037000500 * 3037000500;|,
+    Void,Void,-9223372036709301616,__LINE__);
+//!!!! core dumper on Unix
+//tester.testSrc(0'|var R = (-9223372036854775807-1) / -1;|,
+//    Void,Void,-9223372036709301616,__LINE__);
+
+
+tester.testSrc(0'|var R = 1; R=R.type; |,Void,Void,"Int",__LINE__);
+tester.testSrc(0'|var R = 1.0; R=R.type; |,Void,Void,"Float",__LINE__);
+tester.testSrc(0'|var R = 0x1; R=R.type; |,Void,Void,"Int",__LINE__);
+
+		////////////////////////// floating point hex
+tester.testSrc(0'|var R = 0x1.2;|,Void,Void,1.125,__LINE__);
+tester.testSrc(0'|var R = 0x1.2788cfc6fb618f4cp-1;|
+  "R=R.closeTo(0.577216,0.000001);", Void,Void,True,__LINE__);
+
+
+tester.testSrc(0'|var R = 0x1_0; |,Void,Void,0x10,__LINE__);
+tester.testSrc(0'|var R = 0d1_000; |,Void,Void,1000,__LINE__);
+tester.testSrc(0'|var R = 0b1100_0000;|,Void,Void,0xc0,__LINE__);
+tester.testSrc(0'!var R = 0b1100|0000;!,Void,Void,0xc0,__LINE__);
+tester.testSrc(0'!var R = 0xC|0;!,Void,Void,0xc0,__LINE__);
+
+
+	// check to see if floats are tokenized correctly
+tester.testSrc("var R = 0.1;",Void,Void, 0.1,__LINE__);
+tester.testSrc("var R = .1;","SyntaxError",Void, 0.1,__LINE__);
+tester.testSrc("var R = -0.1;",Void,Void, -0.1,__LINE__);
+tester.testSrc("var R = -.1;","SyntaxError",Void, -0.1,__LINE__);
+tester.testSrc("var R = 123.123;",Void,Void, 123.0 + 123.0 / 1000,__LINE__);
+tester.testSrc("var R = 0.123;",Void,Void, 123.0 / 1000,__LINE__);
+tester.testSrc("var R = .123;","SyntaxError",Void, 123.0 / 1000,__LINE__);
+tester.testSrc("var R = 3.141592653589793238462643383279502884197169399375;",
+    Void,Void,(0.0).pi,__LINE__);
+tester.testSrc("var R = (0.0).pi;",Void,Void,
+    3.141592653589793238462643383279502884197169399375,__LINE__);
+tester.testSrc("var R = 1.;","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var R=1.e1; R=R.isType(1.0);",Void,Void,True,__LINE__);
+tester.testSrc("var R=1.0e1; R=R.isType(1.0);",Void,Void,True,__LINE__);
+tester.testSrc("var R=1.0e+1; R=R.isType(1.0);",Void,Void,True,__LINE__);
+tester.testSrc("var R=1.0e-1; R=R.isType(1.0);",Void,Void,True,__LINE__);
+tester.testSrc("var R=1.e+1; R=R.isType(1.0);",Void,Void,True,__LINE__);
+tester.testSrc("var R=1.e-1; R=R.isType(1.0);",Void,Void,True,__LINE__);
+tester.testSrc("var R=1.E-1; R=R.isType(1.0);",Void,Void,True,__LINE__);
+tester.testSrc("var R=12.E-1; R=R.isType(1.0);",Void,Void,True,__LINE__);
+tester.testSrc("var R=12..E-1; R=R.isType(1.0);","SyntaxError",Void,True,__LINE__);
+
+tester.testSrc("var R=1e1; R=R.isType(1.0);",Void,Void,True,__LINE__);
+tester.testSrc("var R=123e3;",Void,Void,123000.0,__LINE__);
+tester.testSrc("var R=123e+3;",Void,Void,123000.0,__LINE__);
+tester.testSrc("var R=123e-3;",Void,Void,0.123,__LINE__);
+tester.testSrc("var R=1e-1;",Void,Void,0.1,__LINE__);
+
+
+tester.testSrc("var R = 1.2 + 3;",Void,Void, 4.2,__LINE__);
+tester.testSrc("var R = 3 + 1.2;",Void,Void, 4,__LINE__);
+
+
+tester.testSrc("var R = (3.0).hypot(4.0);",Void,Void,5.0,__LINE__);
+tester.testSrc("var R = (0.5).sqrt();",Void,Void,0.70710678118654757,__LINE__);
+tester.testSrc("var R = (45.0).toRad().sin();",Void,Void,0.70710678118654746,__LINE__);
+tester.testSrc("var R = (45.0).toRad().cos();",Void,Void,(0.5).sqrt(),__LINE__);
+
+tester.testSrc("var R = (1000.0).log10();",Void,Void,3.0,__LINE__);
+tester.testSrc("var R = (0.0).e.pow(3).log();",Void,Void,3.0,__LINE__);
+
+tester.testSrc("var R = (123.321).modf();",
+    Void,Void,ROList(123,123.321 - 123.0),__LINE__);
+tester.testSrc("var R = (-123.321).modf();",
+    Void,Void,ROList(-123,-123.321 + 123.0),__LINE__);
+tester.testSrc("var R = (-123.321).modf(True);",
+    Void,Void,ROList(-123, 123.321 - 123.0),__LINE__);
+
+
+tester.testSrc("var R = (123 % 3);",     Void,Void,0,__LINE__);
+tester.testSrc("var R = (123 % 10);",    Void,Void,3,__LINE__);
+tester.testSrc("var R = (123.0 % 10);",  Void,Void,3.0,__LINE__);
+tester.testSrc("var R = (123.0 % 10.0);",Void,Void,3.0,__LINE__);
+
+tester.testSrc("1/0",Void,"MathError",Void,__LINE__);
+//tester.testSrc("(-1.0).log()",Void,"MathError",Void,__LINE__);
+tester.testSrc("var R=(-1.0).log(); R=R.toString().holds(\"nan\")",Void,Void,True,__LINE__);
+		// .create, PtrInts
+tester.testSrc("var R=123; R=R(5)",Void,Void,5,__LINE__);
+
+		// Methods, PtrInts
+tester.testSrc("var R=123; R=R.dir.toString()",Void,Void,"Method(Int.dir)",__LINE__);
+tester.testSrc("var R=123; R=R.dir.instance",Void,Void,123,__LINE__);
+tester.testSrc("var R=(7).toString();",Void,Void,"7",__LINE__);
+
+		// MemInt bugs
+tester.testSrc("var R=(7).walker().next();",Void,Void,0,__LINE__);
+//tester.testSrc("var R=(7).toList();(123).toList();R=R[0];",Void,Void,7,__LINE__);
+tester.testSrc("var R=(7).toList;(123).toList;R=R.instance;",Void,Void,7,__LINE__);
+tester.testSrc("p:=Thread.Pipe();p.write(7); var R=p.read();",Void,Void,7,__LINE__);
+
+		// Properties, PtrInts
+tester.testSrc("var R=123; R=R.Property(\"name\").toString()",
+	Void,Void,"Property(Int.name)",__LINE__);
+tester.testSrc("var R=123; R=R.Property(\"name\").instance",
+	Void,Void,123,__LINE__);
+
+tester.testSrc(0'|var R=T(2,3).pump(List,"toList");|,
+	Void,Void,T((2).walker().walk(99), (3).walker().walk(99)),__LINE__);
+tester.testSrc(0'|var R=T(4,5).pump(List,"isEven");|,
+	Void,Void,T(True,False),__LINE__);
+
+tester.testSrc(0'|var R=(7).fp("copy"); R=R.BaseClass.f;|, Void,Void,7,__LINE__);
+tester.testSrc(0'|var R=(7).walker(); R=R.instance;|, Void,Void,0,__LINE__);
+
+
+			/////////////////////// nan, inf
+tester.testSrc("var R=1.0/0;",Void,Void,(1.0).inf,__LINE__);
+tester.testSrc("var R=(1.0/0 == (1.0).inf);",Void,Void,True,__LINE__);
+tester.testSrc("var R=1.0/0; R=R.toString()",Void,Void,"inf",__LINE__);
+tester.testSrc("var R=0.0/0; R=R.toString().holds(\"-nan\")",Void,Void,True,__LINE__);
+tester.testSrc("var R=0.0/0; R=\"%2f\".fmt(R).holds(\"-nan\")",Void,Void,True,__LINE__);
+
+
+
+	/////////////////////////////// .bit ops, .num1s, .numDigits
+tester.testSrc("var R=5; R=R.bitNot()",	Void,Void,-6,__LINE__);
+tester.testSrc("var R=5; R=R.bitNot().bitNot()",Void,Void,5,__LINE__);
+
+tester.testSrc("var R=(0).num1s",Void,Void,0,__LINE__);
+tester.testSrc("var R=(0xffff|ffff|ffff|ffff).num1s",Void,Void,64,__LINE__);
+
+tester.testSrc("var R=(0xffff|0000|0000|0000);"
+   "do(40){if (R.num1s != 16) break; R=R.shiftRight(1) }; R=R.num1s;",
+    Void,Void,16,__LINE__);
+tester.testSrc("var R=(0xff00|0000|0000|0000);"
+   "do(40){if (R.num1s != 8) break; R=R.shiftRight(1) }; R=R.num1s;",
+    Void,Void,8,__LINE__);
+tester.testSrc("var R=(0xf000|0000|0000|0000);"
+   "do(40){if (R.num1s != 4) break; R=R.shiftRight(1) }; R=R.num1s;",
+    Void,Void,4,__LINE__);
+tester.testSrc("var R=(0x1000|0000|0000|0000);"
+   "do(40){if (R.num1s != 1) break; R=R.shiftRight(1) }; R=R.num1s;",
+    Void,Void,1,__LINE__);
+
+tester.testSrc("var R=(1).shiftRight(-1);",Void,Void,0,__LINE__);
+tester.testSrc("var R=(1).shiftRight(0);", Void,Void,1,__LINE__);
+
+
+tester.testSrc("var R=(1);"
+   "do(40){if (R.num1s != 1) break; R=R.shiftLeft(1) }; R=R.num1s;",
+    Void,Void,1,__LINE__);
+tester.testSrc("var R=(0xf);"
+   "do(40){if (R.num1s != 4) break; R=R.shiftLeft(1) }; R=R.num1s;",
+    Void,Void,4,__LINE__);
+tester.testSrc("var R=(0xff);"
+   "do(40){if (R.num1s != 8) break; R=R.shiftLeft(1) }; R=R.num1s;",
+    Void,Void,8,__LINE__);
+tester.testSrc("var R=(0xa6);"
+   "do(40){if (R.num1s != 4) break; R=R.shiftLeft(1) }; R=R.num1s;",
+    Void,Void,4,__LINE__);
+
+tester.testSrc("var R=(1).shiftLeft(-1);",Void,Void,0,__LINE__);
+tester.testSrc("var R=(1).shiftLeft(0);", Void,Void,1,__LINE__);
+
+tester.testSrc("var R=(1).MAX.numDigits;",Void,Void,19,__LINE__);
+tester.testSrc("var R=(1).MIN.numDigits;",Void,Void,19,__LINE__);
+tester.testSrc("var R=(0).numDigits;",Void,Void,1,__LINE__);
+tester.testSrc("var R=(1).numDigits;",Void,Void,1,__LINE__);
+tester.testSrc("var R=(-1).numDigits;",Void,Void,1,__LINE__);
+tester.testSrc("var R=(10).numDigits;",Void,Void,2,__LINE__);
+tester.testSrc("var R=(-10).numDigits;",Void,Void,2,__LINE__);
+tester.testSrc("var R=(835273728).numDigits;",Void,Void,9,__LINE__);
+
+
+		////////////////////////////////////// ==, !=
+tester.testSrc("var R = (0 == 0);",Void,Void,True,__LINE__);
+tester.testSrc("var R = (1 == 0);",Void,Void,False,__LINE__);
+tester.testSrc("var R = (0 != 0);",Void,Void,False,__LINE__);
+tester.testSrc("var R = (1 != 0);",Void,Void,True,__LINE__);
+
+tester.testSrc("var R = (0.0 != 1.0);",Void,Void,True,__LINE__);
+
+tester.testSrc("var R = (1 == 1.0);",Void,Void,True,__LINE__);
+tester.testSrc("var R = (1 == 1.5);",Void,Void,True,__LINE__);
+tester.testSrc("var R = (1 == \"1\");",Void,Void,False,__LINE__);
+tester.testSrc("var R = (1 == True);",Void,Void,False,__LINE__);
+tester.testSrc("var R = (1 == False);",Void,Void,False,__LINE__);
+tester.testSrc("var R = (0 == True);",Void,Void,False,__LINE__);
+
+   // 2 ^ 32 == 4,294,967,296, 5111222333, ie bigger than a PtrInt (31 bits)
+tester.testSrc("var R = (5111222333 == 5111222333.0);",Void,Void,True,__LINE__);
+tester.testSrc("var R = (5111222333 == 5111222333.5);",Void,Void,True,__LINE__);
+tester.testSrc("var R = (5111222333 == \"5111222333\");",Void,Void,False,__LINE__);
+tester.testSrc("var R = (5111222333 == True);",Void,Void,False,__LINE__);
+
+tester.testSrc("var R = (1 != 1.0);",Void,Void,False,__LINE__);
+tester.testSrc("var R = (1 != \"1\");",Void,Void,True,__LINE__);
+tester.testSrc("var R = (1 != False);",Void,Void,True,__LINE__);
+tester.testSrc("var R = (1 != True);",Void,Void,True,__LINE__);
+
+tester.testSrc("var R = (5111222333 != 1);",Void,Void,True,__LINE__);
+tester.testSrc("var R = (5111222333 != 5111222333.0);",Void,Void,False,__LINE__);
+tester.testSrc("var R = (5111222333 != \"5111222333\");",Void,Void,True,__LINE__);
+
+
+tester.testSrc("var R = (1.0 == 1);",Void,Void,True,__LINE__);
+tester.testSrc("var R = (1.5 == 1);",Void,Void,False,__LINE__);
+tester.testSrc("var R = (1.0 == \"1\");",Void,Void,False,__LINE__);
+tester.testSrc("var R = (1.0 == True);",Void,Void,False,__LINE__);
+tester.testSrc("var R = (1.0 == False);",Void,Void,False,__LINE__);
+tester.testSrc("var R = (0.0 == True);",Void,Void,False,__LINE__);
+
+tester.testSrc("var R = (1.0 != 1);",Void,Void,False,__LINE__);
+tester.testSrc("var R = (1.0 != \"1\");",Void,Void,True,__LINE__);
+tester.testSrc("var R = (1.0 != False);",Void,Void,True,__LINE__);
+tester.testSrc("var R = (1.0 != True);",Void,Void,True,__LINE__);
+
+tester.testSrc("var R = (123   == 123.0);",Void,Void,True,__LINE__);
+tester.testSrc("var R = (123.0 == 123);",  Void,Void,True,__LINE__);
+
+
+		/////////////////////////////////// logic
+tester.testSrc("var R = (1 < 2);", Void,Void,True,__LINE__);
+tester.testSrc("var R = (1 < 1);", Void,Void,False,__LINE__);
+tester.testSrc("var R = (1 <= 1);",Void,Void,True,__LINE__);
+tester.testSrc("var R = (2 > 1);", Void,Void,True,__LINE__);
+tester.testSrc("var R = (2 >= 2);",Void,Void,True,__LINE__);
+
+tester.testSrc("var R = (1.0 < 2.0);", Void,Void,True,__LINE__);
+tester.testSrc("var R = (1.0 < 1.0);", Void,Void,False,__LINE__);
+tester.testSrc("var R = (1.0 <= 1.0);",Void,Void,True,__LINE__);
+tester.testSrc("var R = (2.0 > 1.0);", Void,Void,True,__LINE__);
+tester.testSrc("var R = (2.0 >= 2.0);",Void,Void,True,__LINE__);
+
+
+		///////////////////////////// .toBigEndian, .toLittleEndian
+tester.testSrc("var R = (0x123456).toLittleEndian(3);",
+    Void,Void,L(0x56,0x34,0x12),__LINE__);
+tester.testSrc("var R = (0x123456).toLittleEndian(1);",Void,Void,L(0x56),__LINE__);
+
+tester.testSrc("var R = (0x123456).toBigEndian(3);",
+    Void,Void,L(0x12,0x34,0x56),__LINE__);
+tester.testSrc("var R = (0x123456).toBigEndian(1);",Void,Void,L(0x56),__LINE__);
+
+				///// .random
+tester.testSrc("var R=(1).random(0,10); R = (R>=0 and R<10);",Void,Void,True,__LINE__);
+tester.testSrc("var R=(1).random(0.0,1.0); R=(R >= 0.0 and R < 1.0);",
+    Void,Void,True,__LINE__);
+
+
+		///////////////////////// .isEven, .isOdd
+tester.testSrc("var R=(122).isEven;",Void,Void,True,__LINE__);
+tester.testSrc("var R=(123).isEven;",Void,Void,False,__LINE__);
+tester.testSrc("var R=(123).isOdd;",Void,Void,True,__LINE__);
+tester.testSrc("var R=(122).isOdd;",Void,Void,False,__LINE__);
+
+tester.testSrc("var R=fcn{ (1).isOdd() }();",Void,Void,True,__LINE__);
+tester.testSrc("var R; fcn f{ (4).isEven() } R=f();",Void,Void,True,__LINE__);
+
+
+		///////////////////////// .len()
+tester.testSrc("var R=(1).MAX.len();",Void,Void,8,__LINE__);
+tester.testSrc("var R=(1).MIN.len();",Void,Void,8,__LINE__);
+tester.testSrc("var R=(0).len();",Void,Void,1,__LINE__);
+tester.testSrc("var R=(1).len();",Void,Void,1,__LINE__);
+tester.testSrc("var R=(0xff).len();",Void,Void,1,__LINE__);
+tester.testSrc("var R=(-0xff).len();",Void,Void,8,__LINE__);
+tester.testSrc("var R=(0xffff).len();",Void,Void,2,__LINE__);
+
+tester.testSrc("var R=(1).MAX.len(10);",Void,Void,19,__LINE__);
+tester.testSrc("var R=(1).MIN.len(10);",Void,Void,20,__LINE__);
+tester.testSrc("var R=((1).MIN+1).len(10);",Void,Void,20,__LINE__);
+tester.testSrc("var R=(1).MIN.len(2);",Void,Void,64,__LINE__);
+tester.testSrc("var R=(0xffff).len(16);",Void,Void,4,__LINE__);
+tester.testSrc("var R=(0xffff).len(2);",Void,Void,16,__LINE__);
+
+tester.testSrc("var R=(0).len(2);",Void,Void,1,__LINE__);
+tester.testSrc("var R=(0).len(10);",Void,Void,1,__LINE__);
+
+tester.testSrc("var R=(1.0).len();",Void,Void,8,__LINE__);
+
+
+		////////////////////////////////////////////////// .log2
+tester.testSrc("var R=(0xffff).log2();",Void,Void,15,__LINE__);
+tester.testSrc("var R=(0).log2();",Void,Void,0,__LINE__);
+tester.testSrc("var R=(2).log2();",Void,Void,1,__LINE__);
+tester.testSrc("var R=(0).MAX.log2();",Void,Void,62,__LINE__);
+tester.testSrc("var R=(0).MIN.log2();",Void,Void,63,__LINE__);
+
+
+		////////////////////////////////////////////////// .lsb
+tester.testSrc("var R=(0xffff).lsb();",Void,Void,0,__LINE__);
+tester.testSrc("var R=(0).log2();",Void,Void,0,__LINE__);
+tester.testSrc("var R=(2).lsb();",Void,Void,1,__LINE__);
+tester.testSrc("var R=(-1).lsb();",Void,Void,0,__LINE__);
+tester.testSrc("var R=(-2).lsb();",Void,Void,1,__LINE__);
+tester.testSrc("var R=(0x800).lsb();",Void,Void,11,__LINE__);
+
+
+		///////////////////////////////////////////////// .abs
+tester.testSrc("var R=(0).abs();",Void,Void,0,__LINE__);
+tester.testSrc("var R=(-2).abs();",Void,Void,2,__LINE__);
+tester.testSrc("var R=(0).abs(-2);",Void,Void,2,__LINE__);
+tester.testSrc("n:=-2; var R=(n).abs();",Void,Void,2,__LINE__);
+tester.testSrc("n:=-2; var R=(5).abs(n);",Void,Void,2,__LINE__);
+
+
+		///////////////////////////////////////////////// .sign
+tester.testSrc("var R=(0).sign;",Void,Void,0,__LINE__);
+tester.testSrc("var R=(123).sign;",Void,Void,1,__LINE__);
+tester.testSrc("var R=(-123).sign;",Void,Void,-1,__LINE__);
+
+
+		///////////////////////// bugs
+tester.testSrc("var R; (123).size;",Void,Void,Void,__LINE__);
+tester.testSrc("var R; 0x8.size;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R = 0x8.toString();", "SyntaxError",Void,"8",__LINE__);
+tester.testSrc("var R = -0x8.toString();","SyntaxError",Void,"8",__LINE__);
+tester.testSrc("var R = 1e3.toString();", "SyntaxError",Void,"1000",__LINE__);
+
+
+		///////////////////////////////////////////////// .reduce
+tester.testSrc("var R=(3).reduce('+,0);",Void,Void,3,__LINE__);
+tester.testSrc("var R=(3).reduce(3,'+,0);",Void,Void,12,__LINE__);
+
+
+		///////////////////////////////////////////////// .pump
+tester.testSrc("var R=(3).pump(List,123);",Void,Void,T(123,123,123),__LINE__);
+tester.testSrc("var R=(2).pump(List,1.5);",Void,Void,T(1.5,1.5),__LINE__);
+
+tester.testSrc("var R=(2).pump(List().write,123);",Void,Void,T(123,123),__LINE__);
+tester.testSrc("var R=(2).pump(List().write,123).isReadOnly;",Void,Void,False,__LINE__);
+
+
+		/////////////////////////////////////////////////////// .split
+tester.testSrc("var R=(123).split();",Void,Void,T(1,2,3),__LINE__);
+tester.testSrc("var R=(0xabc).split(16);",Void,Void,T(10,11,12),__LINE__);
+tester.testSrc("var R=(0xabc).split(36); R=R[0]*36*36+R[1]*36+R[2];",Void,Void,0xabc,__LINE__);
+tester.testSrc("var R=(5).split(2);",Void,Void,T(1,0,1),__LINE__);
+
+
+		/////////////////////////////////// .toChar, .toString, .text
+tester.testSrc("var R=(0xc9).toString(-8);",Void,Void,"\Uc9;",__LINE__);
+tester.testSrc("var R=(0x9).toString(2);",Void,Void,"1001",__LINE__);
+tester.testSrc("var R=(0xff).toString(16);",Void,Void,"ff",__LINE__);
+
+tester.testSrc("var R=(0x31).toChar();",Void,Void,"1",__LINE__);
+tester.testSrc("var R=(0x31).text;",Void,Void,"1",__LINE__);
+
+
+		/////////////////////////////////////////////////// .min, .max
+tester.testSrc("var R=(0).min(1,2,3);",Void,Void,0,__LINE__);
+tester.testSrc("var R=(5).min(1,2,3);",Void,Void,1,__LINE__);
+tester.testSrc("var R=(0).min(T(1,2,3));",Void,Void,1,__LINE__);
+tester.testSrc("var R=(5).min(L(1.0,2,3));",Void,Void,1,__LINE__);
+
+tester.testSrc("var R=(0.0).min(1,2,3);",Void,Void,0.0,__LINE__);
+tester.testSrc("var R=(5.0).min(1,2,3);",Void,Void,1.0,__LINE__);
+tester.testSrc("var R=(0.0).min(T(1.0,2.0,3.0));",Void,Void,1.0,__LINE__);
+tester.testSrc("var R=(5.0).min(L(1,2,3));",Void,Void,1.0,__LINE__);
+tester.testSrc("var R=(5.0).min(L(2,1,3));",Void,Void,1.0,__LINE__);
+
+tester.testSrc("var R=(0).max(1,2,3);",Void,Void,3,__LINE__);
+tester.testSrc("var R=(5).max(1,2,3);",Void,Void,5,__LINE__);
+tester.testSrc("var R=(0).max(T(1.0,2,3));",Void,Void,3,__LINE__);
+tester.testSrc("var R=(5).max(L(1,2,3));",Void,Void,3,__LINE__);
+
+tester.testSrc("var R=(0.0).max(1,2,3);",Void,Void,3.0,__LINE__);
+tester.testSrc("var R=(5.0).max(1,2,3);",Void,Void,5.0,__LINE__);
+tester.testSrc("var R=(0.0).max(T(1,2,3));",Void,Void,3.0,__LINE__);
+tester.testSrc("var R=(5.0).max(L(1,2,3));",Void,Void,3.0,__LINE__);
+
+tester.testSrc("var R=(5).minMax(L(1,2,3));",Void,Void,T(1,3),__LINE__);
+tester.testSrc("var R=(5).minMax(1,2,3);",Void,Void,T(1,5),__LINE__);
+tester.testSrc("var R=(5).minMax(1,2,3,7);",Void,Void,T(1,7),__LINE__);
+tester.testSrc("var R=(5).minMax(L(1.23,2.45,3.67));",Void,Void,T(1,3),__LINE__);
+tester.testSrc("var R=(5).minMax(1);",Void,Void,T(1,5),__LINE__);
+tester.testSrc("var R=(5).minMax(1.23);",Void,Void,T(1,5),__LINE__);
+
+tester.testSrc("var R=(0).minMaxNs(4,5,1,2,3);",Void,Void,T(0,1),__LINE__);
+tester.testSrc("var R=(1).minMaxNs(4,5,1,2,3);",Void,Void,T(0,1),__LINE__);
+tester.testSrc("var R=(7).minMaxNs(4,5,1,2,3);",Void,Void,T(2,0),__LINE__);
+tester.testSrc("var R=(5).minMaxNs(L(4,5,1,2,3));",Void,Void,T(2,1),__LINE__);
+tester.testSrc("var R=(7).minMaxNs(L(4,5,1,2,3));",Void,Void,T(2,1),__LINE__);
+tester.testSrc("var R=(0).minMaxNs(L(4,5,1,2,3));",Void,Void,T(2,1),__LINE__);
+
+
+tester.testSrc("var R=(3).min(T);",Void,Void,3,__LINE__);
+tester.testSrc("var R=(3).max(T);",Void,Void,3,__LINE__);
+tester.testSrc("var R=(3).minMaxNs(T);",Void,Void,T(0,0),__LINE__);
+tester.testSrc("var R=(3).minMax(T);",Void,Void,T(3,3),__LINE__);
+
+tester.testSrc("var R=(3).min(T(T(T(4))));",Void,Void,4,__LINE__);
+tester.testSrc("var R=(3).max(T(T(T(4))));",Void,Void,4,__LINE__);
+tester.testSrc("var R=(3).minMax(T(T(T(4))));",Void,Void,T(4,4),__LINE__);
+tester.testSrc("var R=(3).minMaxNs(T(T(T(4))));",Void,Void,T(0,0),__LINE__);
+
+
+tester.testSrc(
+   "var R=(0.0).min(L(0,3.14018e-16,6.28037e-16,0.0707107,1.25607e-15));",
+   Void,Void,0.0,__LINE__);
+tester.testSrc(
+   "var R=(0.0).max(L(0,3.14018e-16,6.28037e-16,0.0707107,1.25607e-15));",
+   Void,Void,0.0707107,__LINE__);
+tester.testSrc(
+   "var R=(0.0).minMax(L(0,3.14018e-16,6.28037e-16,0.0707107,1.25607e-15));",
+   Void,Void,T(0.0, 0.0707107),__LINE__);
+tester.testSrc(
+   "var R=(0.0).minMaxNs(L(0,3.14018e-16,6.28037e-16,0.0707107,1.25607e-15));",
+   Void,Void,T(0,3),__LINE__);
+
+
+
+tester.testSrc(0'|ns,cs := "this is a test".counts().filter22((1).isType);|
+   "var R=(0).minMaxNs(ns).pump(List,cs.get);",Void,Void,T("a"," "),__LINE__);
+tester.testSrc(0'|ns,cs := "this is a test".counts().filter22((1).isType);|
+   "a,b := (0).minMax(ns);"
+   "var R=ns.enumerate().pump(List,"
+         "'wrap([(e,n)]){ if(n==b) cs[e] else Void.Skip });",
+   Void,Void,T(" ","s","t"),__LINE__);
+
+
+		/////////////////////////////////////////////////// IEEE754
+tester.testSrc("pi:=3.14159265358979311600;"
+    "var R=(pi.toIEEE754() - 0x400921fb54442d18);",Void,Void,0,__LINE__);
+tester.testSrc("pi:=3.14159265358979311600;"
+    "var R=((0x400921fb54442d18).fromIEEE754() - pi);",Void,Void,0.0,__LINE__);
+
+tester.testSrc(
+    "var R=((0.1).toIEEE754() - 0x3fb999999999999a);",Void,Void,0,__LINE__);
+tester.testSrc("pi:=3.14159265358979311600;"
+    "var R=((0x3fb999999999999a).fromIEEE754() - 0.1);",Void,Void,0.0,__LINE__);
+
+tester.testSrc("var R=(-1.0).toIEEE754();",Void,Void,-4616189618054758400,__LINE__);
+tester.testSrc("var R=(-1.0).toIEEE754().fromIEEE754();",Void,Void,-1.0,__LINE__);
+
+
+	////////////////////////////////////////// .toPolar(), .toRectangular()
+tester.testSrc("var R=True; twop:=(1.0).pi*2;"
+"   foreach d in (720){ rad:=d.toFloat().toRad();"
+"      x,y:=(1.0).toRectangular(rad);"
+"      r,a:=x.toPolar(y); "
+"      if(a<0) a+=twop; if(a>=twop) a-=twop; rad=rad%twop;"
+//0'|println("(1.0,%d): rect(%f,%f) polar(%f,%f) %f".fmt(d,x,y,r,a,rad));|
+"      if(not (r.closeTo(1.0,0.000001) and rad.closeTo(a,0.000001))){ R=d; break; }"
+"   }",Void,Void,True,__LINE__);
+
+
+	///////////////////////////////////////////////////////// .toList
+{
+a,b,c:=2,4,-1; abc:="a,b,c:=2,4,-1;";
+tester.testSrc(abc+"var R=a.toList()",  Void,Void,a.walker().walk(99),__LINE__);
+tester.testSrc(abc+"var R=c.toList()",  Void,Void,T,__LINE__);
+tester.testSrc(abc+"var R=a.pump(List)",Void,Void,a.walker().walk(99),__LINE__);
+tester.testSrc(abc+"var R=c.toList()",  Void,Void,T,__LINE__);
+
+tester.testSrc(abc+"var R=a.toList(b)",Void,Void,a.walker(b-a).walk(99),__LINE__);
+tester.testSrc(abc+"var R=c.toList(a)",Void,Void,c.walker(a-c).walk(99),__LINE__);
+}
+
+					//////////////////// += order
+tester.testSrc("a:=1; var R=self.fcn.idFcn(a,a+=1,a+=1)",
+   Void,Void,T(1,2,3),__LINE__);
+
+
+tester.testSrc(0'^a:=1; var R="%,.2f".fmt(123)^,Void,Void,"123.00",__LINE__);
+tester.testSrc(0'^a:=1; var R="%,.2f".fmt(-123)^,Void,Void,"-123.00",__LINE__);
+tester.testSrc(0'^a:=1; var R="%,.4f".fmt(1234)^,Void,Void,"1,234.0000",__LINE__);
+tester.testSrc(0'^a:=1; var R="%,.1f".fmt(1234567)^,Void,Void,"1,234,567.0",__LINE__);
+tester.testSrc(0'^a:=1; var R="%,.1f".fmt(-1234567)^,Void,Void,"-1,234,567.0",__LINE__);
+tester.testSrc(0'^a:=1; var R="%,.e".fmt(-1234567)^,Void,Void,"-1e+06",__LINE__);
+tester.testSrc(0'^a:=1; var R="%,g".fmt(1234567890)^,Void,Void,"1.23457e+09",__LINE__);
+
+tester.testSrc(0'^a:=1; var R="%,.2f %.2f".fmt(1234,1234)^,
+    Void,Void,"1,234.00 1234.00",__LINE__);
+
+tester.testSrc(0'^a:=1; var R="%.2e".fmt(1234567890)^,Void,Void,"1.23e+09",__LINE__);
+
+
+
+tester.stats();
+returnClass(tester);

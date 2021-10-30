@@ -1,0 +1,368 @@
+//-*-c-*-
+// Socket tests
+// Serialize a class through a socket
+
+// not re-entrant: socket, pipe & TCP connection to system
+
+var UnitTester = TheVault.Test.UnitTester;
+tester := UnitTester(__FILE__);
+
+const LOCAL_HOST = "127.0.0.1"; //"localhost";
+const PORT = 50000;	// a [FreeBSD] private port
+
+var socket;
+var pipe = Thread.Pipe();
+var serverHasStopped = Atomic.Bool();
+var serverSocket;
+
+Server(PORT,pipe);		// start a Server thread
+
+	// create a big data blob for testing
+var d = Data(); Compiler.Asm.writeRootClass(UnitTester,d);
+
+{
+   onExitBlock(fcn
+   {
+	// kill the server thread if it is running
+      if (serverSocket.isInstanceOf(Network.TCPServerSocket))
+	 serverSocket.close();
+   });
+
+   if (not pipe.read(10))	// wait for server to get started
+      throw(Exception.BadDay(
+	      "Socket tests: timeout waiting for server socket"));
+
+	// open a connection to the server, 
+	// server spits out a client read socket
+   var talkToServer = Network.TCPClientSocket.connectTo(LOCAL_HOST,PORT);
+   tester.testRun(fcn{talkToServer.wait(0);},Void,False,__LINE__);
+
+   ////////////////////// set a byte round the world
+   tester.testRun(fcn { talkToServer.write(123); },Void,1,__LINE__);
+   socket = pipe.read(5);
+   if (socket.isChildOf(Exception.Exception)) // server sets socket on errror
+      throw(Exception.BadDay(
+	    "Socket tests: Can't get server socket on port %d\n%s"
+	    .fmt(PORT,socket.text)));
+   tester.testRun(fcn{socket.wait(1)},Void,1,__LINE__);
+   tester.testRun(fcn{socket.wait(0)},Void,1,__LINE__);
+   tester.testRun(fcn{socket.len()},Void,1,__LINE__);
+   tester.testRun(fcn{socket.read(1).bytes();},Void,T(123),__LINE__);
+   tester.testRun(fcn{socket.wait(0);},Void,False,__LINE__);
+   
+
+   ////////////////////// Can I write a class to a socket?
+   tester.testRun(
+	   fcn { Compiler.Asm.writeRootClass(UnitTester,talkToServer); 1 },
+	   Void,1,__LINE__);
+
+   //////////////////// serialize class through socket?
+   tester.testRun(fcn{ d2:=socket.read(True); d==d2 },Void,True,__LINE__);
+   	// above reads until writeRootClass() closes talkToServer socket
+	// wait --> Error on Windows, OK on Linux
+   tester.testRun(fcn{ (not talkToServer.wait(0)) },Void,True,__LINE__);
+   tester.testRun(fcn{ talkToServer.isClosed },Void,True,__LINE__);
+   tester.testRun(fcn{ (not socket.wait(0)) },Void,True,__LINE__);
+   tester.testRun(fcn{ socket.read(False) },"IOError",Void,__LINE__);
+   tester.testRun(fcn{ socket.isClosed },Void,True,__LINE__);
+
+
+   /////////////////// can I write a class to a socket and then read it?
+   talkToServer = Network.TCPClientSocket.connectTo(LOCAL_HOST,PORT);
+	   // serialize class to socket
+   tester.testRun(fcn { talkToServer.write(d); 1 },Void,1,__LINE__);
+
+   socket = pipe.read(5);
+   var klass;
+   tester.testRun(		// read class from socket
+      fcn { klass = Compiler.Asm.readRootClass(socket,False,False);
+	    klass.toString() },
+      Void,"Class(UnitTester)",__LINE__);
+
+   //////////////////// Is it really the same class? bit for bit?
+   tester.testRun(
+	   fcn { d2:=Data(); Compiler.Asm.writeRootClass(klass,d2); d==d2; },
+	   Void,True,__LINE__);
+}
+
+//println("has server stopped? ", serverHasStopped);
+	// did the server shut down?
+tester.testRun(fcn { serverHasStopped.wait(10) }, Void,True,__LINE__);
+
+
+
+
+    // If server dies, client will get a IOError when trying to connect
+class Server
+{
+   fcn init(port,pipe)
+   {
+      var [const] newSocketPipe = pipe;
+      self.launch(PORT);
+   }
+   fcn liftoff(port)
+   {
+      serverSocket = Network.TCPServerSocket.open(port);
+      newSocketPipe.write(1);
+#if 0	// call handler
+      serverSocket.listen(handler);
+#else	// write directly to Pipe
+      serverSocket.listen(newSocketPipe);
+#endif
+   }
+   fcn splashdown(h,e)
+   {
+      serverHasStopped.set();
+//println("Server Stopping Server Stopping Server Stopping Server Stopping ",serverHasStopped);
+      if (not h) newSocketPipe.write(e);
+   }
+   fcn handler(clientSocket) { newSocketPipe.write(clientSocket); }
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
+////////////////////////// Error handling
+
+// Above server has stopped
+
+tester.testRun(fcn{ reg ss, e;
+   try{
+      ss = Network.TCPServerSocket.open(PORT);
+      ss.listen(123);
+   }catch{ e = __exception }
+   ss.close();
+   throw(e);
+},"TypeError",Void,__LINE__);
+
+tester.testRun(fcn{ reg ss, e;
+   try{
+      ss = Network.TCPServerSocket.open(PORT);
+      ss.listen("hoho");
+   }catch{ e = __exception }
+   ss.close();
+   throw(e);
+},"TypeError",Void,__LINE__);
+
+tester.testRun(fcn{ reg e;
+   ss := Network.TCPServerSocket.open(PORT);
+   try{ ss.listen(123); }catch{}  // see if socket stays open
+   s := ss.isClosed(); ss.close();
+   s
+},Void,False,__LINE__);
+
+tester.testRun(fcn{
+   ss := Network.TCPServerSocket.open(PORT);
+   onExit(ss.close);
+   try{ ss.listen(123); }catch{}  // see if socket stays open
+   fcn(ss){ss.listen(self.fcn.idFcn)}.launch(ss);
+   ss.isClosed();
+},Void,False,__LINE__);
+
+tester.testRun(fcn{
+   cs := Network.TCPClientSocket.connectTo(LOCAL_HOST,PORT);
+},"IOError",True,__LINE__);
+
+    // write to server socket in thread
+tester.testRun(fcn{ out := Thread.Straw();
+   ss := Network.TCPServerSocket.open(PORT);
+   cs := Network.TCPClientSocket.connectTo(LOCAL_HOST,PORT);
+   onExit(ss.close);
+   fcn(ss,out,f){ ss.listen(out) }.launch(ss,out);
+   cs.write("hoho"); //.println();
+   suckUpBytes(out,4);  // straw(socket(Data(4 bytes)))
+},Void,"hoho",__LINE__);
+
+    // handler fcn get two args?
+tester.testRun(fcn{ out := Thread.Straw();
+   ss := Network.TCPServerSocket.open(PORT); onExit(ss.close);
+   cs := Network.TCPClientSocket.connectTo(LOCAL_HOST,PORT);
+   e := Atomic.Bool(); z := Atomic.Bool();
+   fcn(ss,f){ ss.listen(f) }.launch(ss,'wrap(cs,ss){
+      if (ss.isType(Network.TCPServerSocket)) e.set();
+      z.set();
+   });
+   cs.write(123); //.println();
+   z.wait(5,True);
+   e.value;
+},Void,True,__LINE__);
+
+    // serer socket writes to closed Straw
+tester.testRun(fcn{ out := Thread.Straw(); out.close();
+   ss := Network.TCPServerSocket.open(PORT);
+   cs := Network.TCPClientSocket.connectTo(LOCAL_HOST,PORT);
+   onExit(ss.close);
+   e := Atomic.Bool(); z := Atomic.Bool();
+   fcn(ss,f){ ss.listen(f) }.launch(ss,'wrap(cs,ss){
+//      println("HOHO ",vm.arglist); 
+      try{out.write(cs)}catch{e.set()} z.set();
+   });
+   cs.write(123); //.println();
+   z.wait(5,True);
+   e.value;
+},Void,True,__LINE__);
+
+    // write to server socket in thread, lots of client sockets created/Fcn
+tester.testRun(fcn{ out := Thread.Pipe();
+   ss := Network.TCPServerSocket.open(PORT);
+   cs := Network.TCPClientSocket.connectTo(LOCAL_HOST,PORT);
+   onExit(ss.close);
+   fcn(ss,f){ ss.listen(f); }.launch(ss,'wrap(cs,ss){
+//      println("HIDO ",vm.arglist,vm); 
+      out.write(cs);
+   });
+   ["0".."9"].pump(cs.write);
+   cs.close();
+   suckUpBytes(out,10);
+},Void,"0123456789",__LINE__);
+
+    // write to server socket in thread, lots of client sockets created/Fcn
+tester.testRun(fcn{ out := Thread.Pipe();
+   ss := Network.TCPServerSocket.open(PORT);
+   cs := Network.TCPClientSocket.connectTo(LOCAL_HOST,PORT);
+   onExit(ss.close);
+   fcn(ss,f){ ss.listen(f); }.launch(ss,'wrap(cs,ss){
+//      println("HIDO ",vm.arglist,vm); 
+      out.write(cs);
+   });
+   foreach n in (["0".."9"]){cs.write(n);}
+   cs.close();
+   suckUpBytes(out,10);
+},Void,"0123456789",__LINE__);
+
+    // write to server socket in thread, lots of client sockets created/Fcn
+tester.testRun(fcn{ out := Thread.Pipe();
+   ss := Network.TCPServerSocket.open(PORT);
+   cs := Network.TCPClientSocket.connectTo(LOCAL_HOST,PORT);
+   onExit(ss.close);
+   fcn(ss,f){ ss.listen(f); }.launch(ss,'wrap(cs,ss){
+//      println("HIDO ",vm.arglist,vm); 
+      out.write(cs);
+   });
+   cs.write("0");cs.write("1");cs.write("2");cs.write("3");cs.write("4");
+   cs.write("5");cs.write("6");cs.write("7");cs.write("8");cs.write("9");
+   cs.close();
+   suckUpBytes(out,10);
+},Void,"0123456789",__LINE__);
+
+    // write to server socket in thread, lots of client sockets created/Pipe
+tester.testRun(fcn{ out := Thread.Pipe();
+   ss := Network.TCPServerSocket.open(PORT);
+   cs := Network.TCPClientSocket.connectTo(LOCAL_HOST,PORT);
+   onExit(ss.close);
+   fcn(ss,out){ ss.listen(out); }.launch(ss,out);
+   cs.write("1"); cs.write("2"); cs.write("3"); cs.write("4"); cs.write("5");
+   cs.close();
+   suckUpBytes(out,5);
+},Void,"12345",__LINE__);
+
+    // write to server socket in thread
+tester.testRun(fcn{ out := Thread.Pipe();
+   ss := Network.TCPServerSocket.open(PORT);
+   cs := Network.TCPClientSocket.connectTo(LOCAL_HOST,PORT);
+   onExit(ss.close);
+   fcn(ss,f){ ss.listen(f); }.launch(ss,'wrap(cs,ss){
+//      println("HIDO ",vm.arglist,vm); 
+      out.write(cs);
+   });
+   "12345".pump(cs).close();
+   suckUpBytes(out,5);
+},Void,"12345",__LINE__);
+
+    // two threads write to server socket
+tester.testRun(fcn{ out:=Thread.Pipe(); z:=Atomic.Bool();
+   ss := Network.TCPServerSocket.open(PORT);
+   cs := Network.TCPClientSocket.connectTo(LOCAL_HOST,PORT);
+   onExit(ss.close);
+   fcn(ss,f){ss.listen(f)}.launch(ss,'wrap(cs,ss){ out.write(cs) });
+   fcn(cs,z) { cs.write("1"); cs.write("2"); z.set(); }.launch(cs,z);
+   cs.write("3"); cs.write("4"); cs.write("5");
+   z.wait(5,True);
+   cs.close();
+   suckUpBytes(out,5).split("").sort().concat("");
+},Void,"12345",__LINE__);
+
+    // server socket writes to closed Straw
+tester.testRun(fcn{ out := Thread.Straw(); out.close(); ab := Atomic.Bool();
+   ss := Network.TCPServerSocket.open(PORT);
+   cs := Network.TCPClientSocket.connectTo(LOCAL_HOST,PORT);
+   onExit(ss.close);
+   fcn(ss,ab,f){ ss.listen(f) }.launch(ss,ab,'wrap(cs,ss){
+      onExit(ab.set); out.write(cs); });	// blow
+   ab.clear();
+   cs.write(123); //.println();
+   if (not ab.wait(10)) return("listen is slow");
+   ss.isClosed;	// does exception close listen socket?
+},Void,False,__LINE__);
+
+    // server socket writes to full Straw
+tester.testRun(fcn{ out := Thread.Straw(); out.write(1,0); ab := Atomic.Bool();
+   ss := Network.TCPServerSocket.open(PORT);
+   cs := Network.TCPClientSocket.connectTo(LOCAL_HOST,PORT);
+   onExit(ss.close);
+   fcn(ss,ab,out)
+   {
+      try { ss.listen(out); } 	// blow
+      catch { println(__exception); ab.set(); }
+   }.launch(ss,ab,out);
+   ab.clear();
+   cs.write(123); //.println();
+   if (not ab.wait(10)) return("listen didn't blow");
+   ss.isClosed;	// does exception close listen socket?
+},Void,False,__LINE__);
+
+    // stop and restart listen
+tester.testRun(fcn{ out := Thread.Pipe();
+   ss := Network.TCPServerSocket.open(PORT); onExit(ss.close);
+   cs := Network.TCPClientSocket.connectTo(LOCAL_HOST,PORT);
+   a  := "1";
+   do(2){
+      fcn(ss,f){ ss.listen(f); }.launch(ss,'wrap(cs,ss){
+//	 println("HIDO ",vm.arglist); 
+	 out.write(cs);
+	 Void.Stop
+      });
+      cs.write(a); //.println();
+      a = "2";
+   }
+   cs.close();
+   suckUpBytes(out,2);
+},Void,"12",__LINE__);
+
+tester.testRun(fcn{ out := Thread.Pipe();
+   ss := Network.TCPServerSocket.open(PORT); onExit(ss.close);
+   cs := Network.TCPClientSocket.connectTo(LOCAL_HOST,PORT);
+   fcn(ss,f){ ss.listen(f); }.launch(ss,'wrap(cs,ss){
+      out.write(cs);
+      throw(Exception.Generic);  // kill thread, stop listen
+   });
+   cs.write("1"); //.println();
+   fcn(ss,f){ ss.listen(f); }.launch(ss,'wrap(cs,ss){ out.write(cs); });
+   cs.write("2"); //.println();
+   cs.close();
+   suckUpBytes(out,2);
+},Void,"12",__LINE__);
+
+
+fcn suckUpBytes(pipe,n)	// Pipe(Socket(text))
+{
+   bytes := Ref("");
+   Atomic.waitFor('{	// loop to read n bytes
+      reg cs;
+      try{ cs = pipe.read(0); }catch(PipeError){} // wait for thread to write
+      catch { bytes.set(bytes.value+__exception); return(True); }
+      fallthrough  // pipe read success
+      {
+	 bytes.set(bytes.value + cs.read().text);  // socket.read()-->Data
+	 cs.close();
+	 if (bytes.value.len() == n) { pipe.close(); return(True); }
+	 // read another socket from pipe
+      }
+      False
+   },15) : if (not _) return("Timeout getting data (%s)".fmt(bytes.value));;
+   bytes.value
+}
+
+tester.stats();
+returnClass(tester);

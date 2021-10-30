@@ -1,0 +1,261 @@
+// -*-c-*-
+// test fibers and Generators
+
+tester := TheVault.Test.UnitTester.UnitTester(__FILE__);
+
+tester.testSrc("vm.createFiber(f);"
+    "fcn f { L(vm).apply2(fcn(fiber) { fiber.yield(Void) }); }",
+    Void,"AssertionError",Void,__LINE__);
+tester.testSrc("var R = vm.createFiber(f); fcn f { return(123); }",
+    Void,Void,123,__LINE__);
+tester.testSrc("var R = vm.createFiber(f); fcn f { vm.yield(123); }",
+    Void,Void,123,__LINE__);
+
+tester.testSrc("var R = vm.createFiber(f); fcn f { vm.yield(vm); }"
+    "R = (vm != R)", Void,Void,True,__LINE__);
+tester.testSrc("var R = vm.createFiber(f); fcn f { vm.yield(vm); }"
+    "R = (vm.name != R.name)", Void,Void,True,__LINE__);
+
+
+    	////////////////////////////////////////////////// .yield
+tester.testSrc("fiber:=vm.createFiber(fcn { vm.yield(vm); }); fiber.yield(2);",
+    Void,"AssertionError",Void,__LINE__);
+tester.testSrc("fiber:=vm.createFiber(fcn { return(vm); }); fiber.yield(2);",
+    Void,"AssertionError",Void,__LINE__);
+tester.testSrc("var R=vm.createFiber(fcn {vm.yield(2,3);})",Void,Void,L(2,3),__LINE__);
+tester.testSrc("var R=vm.createFiber(fcn {vm.yield(1);})",Void,Void,1,__LINE__);
+tester.testSrc("var R=vm.createFiber(fcn { vm.yield(); })", Void,Void,Void,__LINE__);
+
+tester.testSrc(0'|var R; vm.createFiber(fcn { R=T(vm).apply("yield",12); })|,
+//    Void,"AssertionError",T,__LINE__);
+    Void,Void,T,__LINE__);
+tester.testSrc("vm.createFiber(fcn { L(1,2).apply2(vm.yield); })",
+    Void,"AssertionError",Void,__LINE__);
+tester.testSrc(0'|fcn f(c,vm){vm.yield(c);}|
+     0'|vm.createFiber(fcn { "123".apply(f,vm); })|, Void,"AssertionError",Void,__LINE__);
+tester.testSrc("vm.createFiber(fcn { L(vm).apply2(fcn(v){v.yield(1)}); })",
+    Void,"AssertionError",Void,__LINE__);
+tester.testSrc(0'|var R; vm.createFiber(fcn { R=T(vm).filter("yield"); })|,
+//    Void,"AssertionError",T,__LINE__);
+    Void,Void,T,__LINE__);
+tester.testSrc(0'|vm.createFiber(fcn { L(1).filter(vm.yield); })|,
+    Void,"AssertionError",Void,__LINE__);
+
+tester.testSrc("fcn g(v){v.yield(1)}"  	// resume to kill circular fiber
+    "var fv,R = vm.createFiber(fcn { g(fv=vm) }); fv.resume(); ",Void,Void,1,__LINE__);
+
+//!!!!!!!this kinda sucks
+tester.testSrc("var R=Utils.Generator(fcn(z){ vm.yield(1) }).walk(2)",
+    Void,Void,T(1),__LINE__);
+tester.testSrc("var R=Utils.Generator(fcn(z){ vm.yield(z) }.fp(1)).walk(2)",
+    Void,"AssertionError",T(1),__LINE__);
+tester.testSrc("z:=1;var R=Utils.Generator('wrap(){ vm.yield(z) }).walk(2)",
+    Void,"AssertionError",T(1),__LINE__);
+
+
+    	/////////////////////////////////////////////////// exceptions
+tester.testSrc("var R = vm.createFiber(f); fcn f { throw(Exception.BadDay) }",
+    Void,"BadDay",Void,__LINE__);
+tester.testSrc("var R; try{vm.createFiber(f);}catch{R=123}"
+    "fcn f { throw(Exception.BadDay) }",Void,Void,123,__LINE__);
+tester.testSrc("var R=vm.createFiber(f); try{R.resume();}catch{R=R.isDead;}"
+    "fcn f { return(vm); throw(Exception.BadDay) }",Void,Void,True,__LINE__);
+tester.testSrc("var R=vm.createFiber(f); try{R.resume();}catch{R=R.isFiber;}"
+    "fcn f { return(vm); throw(Exception.BadDay) }",Void,Void,0,__LINE__);
+tester.testSrc("var R; R = vm.createFiber(f);"
+    "fcn f { try { throw(Exception.BadDay); } catch { vm.yield(11); } }",
+    Void,Void,11,__LINE__);
+tester.testSrc("var R,fiber; vm.createFiber(f);"
+    "fcn f { fiber = vm;"
+    "  try { throw(Exception.BadDay); } catch { vm.yield(11); } vm.yield(22) }"
+    "R = fiber.resume();", Void,Void,22,__LINE__);
+
+    	// throw exception at fiber
+tester.testSrc("var R; fiber := vm.createFiber(f);"
+    "fcn f { vm.yield(vm); do(1000) {} } vm.kick(fiber); fiber.resume();",
+    Void,"HeyYou",Void,__LINE__);
+tester.testSrc("var R; fiber := vm.createFiber(f); fcn f { vm.yield(vm); }"
+    "vm.kick(fiber);",Void,Void,Void,__LINE__);
+tester.testSrc("var R; R = vm.createFiber(f);"
+    "fcn f { vm.yield(vm); do(1000) {} }"
+    "vm.kick(R); R.resume();", Void,"HeyYou",Void,__LINE__);
+tester.testSrc("var R; R = vm.createFiber(f);"
+    "fcn f { vm.yield(vm); do(1000) {} } vm.kick(R);"
+    "try { R.resume() } catch(HeyYou) { R = 5 }",Void,Void,5,__LINE__);
+tester.testSrc("var R; R = vm.createFiber(f);"
+    "fcn f { vm.yield(vm); do(1000) {} } vm.kick(R);"
+    "vm.kick(R); R.resume();",
+    Void,"HeyYou",Void,__LINE__);
+	
+
+    	////////////////////////////////////////////////////// .createFiber
+tester.testSrc("var R; fcn f{vm.yield(vm);}"
+    "L(1,2,3).apply(fcn { vm.createFiber(f); });",Void,Void,Void,__LINE__);
+tester.testSrc("vm.createFiber(self);",Void,"TypeError",Void,__LINE__);
+tester.testSrc("vm.createFiber(1);",Void,"TypeError",Void,__LINE__);
+
+
+    	/////////////////////////////////////////////////////// .isFiber
+tester.testSrc("var R; vm.createFiber(f); fcn f { R = vm.isFiber; }",
+    Void,Void,2,__LINE__);
+tester.testSrc("var R; R = vm.createFiber(f).isFiber;"
+    "fcn f { vm.yield(vm); }",Void,Void,1,__LINE__);
+tester.testSrc("var R; R = vm.createFiber(f).isFiber;"
+    "fcn f { return(vm); }", Void,Void,0,__LINE__);
+
+
+    	//////////////////////////////////////////////////////// .resume
+tester.testSrc("vm.resume()", Void,"AssertionError",Void,__LINE__);
+
+
+	///////////////////////////////////////////////////////// threads
+tester.testSrc("fcn f { vm.yield(vm); 1 }"
+    "var R, fiber = vm.createFiber(f), b = Atomic.Bool();"
+    "fcn { R=fiber.resume(); b.set(); }.launch();"
+    "b.wait(10);", Void,Void,1,__LINE__);
+tester.testSrc("fcn f { return(vm); }"
+    "var R, fiber = vm.createFiber(f), b = Atomic.Bool();"
+    "fcn { try { R=fiber.resume(); }"
+    "   catch { R = __exception.name; } b.set(); }.launch();"
+    "b.wait(10);", Void,Void,"AssertionError",__LINE__);
+tester.testSrc("fcn f { vm.yield(vm); vm.yield(1); }"
+    "var R, fiber = vm.createFiber(f), b = Atomic.Bool();"
+    "fcn { try { R=fiber.yield(2); } "
+    "   catch { R = __exception.name; } b.set(); }.launch();"
+    "b.wait(10);", Void,Void,"AssertionError",__LINE__);
+
+
+    	////////////////////////////////////////////////////////// GC
+tester.testSrc("var R,r=vm.createFiber(fcn{vm.yield(vm)});"  // stalled fiber
+    "r.resume();"			// let fiber die a natural death
+    "R=r.isDead;", Void,Void,True,__LINE__);
+tester.testSrc("var R,r=vm.createFiber(fcn{vm.yield(vm)});"  // stalled fiber
+    "do(5) { GarbageMan.collect();if (r.isDead) break; }"
+    "R=r.isDead;", Void,Void,False,__LINE__);
+tester.testSrc("var R,r=vm.createFiber(fcn{vm.yield(vm)});"  // stalled fiber
+    "r=r.name; do(3) { GarbageMan.collect();}"	// remove ref to stalled fiber
+    "vms:=vm.vms();"
+    0'|n:=vms.apply("name").find(r); R = (n==Void or not vms[n].isFiber);|,
+    Void,Void,True,__LINE__);
+
+tester.testSrc("var R,r=vm.createFiber(fcn{vm.yield(vm)});"  // stalled fiber
+    "R=GarbageMan.WeakRef(r);"	// chain: WeakRef->vmRef->stalled fiber
+    "r.resume(); r=Void;"	// R==WeakRef of ref to dead VM
+    "do(5) { GarbageMan.collect(); if (R.isDead) break; } R=R.isDead;",
+    Void,Void,True,__LINE__);
+tester.testSrc("n:=GarbageMan.gcCount; var R; fcn f{vm.yield(vm);}"
+    "R=GarbageMan.WeakRef(vm.createFiber(f));" // WeakRef->vmRef->stalled fiber
+    "do(5) { GarbageMan.collect(); if (R.isDead) break; } R=R.isDead;"
+    "if (not R) R=GarbageMan.gcCount-n;",   Void,Void,True,__LINE__);
+
+
+	/////////////////////////////////////////////////// Generators
+tester.testSrc(
+   "fcn producer(resource) { foreach x in (resource) { vm.yield(x); }}"
+   "fcn consumer(producer) { result := L();"
+      "foreach x in (producer) { result.append(x); }"
+      "result; }"
+   "var R = consumer(Utils.Generator(producer,\"foo\"));",
+   Void,Void,L("f","o","o"),__LINE__);
+
+tester.testSrc("fcn f { vm.yield(123); } var R;"
+   "foreach x in (Utils.Generator(f)) { R = x; }",Void,Void,123,__LINE__);
+tester.testSrc("fcn f { vm.yield(123); return(Void(Void),0); } var R;"
+   "foreach x in (Utils.Generator(f)) { R = x; }",Void,Void,123,__LINE__);
+tester.testSrc("fcn f { return(Void(Void),0); vm.yield(123); } var R=5;"
+   "foreach x in (Utils.Generator(f)) { R = x; }",Void,Void,5,__LINE__);
+
+tester.testSrc("fcn f(g){g(2)} g:=Utils.Generator(f,vm.yield);"
+    "g.walker().next();", Void,"AssertionError",Void,__LINE__);
+
+tester.testSrc("fcn f(g){vm.yield(1,2,3)} g:=Utils.Generator(f);"
+    "var R=g.walker().next();", Void,Void,T(1,2,3),__LINE__);
+tester.testSrc("fcn f(g){vm.yield(1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8,9,0)}"
+    "g:=Utils.Generator(f); var R=g.walker().next();",
+    Void,Void,T(1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8,9,0),__LINE__);
+
+
+   	///////////////////////////////////////////////// nested, recursive
+#if 0
+tester.testSrc("var fibers=L();"	// do the fibers die?
+    "fcn f(n) {"
+    "   if (n) fibers.append(vm.vmID);"
+    "   if (n < 4) vm.createFiber(f,n+1);"	// recurse, create fiber
+    "   else throw(Exception.BadDay);"		// stop recursion
+    "} try { f(0) } catch(BadDay) {}"
+    "var R = fibers.filter(fcn(id) {vm.isRunning(id)});",
+    Void,Void,L(),__LINE__);
+#else
+tester.testSrc("var fibers=L();"	// do the fibers die?
+    "fcn f(n) {"
+    "   if (n) fibers.append(vm);"
+    "   if (n < 4) vm.createFiber(f,n+1);"	// recurse, create fiber
+    "   else throw(Exception.BadDay);"		// stop recursion
+    "} try { f(0) } catch(BadDay) {}"
+    "var R = fibers.filter(fcn(v) {v.isRunning});",
+    Void,Void,T,__LINE__);
+#endif
+
+
+tester.testSrc(		// strangeness
+    "f:=vm.createFiber(fcn{vm.yield(vm); n:=5; while(1){vm.yield(n+=1)}});"
+    "var R=T(1,2,3).apply(f.resume); f=Void;",Void,Void,T(6,7,8),__LINE__);
+
+
+    	///////////////////////////////////////////////////// fiber stacks
+tester.testSrc("var fiber = vm.createFiber(fcn { vm.yield(vm); f(); });"
+    "fcn f { L(1,2,3).apply(fcn(x) { vm.yield(x) }) }"
+    "var R = fiber.type",Void,Void,"VM",__LINE__);
+tester.testSrc("var fiber = vm.createFiber(fcn { vm.yield(vm); f(); });"
+    "fcn f { L(1,2,3).apply(fcn(x) { vm.yield(x) }) } fiber.resume()",
+    Void,"AssertionError",Void,__LINE__);
+
+#if 0
+tester.testSrc("var R; R=vm.createFiber(fcn{vm.find(vm.vmID)});"
+    "R = (Void!=R)",Void,Void,True,__LINE__);
+#endif
+
+    	////////////////////////////////////// dead fibers
+tester.testSrc("var R; R=vm.createFiber(fcn{return(vm)}); R=R.isThread;",
+    Void,Void,False,__LINE__);
+
+
+    	//////////////////////////////////// Strands
+tester.testSrc("var R=fcn(x){x+1}.strand(5); R+=10;",Void,Void,16,__LINE__);
+tester.testSrc("var R=fcn(x){x+1}.strand(Void); R+=10;",
+    Void,"NotImplementedError",Void,__LINE__);
+
+tester.testSrc("var R=4;s:=self.fcn.stranded(Void);fcn(x){R=x+1}.stranded(s,123);"
+    "s[0].waitFor(0,10);",Void,Void,124,__LINE__);
+tester.testSrc("var R=4;s:=self.fcn.idFcn.stranded(Void);"
+    "fcn{R=123}.stranded(s); s[0].waitFor(0,10);",Void,Void,123,__LINE__);
+tester.testSrc("var R=4;s:=self.fcn.nullFcn.stranded(Void);"
+    "fcn{R=123}.stranded(s); s[0].waitFor(0,10);",
+    Void,Void,123,__LINE__);
+tester.testSrc("var R=4;s:=self.fcn.idFcn.stranded(Void,0);"
+    "fcn{R=123}.stranded(s); s[0].waitFor(0,10); R=s[1]",
+    Void,Void,Void,__LINE__);
+tester.testSrc("var R; s:=self.fcn.stranded(Void); fcn(x){x+1;}.stranded(s,Void);"
+    "s[0].waitFor(0,10); R=s[1].name;",Void,Void,"NotImplementedError",__LINE__);
+
+tester.testSrc("var R; s:=self.fcn.stranded(Void);"
+    "a:=fcn{123}.stranded(s); b:=fcn{456}.stranded(a);"
+    "a[0].waitFor(0,10); R = (a.BaseClass.id==b.BaseClass.id)",
+    Void,Void,True,__LINE__);
+
+tester.testSrc("var R; s:=self.fcn.stranded(Void); p := Thread.Pipe();"
+    "fcn(p){p.write(5)}.stranded(s,p); fcn(p){p.write(6)}.stranded(s,p);"
+    "s[0].waitFor(0,10); R = (p.read(10)+p.read(10));",
+    Void,Void,11,__LINE__);
+tester.testSrc("var R; s:=self.fcn.stranded(Void); p := Void;"
+    "fcn(p){p.write(5)}.stranded(s,p); fcn(p){p.write(6)}.stranded(s,p);"
+    "Atomic.waitFor(fcn(s){s[0]==0 or s[1]}.fp(s),10); R = s[1].name;",
+    Void,Void,"NotFoundError",__LINE__);
+
+// var s = Void; fcn f { while(1){s = fcn{123}.stranded(s); s+=1}}.strand();
+
+
+do(4) { GarbageMan.collect() }		// get rid of dead fibers
+
+tester.stats();
+returnClass(tester);

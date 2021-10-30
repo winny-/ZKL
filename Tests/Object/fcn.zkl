@@ -1,0 +1,775 @@
+// -*-c-*-
+
+var tester = TheVault.Test.UnitTester.UnitTester(__FILE__);
+
+
+tester.testSrc("return(Void);","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var R; fcn foo {} R=\"OK\";",Void,Void,"OK",__LINE__);
+tester.testSrc("fcn class     {}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn while     {}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn fcn       {}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn launch    {}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn println   {} var R=\"OK\";",Void,Void,"OK",__LINE__);
+
+tester.testSrc("var R; fcn { R = \"OK\"; }();",Void,Void,"OK",__LINE__);
+tester.testSrc("var R; fcn { var x; }.x;;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R; R=fcn { var x; }.type;",Void,Void,"Fcn",__LINE__);
+tester.testSrc("fcn { var x; }().x;",Void,"NotFoundError",Void,__LINE__);
+tester.testSrc("fcn { fcn x {} }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn { class c {} }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn { c := class {}; f := fcn{} } var R; R=1;",Void,Void,1,__LINE__);
+
+tester.testSrc("fcn {}X;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc(0'|var R; X:=1; R=fcn {}; X; R=R.toString().matches("Fcn(__fcn#1*");|,
+	Void,Void,True,__LINE__);
+tester.testSrc(0'|var R; x:="OK"; fcn(a) {R=a}(x);|,Void,Void,"OK",__LINE__);
+tester.testSrc("var R; R = fcn(a){a}(123).toString();",Void,Void,"123",__LINE__);
+
+
+tester.testSrc(
+   "var R; R = fcn(x)"
+   "   {"
+   "      if (0 == x) return(1);"
+   "      return( x * self.fcn(x - 1) );"
+   "   }(7);",
+   Void,Void,5040,__LINE__);
+
+tester.testSrc("var R; fcn f(a = fcn{123}) { R = a(); }();",Void,Void,123,__LINE__);
+
+tester.testSrc("var R; fcn f(a,b=1) { a; b; } f();",Void,"MissingArg",Void,__LINE__);
+tester.testSrc("var R; fcn f(a,b=9) { R = a+b; } f(1);", Void,Void,10,__LINE__);
+
+tester.testSrc("fcn init { return(); }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn init { while (True) { return(); }}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn f { return; }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn f { return(Void); } var R=f();",Void,Void,Void,__LINE__);
+tester.testSrc("fcn f { return(); }     var R=f();",Void,Void,Void,__LINE__);
+
+tester.testSrc("fcn f { return(L(1,2,3)); } a,b,r:=f(); var R=r;",Void,Void,3,__LINE__);
+tester.testSrc("fcn f { return(1,2,3); } a,r,b:=f(); var R=r;",Void,Void,2,__LINE__);
+tester.testSrc("var R; R = fcn { return(1,2,3); }(); R=R.toString();",
+	Void,Void,"L(1,2,3)",__LINE__);
+
+
+foo := "var R; fcn foo(a) { R = a.toString(); }";
+tester.testSrc(foo+"foo(fcn {});",	Void,Void,"Fcn(__fcn#1_1)",__LINE__);
+tester.testSrc(foo+"foo(fcn f {},5);",	Void,Void,"Fcn(f)",__LINE__);
+tester.testSrc(foo+"foo(fcn {}());",	Void,Void,"Void",__LINE__);
+tester.testSrc(foo+"foo(fcn {}(),5);",	Void,Void,"Void",__LINE__);
+
+tester.testSrc("println(1,,);",	  "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("println(1,,2);",  "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("print(,1);",	  "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("println(,,2);",	  "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("println(;);",	  "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("println());",	  "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("println(();",	  "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("println(1;);",	  "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R; print(,);","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R; print(1,);",Void,Void,Void,__LINE__);
+
+
+			///////////////////////////////// fcn variables, var
+tester.testSrc("fcn foo { var v=3; var v2 = v; v2 } var R=foo();",Void,Void,3,__LINE__);
+tester.testSrc("fcn foo(a) { var v = a; }","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("fcn foo { var x = 1; } foo.x;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn foo { var x; x} var R = foo();",Void,Void,Void,__LINE__);
+tester.testSrc("fcn foo { var x = 1; x} var R = foo();",Void,Void,1,__LINE__);
+tester.testSrc("fcn foo { var x; { var y=2; } y}(); var R=foo();",
+	Void,Void,2,__LINE__);
+
+tester.testSrc("class C { fcn f { var a=1,b=2; } } C.f.b;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class C { class D { fcn f { var a=1,b=2; }}} C.D.f.b;",
+    "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class A { fcn f { var v=5; v } } var R;"
+    "class C { A.f(); R = A.f(); }", Void,Void,5,__LINE__);
+tester.testSrc("class C { var v; fcn f { var v } fcn g { var v }}"
+    "var R = C.varNames.len();",Void,Void,3,__LINE__);
+
+tester.testSrc("var R; class C { R=f(); fcn f { var v=123; v}}",Void,Void,123,__LINE__);
+
+tester.testSrc("class C { fcn f { var v=123; z := fcn{v+1}}}"
+    "var R = C.f()()",Void,Void,124,__LINE__);
+
+    //!!! ick, should be 126
+tester.testSrc("class C { fcn f { var v=123; v+=1 }}"
+    "C.f();C.f(); C.__constructor(); var R = C.f()",Void,Void,124,__LINE__);
+
+tester.testSrc("class C { fcn f{ var [const] v; v=5; }} C.f();",
+   "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class C { fcn f{ var [private] v; v=5; }} var R=C.f();",
+   Void,Void,5,__LINE__);
+
+tester.testSrc("class C{ var cv=5; fcn f{ var fv=cv; fv }} var R=C.f();",
+   Void,Void,Void,__LINE__);
+tester.testSrc("class C{ var cv=5; class D{ cv=7; }"
+   "fcn f{ var fv=cv; fv }} var R=C.f();", Void,Void,Void,__LINE__);
+tester.testSrc("class C{ var cv=5; fcn f{ var fv=cv; fv }"
+    "class D{ cv=7; }} var R=C.f();", Void,Void,Void,__LINE__);
+
+tester.testSrc("class C{ var bi=4; class D{ fcn f{ var v=(bi+3); v }}}"
+   "var R=C.D.f()",Void,Void,7,__LINE__);
+tester.testSrc("class C{ var bi; class D{ fcn f{ bi=5; var b=(bi+3); b }}}",
+   Void,"NotImplementedError",Void,__LINE__);
+
+tester.testSrc("class C{ fcn f{ var v=5, v2=(v+3); v2 }} var R=C.f()",
+   Void,Void,8,__LINE__);
+tester.testSrc("class C{ fcn f{ var v=5; var v2=(v+3); v2 }} var R=C.f()",
+   Void,Void,8,__LINE__);
+
+
+tester.testSrc("a := 1; fcn foo { a = 2; }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("a := 1; var R; fcn { reg a = 2; R = a; }();",Void,Void,2,__LINE__);
+tester.testSrc("a := 1; var R; fcn { R = a; reg a = 2; }();",Void,Void,Void,__LINE__);
+
+tester.testSrc("var R = Utils.range.code.toString();",
+	Void,Void,"Class(Code)",__LINE__);		// Via the Loader
+tester.testSrc("var R = self.fcn.code.toString();",Void,Void,"Class(Code)",__LINE__);
+tester.testSrc("var R = self.fcn.toBool.toString();",
+		Void,Void,"Method(__constructor.toBool)",__LINE__);
+//tester.testSrc("var R = self.fcn.numVars;",Void,Void,0);
+//tester.testSrc("fcn foo { var a; } var R = foo.numVars;",Void,Void,1);
+	// check to see if I can call self.fcn.method()
+//tester.testSrc("self.fcn.setVar();",Void,"IndexError");
+tester.testSrc("class Foo { var x; fcn foo { self.fcn.x; }}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class Foo { reg x; fcn foo { self.fcn.x; }}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn f {} fcn foo { self.fcn.x(); }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("foo { var x; self.fcn.x; }","SyntaxError",Void,Void,__LINE__);
+
+
+			///////////////////////////////// fcn args
+tester.testSrc("fcn(,){}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn(n,){}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn(,n){}","SyntaxError",Void,Void,__LINE__);
+
+const func = "fcn foo(x) { x } var R;";
+
+tester.testSrc(func + "R = foo(,);","SyntaxError",Void,Void,__LINE__);
+tester.testSrc(func + "R = foo(,,);","SyntaxError",Void,Void,__LINE__);
+tester.testSrc(func + "R = foo(returnClass(1));","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn foo { foo(return(1)); }","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc(func + "foo(throw(Exception.BadDay));","SyntaxError",Void,Void,__LINE__);
+tester.testSrc(func + "foo(while(0) {});","SyntaxError",Void,Void,__LINE__);
+tester.testSrc(func + "foo(do(0) {});","SyntaxError",Void,Void,__LINE__);
+tester.testSrc(func + "foo(AKA foo);","SyntaxError",Void,Void,__LINE__);
+tester.testSrc(func + "foo(critical ());","SyntaxError",Void,Void,__LINE__);
+//tester.testSrc(func + "foo(fence {} exit {});","SyntaxError",Void,Void,__LINE__);
+tester.testSrc(func + "do(0) { foo(break) }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc(func + "do(0) { foo(continue) }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc(func + "foo(var x);","SyntaxError",Void,Void,__LINE__);
+tester.testSrc(func + "foo(reg x);","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc(func + "R = foo(1);",Void,Void,1,__LINE__);
+tester.testSrc(func + "R = foo(1,);",Void,Void,1,__LINE__);
+tester.testSrc(func + "R = foo(1,,);","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc(func + "R = foo(foo).toString();",Void,Void,"Fcn(foo)",__LINE__);
+tester.testSrc(func + "R = foo(fcn bar {}).toString();",Void,Void,"Fcn(bar)",__LINE__);
+tester.testSrc(func + "R = foo(Utils.range).toString();",Void,Void,"Fcn(range)",__LINE__);
+tester.testSrc(func + "R = foo(class Bar {}).toString();",Void,Void,"Class(Bar)",__LINE__);
+tester.testSrc(func + "R = foo(self).toString();",Void,Void,"Class(RootClass#)",__LINE__);
+
+tester.testSrc(func + "R = foo(if (1) 2 else 3);",Void,Void,2,__LINE__);
+tester.testSrc(func + "R = foo(if (0) 1 else 2);",Void,Void,2,__LINE__);
+tester.testSrc(func + "R = foo(if (0) 1 else if(2) 3);",Void,Void,3,__LINE__);
+tester.testSrc(func + "R = foo(if (0) 1 else if(0) 3 else 4);",Void,Void,4,__LINE__);
+
+tester.testSrc(func + "R = foo(x=4);","SyntaxError",Void,Void,__LINE__);
+tester.testSrc(func + "R=123; R = foo(R+=4);",Void,Void,127,__LINE__);
+tester.testSrc(func + "R = foo(foo(123));",Void,Void,123,__LINE__);
+
+tester.testSrc(func + "R=foo(try { 1 } catch {0})",Void,Void,1,__LINE__);
+tester.testSrc(func + "R=foo(try { 1/0 } catch {0})",Void,Void,0,__LINE__);
+
+				/////////// arg mixins
+tester.testSrc("fcn f([L]a){a.apply} var R",Void,Void,Void,__LINE__);
+tester.testSrc("fcn f([L]a){a.aply} var R","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn f([L]a=4){a.aply} var R","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn f([L]a=4){a.apply} var R",Void,Void,Void,__LINE__);
+tester.testSrc("fcn f([L]a=4){a.apply()} var R=f()",Void,"NotFoundError",Void,__LINE__);
+
+tester.testSrc("fcn f([L]a,[T]b){a.apply;b.apply} var R",Void,Void,Void,__LINE__);
+tester.testSrc("fcn f([L]a,[T]b){a.apply;b.aply} var R","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn f([L]a=T,[T]b=4){a.apply;b.apply()} var R=f();",Void,"NotFoundError",Void,__LINE__);
+
+
+			/////////////////////////// prototype
+tester.testSrc("var R = self.fcn.prototype;",Void,Void,ROList,__LINE__);
+tester.testSrc("fcn foo {} var R = foo.prototype;", Void,Void,ROList,__LINE__);
+tester.testSrc("fcn foo {} var R = foo.BaseClass.prototype;", Void,Void,ROList,__LINE__);
+tester.testSrc("fcn foo(a,b,c) {} var R = foo.BaseClass.prototype;",
+    Void,Void,ROList("a","b","c"),__LINE__);
+tester.testSrc("fcn foo(a,b,c=4) {} var R = foo.BaseClass.prototype;",
+    Void,Void,ROList("a","b","c"),__LINE__);
+		// prototype from wad
+tester.testSrc("var R = Exception.BadDay.init.prototype;",
+    Void,Void,T("msg"),__LINE__);
+
+
+		///////////////////////////////////// defaultArgs
+tester.testSrc("fcn foo {} var R = foo.defaultArgs;", Void,Void,ROList,__LINE__);
+tester.testSrc("fcn foo {} var R = foo.BaseClass.defaultArgs;",
+    Void,Void,ROList,__LINE__);
+tester.testSrc("fcn foo(a,b,c) {} var R = foo.BaseClass.defaultArgs;",
+    Void,Void,ROList(Void,Void,Void),__LINE__);
+tester.testSrc("fcn foo(a,b,c=3) {} var R = foo.BaseClass.defaultArgs.toString();",
+    Void,Void,"L(Void,Void,Class(Code))",__LINE__);
+tester.testSrc("fcn foo(a,b=2,c=3) {}"
+    "var R = foo.BaseClass.defaultArgs.toString();",
+    Void,Void,"L(Void,Class(Code),Class(Code))",__LINE__);
+tester.testSrc("fcn foo(a=1,b=2,c=3) {}"
+    "var R = foo.BaseClass.defaultArgs.toString();",
+    Void,Void,"L(Class(Code),Class(Code),Class(Code))",__LINE__);
+tester.testSrc("fcn foo(a=1,b,c) {}"
+    "var R = foo.BaseClass.defaultArgs.toString();",
+    Void,Void,"L(Class(Code),Void,Void)",__LINE__);
+tester.testSrc("fcn foo(a,b=1,c) {}"
+    "var R = foo.BaseClass.defaultArgs.toString();",
+    Void,Void,"L(Void,Class(Code),Void)",__LINE__);
+tester.testSrc("fcn foo(a=1,b=1,c) {}"
+    "var R = foo.BaseClass.defaultArgs.toString();",
+    Void,Void,"L(Class(Code),Class(Code),Void)",__LINE__);
+tester.testSrc("fcn f(op='<) {op(1,2)}"
+    "var R = f();",Void,Void,True,__LINE__);
+tester.testSrc("fcn f(op='<) {op(1,2)}"
+    "var R = f('==);",Void,Void,False,__LINE__);
+
+		// test wad defaultArgs
+tester.testSrc("var R = Utils.range.defaultArgs.toString();",
+	Void,Void,"L(Void,Class(Code),Class(Code),Class(Code))",__LINE__);
+
+tester.testSrc("fcn f(a,b=Void){vm.arglist}; var R=f();",Void,Void,ROList(),__LINE__);
+tester.testSrc("fcn f(a,b=Void){vm.arglist}; var R=f(1);",
+    Void,Void,ROList(1,Void),__LINE__);
+tester.testSrc("fcn f(a=0,b=1){vm.arglist}; var R=f();",Void,Void,ROList(0,1),__LINE__);
+tester.testSrc("fcn f(a=0,b){vm.arglist}; var R=f();",Void,Void,L(0),__LINE__);
+tester.testSrc("fcn f(a=0,b,c=3){vm.arglist};var R=f(1);",Void,Void,L(1),__LINE__);
+tester.testSrc("fcn f(a=0,b,c=3){vm.arglist};var R=f(1,2);",Void,Void,L(1,2,3),__LINE__);
+tester.testSrc("fcn f(a=0,b,c=3){vm.arglist};var R=f(1,2,4);",Void,Void,L(1,2,4),__LINE__);
+tester.testSrc("fcn f(a=0,b,c=3){vm.arglist};var R=f(5,6,7,8);",Void,Void,L(5,6,7,8),__LINE__);
+
+tester.testSrc("fcn f(a,b=2,c){vm.arglist} var R=f()",Void,Void,T,__LINE__);
+tester.testSrc("fcn f(a,b=2,c){vm.arglist} var R=f(1)",Void,Void,T(1,2),__LINE__);
+
+tester.testSrc("var R; class C { var v = 123; fcn f(p=v) { R=p }} C.f();",
+    Void,Void,123,__LINE__);
+tester.testSrc("var R; class C { var v = 123; fcn f(p=v) { R=p }}"
+    "c := C(); c.v=456; R=c.f();", Void,Void,456,__LINE__);
+tester.testSrc("var R; class C { fcn f(p=v) { var v; }} ","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var R; class C { fcn f(p=D) { R=p } class D {}} C.f();"
+    "R=(R==C.D)",Void,Void,True,__LINE__);
+tester.testSrc("var R; class C { fcn f(p=self.fcn) { R=p }} C.f();"
+    "R=R.isInstanceOf(self.fcn.nullFcn)",Void,Void,True,__LINE__);
+tester.testSrc("var R; class C { fcn f(p=self.fcn) { R=p }} C.f();"
+    "R=(R.container == C);",Void,Void,True,__LINE__);
+//tester.testSrc("var R; class C { fcn f(p=vm.function) { R=p }} C.f();",
+//    Void,Void,Void);
+tester.testSrc("var R; class C { fcn f(p=self.fcn) { R=p }} C.f();"
+    "R=(R.container==C);",Void,Void,True,__LINE__);
+tester.testSrc("var R; class C { var v; fcn f(p=self.fcn) { R=p }} C().f();"
+    "R=(R.container==C);",Void,Void,False,__LINE__);
+    
+tester.testSrc("var R; class C { fcn f(p=self) { R=p }} C.f(); R = (R == C)",
+    Void,Void,True,__LINE__);
+tester.testSrc("var R; class C { var v; fcn f(p=self) { R=p }}"
+    "C().f(); R = (R == C)",Void,Void,False,__LINE__);
+tester.testSrc("var R; class C { fcn f(p=self) { R=p }} C().f();"
+    "R = R.isInstanceOf(C);",Void,Void,True,__LINE__);
+
+tester.testSrc("var R; class C { class D { fcn f(p=container) { R=p }}}"
+    "C.D.f(); R = (R==C);",Void,Void,True,__LINE__);
+tester.testSrc("var R; class C { var v; class D { fcn f(p=container) { R=p }}}"
+    "C().D.f(); R = (R!=C);",Void,Void,True,__LINE__);
+
+tester.testSrc("fcn e {throw(Exception.BadDay)} fcn f(a=e()) {} f();",
+    Void,"BadDay",Void,__LINE__);
+tester.testSrc("fcn e {throw(Exception.BadDay)} fcn f(a,b=e()) {}"
+    "L(1,2,3).filter(f);",Void,"BadDay",Void,__LINE__);
+tester.testSrc("fcn f(a=L()[10]) {} f();",Void,"IndexError",Void,__LINE__);
+
+tester.testSrc("var R=Compiler.Asm.Code.init.build.toString();",
+    Void,Void,"Method(init.build)",__LINE__);
+
+		// test defaults that are special cased
+tester.testSrc("fcn f(a=Void){a} var R = f();",Void,Void,Void,__LINE__);
+tester.testSrc("fcn f(a=0){a} var R = f();",Void,Void,0,__LINE__);
+tester.testSrc("fcn f(a=1){a} var R = f();",Void,Void,1,__LINE__);
+tester.testSrc("fcn f(a=\"\"){a} var R = f();",Void,Void,"",__LINE__);
+tester.testSrc("fcn f(a=True){a} var R = f();",Void,Void,True,__LINE__);
+tester.testSrc("fcn f(a=False){a} var R = f();",Void,Void,False,__LINE__);
+
+tester.testSrc("fcn f(a=123){a} var R = f();",Void,Void,123,__LINE__);
+tester.testSrc("fcn f(a=456){a} var R = f();",Void,Void,456,__LINE__);
+
+tester.testSrc("fcn f(a=T){a} var R = f();",Void,Void,T,__LINE__);
+tester.testSrc("fcn f(a=Exception.BadDay){a} var R = f();",
+   Void,Void,Exception.BadDay,__LINE__);
+
+//tester.testSrc("fcn f(a=fcn{ 1+1 }){ a } var R=f();",Void,Void,2,__LINE__);
+
+		// multivalue assignment
+tester.testSrc("var R,x,y;"
+    "fcn f(a,b) { g(x=a,y=b) }(1,2); fcn g {R=vm.arglist}", Void,Void,L(1,2),__LINE__);
+tester.testSrc("var R,x,y; fcn f(a,b) { g(x=a,y=b) }(1,2); fcn g {}"
+   "R=x",Void,Void,1,__LINE__);
+tester.testSrc("var R,x,y; fcn f(a,b) { g(x=a,y=b) }(1,2); fcn g {}"
+   "R=y",Void,Void,2,__LINE__);
+
+			///////////////////////// methods/properties
+tester.testSrc("var R = self.fcn.methods; R = R.holds(\"build\");",
+	Void,Void,True,__LINE__);
+tester.testSrc("fcn foo {} var R = foo.methods; R = R.holds(\"build\");",
+	Void,Void,True,__LINE__);
+tester.testSrc("var R = self.fcn.methods; R = R.holds(\"addFcn\");",
+	Void,Void,False,__LINE__);
+tester.testSrc("fcn foo {} var R = foo.methods; R = R.holds(\"addFcn\");",
+	Void,Void,False,__LINE__);
+tester.testSrc("fcn foo {} var R = foo.methods();",Void,Void,List,__LINE__);
+
+
+tester.testSrc("fcn foo {} var R = foo.code.code.toString();",
+	Void,Void,"ConstData(1)",__LINE__);
+tester.testSrc("fcn foo {} var R = foo.code.vars.toString();",
+	Void,Void,
+	0'|L(L("code",ConstData(1)),L("isStatic",True),|
+	0'|L("map",ConstData(1)),L("strings",ConstData(0)))|,__LINE__);
+tester.testSrc("fcn foo {self} var R = foo.code.vars[1][1];",
+	Void,Void,False,__LINE__);
+tester.testSrc("fcn foo {} var R = foo.code.toString();",
+	Void,Void,"Class(Code)",__LINE__);
+
+
+
+	//////////////// const fcns (more, better testing is in const.zkl)
+tester.testSrc("const f = fcn { 123 }; var R = f();", Void,Void,123,__LINE__);
+
+
+/* 
+f = fcn(x) { return("arg = "+x); }
+
+//!!!f = fcn(x) { if (x == 1){True} else return(Void); }
+f = fcn(x) { if (x == 1){return(True)} else return(Void); }
+*/
+
+
+			/////////////////////////////// embryos
+tester.testSrc(0'|self.fcn.build("foo",self.fcn.nullFcn.code);|,
+    Void,"TypeError",Void,__LINE__);
+tester.testSrc(0'|var R=self.fcn.build(T("foo"),self.fcn.nullFcn.code);|
+    "R=R.name;",Void,Void,"foo",__LINE__);
+
+tester.testSrc(0'|fcn f {} var R=self.fcn.build(T("foo"),f.code);|
+    "R=R.isRunnable;",Void,Void,True,__LINE__);
+tester.testSrc(0'|fcn f {self} var R=self.fcn.build(T("foo"),f.code);|
+    "R=R.isRunnable;",Void,Void,False,__LINE__);
+
+		// manual examples
+tester.testSrc(
+    0'|f := fcn { println("Hello World!") };|
+    0'|code := f.code;|
+    0'|e := self.fcn.build(L("f"),code);|
+    "var R=e();",Void,Void,"Hello World!",__LINE__);
+
+tester.testSrc(
+    0'|C := self.embryo(L("C",""),2,0,T);|
+    0'|f := fcn { println("Hello World!") };|
+    0'|code := f.code;|
+    0'|e := self.fcn.build(L("f"),code);|
+    0'|C.addFcn(e,1); C=C.cook();|
+    "var R=C.f();",Void,Void,"Hello World!",__LINE__);
+
+tester.testSrc( // see if adding to class affects embryo
+    0'|C := self.embryo(L("C",""),2,0,T);|
+    0'|f := fcn { println("Hello World!") };|
+    0'|code := f.code;|
+    0'|e := self.fcn.build(L("f"),code);|
+    0'|C.addFcn(e,1); C=C.cook();|
+    "var R=e();",Void,Void,"Hello World!",__LINE__);
+
+tester.testSrc(
+    0'|src := "argN(0)\npush\nInt(123)\nsetX/pop\nadd\ndone\n";|
+    0'|code := Compiler.Asm.asm(src);|
+    0'|f := self.fcn.build(L("f","x"),code);|
+    "var R = f(5);",Void,Void,128,__LINE__);
+
+tester.testSrc(
+    0'|C := self.embryo(L("C",""),2,0,T);|
+    0'|src := "argN(0)\npush\nInt(123)\nsetX/pop\nadd\ndone\n";|
+    0'|code := Compiler.Asm.asm(src);|
+    0'|e := self.fcn.build(L("f","x"),code);|
+    0'|C.addFcn(e,1); C=C.cook();|
+    "var R = C.f(5);",Void,Void,128,__LINE__);
+
+tester.testSrc(
+    0'|classC := self.embryo(L("C","","N"),2,0,T);|
+    0'|constructorSrc :="Int(5)\nsetVar(0)\nself\ndone\n";|
+    0'|cf := self.fcn.build(L("__constructor"),|
+    0'|     Compiler.Asm.asm(constructorSrc));|
+    0'|classC.addFcn(cf,0);|
+    0'|fSrc := "argN(0)\nsetX\ngetVar(0)\nadd\ndone\n";|
+    0'|ff := self.fcn.build(L("f","n"),Compiler.Asm.asm(fSrc));|
+    0'|classC.addFcn(ff,1); classC=classC.cook();|
+    "var R=classC().f(15);",Void,Void,20,__LINE__);
+
+    			///// mess with default args
+tester.testSrc(
+    0'|f:=self.fcn.build(T("f","a","b","c"),self.fcn.idFcn.code,Void);|
+    "var R=f.defaultArgs",Void,Void,T(Void,Void,Void),__LINE__);
+tester.testSrc(
+    0'|f:=self.fcn.build(T("f","a","b","c"),self.fcn.idFcn.code,T(Void));|
+    "var R=f.defaultArgs",Void,Void,T(Void,Void,Void),__LINE__);
+tester.testSrc(
+    0'|f:=self.fcn.build(T("f","a","b","c"),self.fcn.idFcn.code,|
+    0'|T(Void,self.fcn.idFcn.code));|
+    "var R=f.defaultArgs.toString()",Void,Void,
+    "L(Void,Class(Code),Void)",__LINE__);
+tester.testSrc(
+    0'|f:=self.fcn.build(T("f","a","b","c"),self.fcn.idFcn.code,|
+    0'|T(self.fcn.idFcn.code,Void,self.fcn.idFcn.code));|
+    "var R=f.defaultArgs.toString()",Void,Void,
+    "L(Class(Code),Void,Class(Code))",__LINE__);
+tester.testSrc(
+    0'|f:=self.fcn.build(T("f"),self.fcn.idFcn.code,T(self.fcn.idFcn.code));|
+    "var R=f.defaultArgs",Void,"AssertionError",Void,__LINE__);
+
+
+
+			//////////////// GC & KStrings
+tester.testSrc(		// get the correct KString?
+   "var R=Compiler.Compiler.compileText(0'|fcn { return(\"HOHO\") }|);"
+   "R = R.fcns[1](); R=L(R,R.type)",Void,Void,L("HOHO","ConstString"),__LINE__);
+tester.testSrc(		// try to kill it with GC
+   "var R=Compiler.Compiler.compileText(0'|fcn { return(\"HOHO\") }|);"
+   "R = R.fcns[1]();"
+   "do(5) { GarbageMan.collect(); } R;",Void,Void,"HOHO",__LINE__);
+
+
+   	// (7.copy()) vmCall(method) core dumper
+//tester.testSrc("fcn(g,p) { foreach N in (g) { p.apply(N.copy()); } }"
+//    "( L(7), L(66) );",Void,"TypeError",Void,__LINE__);
+tester.testSrc("fcn(g,p) { foreach N in (g) { p.apply(N.copy()); } }"
+    "( L(7), L(66) ); var R;",Void,Void,Void,__LINE__);
+
+
+    			///////////////////////// tail recursion
+tester.testSrc("fcn f() { return(self.fcn()) }"
+    0'|var R=f.unasm(Data()).find("tailRecurse").isType(1);|,Void,Void,True,__LINE__);
+tester.testSrc("fcn f() { return(f()) }"
+    0'|var R=f.unasm(Data()).find("tailRecurse").isType(1);|,Void,Void,True,__LINE__);
+tester.testSrc(
+    "fcn f(x) { if (x) { println(); return(self.fcn()); } else println();}"
+    "var R = f.unasm(Data()).find(\"tailRecurse\").isType(1);",Void,Void,True,__LINE__);
+tester.testSrc(
+    "fcn f(x) { if (x) { println(); return(self.fcn()); } else println();}"
+    "var R = f.unasm(Data()).find(\"tailRecurse\").isType(1);",Void,Void,True,__LINE__);
+tester.testSrc(
+    "fcn f(x,N=1){if (0 == x) return(N); return(self.fcn(x-1,N * x));}"
+    0'|var R=f.unasm(Data()).find("tailRecurse").isType(1);|,Void,Void,True,__LINE__);
+tester.testSrc(
+    "fcn f(x,N=1){if (0 == x) return(N); return(f(x-1,N * x));}"
+    0'|var R=f.unasm(Data()).find("tailRecurse").isType(1);|,Void,Void,True,__LINE__);
+tester.testSrc(
+    "fcn f(x,N=1){if (0 == x) return(N); return(f(x-1,N * x));}"
+    0'|var R=f(5);|,Void,Void,120,__LINE__);
+
+tester.testSrc(
+    "fcn f { if (1) println();"
+    "else if (1) { println(); { reg b; return(self.fcn()); }}}"
+    "var R = f.unasm(Data()).find(\"tailRecurse\").isType(1);",Void,Void,True,__LINE__);
+tester.testSrc("fcn f { if (1) return(self.fcn()); }"
+    "var R = f.unasm(Data()).find(\"tailRecurse\").isType(1);",Void,Void,True,__LINE__);
+tester.testSrc("fcn f { if (1) return(self.fcn()); println(); }"
+    "var R = f.unasm(Data()).find(\"tailRecurse\").isType(1);",Void,Void,True,__LINE__);
+tester.testSrc("fcn f { if (1) return(f()); println(); }"
+    "var R = f.unasm(Data()).find(\"tailRecurse\").isType(1);",Void,Void,True,__LINE__);
+
+tester.testSrc("var n=0,R;"
+    "fcn f { try { if (n==5) throw(Exception.TheEnd); n += 1;"
+       "return(self.fcn()); } catch(TheEnd) { R=1 } } f();",Void,Void,1,__LINE__);
+tester.testSrc("var n=0,R;"
+    "fcn f { try { if (n==5) throw(Exception.TheEnd); n += 1;"
+       "return(self.fcn()); } catch(TheEnd) { R=1 } }"
+    "R = f.unasm(Data()).find(\"tailRecurse\").isType(1);",Void,Void,True,__LINE__);
+
+//!!!! need a test to verify stack doesn't grow (eg look at stackTrace)
+
+      // bug: bogus tail recusion generation
+tester.testSrc("fcn f{return(self.fcn().min(self.fcn()))}"
+   0'|d:=Data(); f.unasm(d); var R=(d.find("tailRecursion").isType(1));|,
+   Void,Void,False,__LINE__);
+tester.testSrc("fcn f{return(self.fcn().min(self.fcn()))}"
+   0'|d:=Data(); f.unasm(d); var R=(d.find("tailCall").isType(1));|,
+   Void,Void,True,__LINE__);
+
+
+    			///////////////////////// tail calls
+fcn doesTailCall(src,result,t,line)
+{
+   tester.testSrc(src,Void,Void,result,line);
+   tester.testSrc(src+"R = g.unasm(Data()).find(\"tailCall\").isType(1);",
+      Void,Void,t,line);
+}
+
+doesTailCall("fcn f(n){n+1} fcn g(n){return(f(n + 10))} var R=g(5);",
+    16,True,__LINE__);
+doesTailCall("fcn f(n){n+1} fcn g(n){return(f(n).noop())} var R=g(5);",
+    6,True,__LINE__);
+
+tester.testSrc("fcn f(n){n+1} fcn g(n){return(f(n).x)}"
+    0'|var R = g.unasm(Data()).find("tailCall");|,Void,Void,Void,__LINE__);
+
+tester.testSrc("var f; fcn g(n){return(f.read(1).toBigEndian())}"
+    "var R = g.unasm(Data()).find(\"tailCall\").isType(1);",Void,Void,True,__LINE__);
+
+doesTailCall("fcn f(n){n+1} fcn g(n){return(f(n),2)} var R=g(5);",
+    L(6,2),False,__LINE__);
+
+tester.testSrc("fcn f(n){n+1} fcn g(n){return(f(n)+2)}"
+    "var R = g.unasm(Data()).find(\"tailCall\");",Void,Void,Void,__LINE__);
+tester.testSrc("fcn f(n){n+1} fcn g(n){return(2+f(n))}"
+    "var R = g.unasm(Data()).find(\"tailCall\");",Void,Void,Void,__LINE__);
+
+doesTailCall("class C {var v=5}fcn g{return(C.v(4))} var R=g();",4,True,__LINE__);
+
+tester.testSrc("var R=\"\"; fcn foo(n) { if (n) { R+=n; return(bar(n-1)) }}"
+    "fcn bar(n) { if (n) { R+=n; return(foo(n-1)) }} foo(5)",
+    Void,Void,"54321",__LINE__);
+
+//tester.testSrc("fcn f{} fcn g { fence { return(f()) } exit {} }"
+//    "var R = g.unasm(Data()).find(\"tailCall\");",Void,Void,Void,__LINE__);
+tester.testSrc("fcn f{} fcn g { try { return(f()) } catch {} }"
+    "var R = g.unasm(Data()).find(\"tailCall\");",Void,Void,Void,__LINE__);
+tester.testSrc("fcn f{} fcn g { try {} catch { return(f())} }"
+    "var R = g.unasm(Data()).find(\"tailCall\");",Void,Void,Void,__LINE__);
+
+    	// bug: tailCall unwinds the stack too far
+tester.testSrc(0'|class C { fcn toString { return(text("666")); }|
+   "fcn text(x) { return(x); }}  var R=println(C());",Void,Void,"666",__LINE__);
+
+
+   			// multi return values
+tester.testSrc("fcn f { return(1,L(2,3).xplode(),4); } var R=f()",
+   Void,Void,L(1,2,3,4),__LINE__);
+tester.testSrc("fcn f { return(1,ROList(2,3).xplode(),4); } var R=f()",
+   Void,Void,L(1,2,3,4),__LINE__);
+tester.testSrc("fcn f { return(1,vm.pasteArgs(),4); } var R=f(2,3)",
+   Void,Void,L(1,2,3,4),__LINE__);
+//tester.testSrc("fcn f { fence { return(1,2); } exit {666}}var R=f()",
+//   Void,Void,L(1,2));
+
+
+    			///////////////////////////// .isInstanceOf
+tester.testSrc("fcn f {}; var R = f.isInstanceOf(f);",Void,Void,True,__LINE__);
+tester.testSrc("fcn f {}; var R = self.fcn.isInstanceOf(f);",Void,Void,False,__LINE__);
+tester.testSrc("fcn f {}; var R = f.isInstanceOf(self.fcn);",Void,Void,False,__LINE__);
+tester.testSrc("fcn f {}; var R = f.isInstanceOf(self.fcn,f);",Void,Void,True,__LINE__);
+
+
+			///////////////////////////////////
+tester.testSrc("fcn f{} fcn f{}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn f(a) { fcn{a} }","SyntaxError",Void,Void,__LINE__);
+
+
+			//////////////////////////// private
+tester.testSrc("class C { fcn [private] f { 4 }} var R = C.resolve(\"f\")();",
+	Void,"NotFoundError",Void,__LINE__);
+tester.testSrc("class C { fcn [private] f { 4 }} var R = C.f.isPrivate;",
+	Void,Void,True,__LINE__);
+tester.testSrc("class C { fcn [private] f { 4 }} c:=C; c.f;",
+	Void,"NotFoundError",Void,__LINE__);
+
+
+			//////////////////////////// mixins
+tester.testSrc("class C { fcn [mixin=L] f{4} } var R;",
+	Void,Void,Void,__LINE__);
+tester.testSrc("fcn [mixin=L] f{T} } f().aply; var R;",
+	"SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn [mixin=L] f{T} f().apply; var R;",
+	Void,Void,Void,__LINE__);
+tester.testSrc("fcn [mixin=L] f{4} f()().aply; var R;",
+	Void,"NotFoundError",Void,__LINE__);
+tester.testSrc("class C { fcn [mixin=L] f{4} } C.f.apply; var R;",
+	"SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class C { fcn [mixin=L] f{L} } C.f().apply; var R;",
+	Void,Void,Void,__LINE__);
+tester.testSrc("class C { fcn [mixin=L] f{4} } C.f().aply; var R;",
+	"SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class C { fcn [mixin=L] f{4} } C.f().apply; var R;",
+	Void,"NotFoundError",Void,__LINE__);
+tester.testSrc("class C { fcn [mixin=L] f{4} } C().f().aply; var R;",
+	"SyntaxError",Void,Void,__LINE__);
+
+
+				///////////////////////// misc
+tester.testSrc("fcn f(a) { a() } var R = f.code.code.bytes();",
+    Void,Void,T(210,123,0),__LINE__); // arg0,callResultZ,done
+tester.testSrc("fcn f(a) { (a)() } var R = f.code.code.bytes();",
+//    Void,Void,T(210,123,0),__LINE__);
+    "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn f(a) { (a)(2) }; var R = f.code.code.bytes();",
+//    Void,Void,T(210,123,0),__LINE__);
+    "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn f(a) { (True)() } var R = f.code.code.bytes();",
+//    Void,Void,T(20,123,0),__LINE__); // True,callResultZ,done
+    "SyntaxError",Void,Void,__LINE__);
+
+
+
+tester.testSrc("var R; fcn{R=1}(R=2);", Void,Void,1,__LINE__);
+tester.testSrc("var R; fcn{R=1};(R=2);",Void,Void,2,__LINE__);
+tester.testSrc("var R; fcn{R=1} (R=2);",Void,Void,2,__LINE__);
+
+tester.testSrc("var R=f().toString(); fcn f{g} fcn g{};",Void,Void,"Fcn(g)",__LINE__);
+tester.testSrc(0'|var R=f().toString().matches("Fcn(__fcn#1*");|
+    "fcn f{return(fcn{})}",  Void,Void,True,__LINE__);
+tester.testSrc("var R=f().toString(); fcn f{fcn{}}",
+    Void,Void,"Void",__LINE__);
+
+
+    			//////////////////////////// idFcn
+tester.testSrc("var R=self.fcn.idFcn.isStatic;",Void,Void,True,__LINE__);
+tester.testSrc("var R=self.fcn.idFcn.isRunnable;",Void,Void,True,__LINE__);
+tester.testSrc("var R=self.fcn.idFcn();",Void,Void,T,__LINE__);
+tester.testSrc("var R=self.fcn.idFcn(3);",Void,Void,3,__LINE__);
+tester.testSrc("var R=self.fcn.idFcn(1,2,3);",Void,Void,T(1,2,3),__LINE__);
+
+
+			//////////////////////////// loop, walk
+#if 0
+tester.testSrc("var R;"
+    "R = fcn(a){ fcn(a,b){vm.arglist}.loop(0,2,True,a);}.loop(0,2,True).flatten();",
+    Void,Void,T(T(0,0),T(1,0),T(0,1),T(1,1)),__LINE__);
+
+tester.testSrc("var R;"
+    "matrix := T(T(1,2), T(3,4), T(5,6), T(7,8));"
+    "R=fcn(c,matrix) { fcn(row,c){row[c]}.walk(matrix,True,c); }"
+    "   .loop(0,matrix[0].len(),True,matrix);",
+    Void,Void,T(T(1,3,5,7),T(2,4,6,8)),__LINE__);
+
+tester.testSrc("var R=Ref(1);"
+    "fcn(n,r){r.set(n*r.ref)}.loop(1,6,0,R); R=R.ref",Void,Void,720,__LINE__);
+
+tester.testSrc("var R;"
+    "matrix := T(T(1,2), T(3,4), T(5,6), T(7,8));"
+    "R=(0).pump(matrix[0].len(),True,"
+    "   'wrap(c){ fcn(row,c){row[c]}.walk(matrix,True,c); });",
+    Void,Void,T(T(1,3,5,7),T(2,4,6,8)),__LINE__);
+
+tester.testSrc("var R;"
+    0'|R=fcn(n){if (n!="b") n.toUpper() else Void.Skip}.walk("abc",True);|,
+    Void,Void,T("A","C"),__LINE__);
+#endif
+
+    // a bug
+tester.testSrc("(0).pump('wrap(c){ matrix.apply('wrap(row,c){row[c]},c);",
+    "SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var R;"
+    "matrix := T(T(1,2), T(3,4), T(5,6), T(7,8));"
+    "R=(0).pump(matrix[0].len(),List,"
+    "   'wrap(c){ matrix.apply('wrap(row,c){row[c]},c)});",
+    Void,Void,T(T(1,3,5,7),T(2,4,6,8)),__LINE__);
+
+tester.testSrc("var R;"
+    0'|R="abc".pump(String,fcn(c){if (c!="b") c.toUpper() else Void.Skip});|,
+    Void,Void,"AC",__LINE__);
+
+tester.testSrc("var R;"
+    0'|R= (fcn(c){if (c!="b") c.toUpper() else Void.Skip} : |
+    0'|    "abc".pump(String,_));|, Void,Void,"AC",__LINE__);
+
+tester.testSrc(0'|var R=T(self.fcn).apply("nullFcn").apply("toString");|,
+   Void,Void,L("Fcn(nullFcn)"),__LINE__);
+
+
+    			////////////////////////////////////////////// misc
+tester.testSrc("var R;"
+   "fcn sum(list) { if (list.len()==0) 0 else list[0] + sum(list[1,*]) }"
+   "R = sum(T);",Void,Void,0,__LINE__);
+tester.testSrc("var R;"
+   "fcn sum(list) { if (list.len()==0) 0 else list[0] + sum(list[1,*]) }"
+   "R = sum(T(1));",Void,Void,1,__LINE__);
+tester.testSrc("var R;"
+   "fcn sum(list) { if (list.len()==0) 0 else list[0] + sum(list[1,*]) }"
+   "R = sum(T(1,2,3));",Void,Void,6,__LINE__);
+
+tester.testSrc("var R=f(2);"
+    "fcn f(n){if(n==0)return(5);f(n-1).noop();}",
+    Void,Void,5,__LINE__);
+tester.testSrc("var R=f(2);"
+    "fcn f(n){if(n==0)return(5);self.fcn(n-1).noop();}",
+    Void,Void,5,__LINE__);
+tester.testSrc("var R=f(1).type;"
+    0'|fcn f(n){if(n==0)return("abc");self.fcn(n-1).close;}|,
+    Void,Void,"Method",__LINE__);
+tester.testSrc("var R=f(1);"
+    0'|fcn f(n){if(n==0)return("abc");self.fcn(n-1).close();}|,
+    Void,Void,"abc",__LINE__);
+tester.testSrc("var R=f(1);"
+    0'|fcn f(n){if(n==0)return("abc");f(n-1).close();}|,
+    Void,Void,"abc",__LINE__);
+
+
+    			////////////////////////////////////////////// 'wrap
+tester.testSrc("a:=6; b:='wrap(){c:=7; d:='wrap(){c};d()}; var R=b();",
+    Void,Void,7,__LINE__);
+tester.testSrc("a:=6; b:=fcn(){c:=7; d:='wrap(){c}; d()}; var R=b();",
+    Void,Void,7,__LINE__);
+
+tester.testSrc("a:=6; b:='wrap(){c:=7; d:='wrap(){c}; d()}; var R=b();",
+    Void,Void,7,__LINE__);
+tester.testSrc("a:=6; b:='wrap(){c:=7; d:='wrap(){a}; d()}; var R=b();",
+    Void,Void,6,__LINE__);
+tester.testSrc("a:=6; b:=fcn(){c:=7; d:='wrap(){c}; d()}; var R=b();",
+    Void,Void,7,__LINE__);
+tester.testSrc("a:=6; b:=fcn(){c:=7; d:='wrap(){a}()}; var R=b();",
+    "SyntaxError",Void,7,__LINE__);
+
+tester.testSrc("a:=6; b:='wrap(){c:='wrap(){a}; c()}; var R=b();",
+    Void,Void,6,__LINE__);
+tester.testSrc("a:=1; b:='wrap(b){T(a,b)}.fp(2); var R=b();",
+    Void,Void,T(1,2),__LINE__);
+
+tester.testSrc("a:=1; fcn f{ b:='wrap(){ a } } var R=b();",
+    "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class C{a:=1; var b='wrap(){ a } } var R=C.b();",
+    Void,Void,1,__LINE__);
+tester.testSrc("class C{a:=6; var b='wrap(){ c:=7; d:='wrap(){ a }; d() }; }"
+    "var R=C.b();",Void,Void,6,__LINE__);
+
+tester.testSrc(0'|x:=2; var R='wrap(){ z:="hoho"; z(x) }(7);|,Void,Void,"2",__LINE__);
+tester.testSrc(0'|x:=2; var R='wrap(){ z:="hoho"; z(x); vm.arglist }(7);|,
+    Void,Void,L(2,7),__LINE__);
+
+
+    	/////////////////////////////////////////////////////////// .fp
+tester.testSrc(0'|fcn f(x){ "hoho" } var R=f.fp(2)(7);|,Void,Void,"hoho",__LINE__);
+tester.testSrc(0'|fcn f(x){ "hoho" } fcn g{ f.fp(2)(7) } var R=g();|,
+    Void,Void,"hoho",__LINE__);
+
+tester.testSrc(0'|var x=3; fcn g{ x.fp(2)(7) } var R=g();|,
+    Void,Void,2,__LINE__);
+tester.testSrc(0'|var x=3; fcn g{ x(2,7) } var R=g();|,
+    Void,Void,2,__LINE__);
+tester.testSrc(0'|var x="hoho"; fcn g{ x.fp(2)(7) } var R=g();|,
+    Void,Void,"27",__LINE__);
+tester.testSrc(0'|var x="hoho"; fcn g{ x(2,7) } var R=g();|,
+    Void,Void,"27",__LINE__);
+
+tester.testSrc(0'|var R=fcn{ "hoho" }(4)(7);|,Void,Void,"7",__LINE__);
+tester.testSrc(0'|var R=fcn{ "hoho" }(4,7);|,Void,Void,"hoho",__LINE__);
+tester.testSrc(0'|var R=fcn{ "hoho" }.fp(4)(7);|,Void,Void,"hoho",__LINE__);
+
+
+    	/////////////////////////////////////////////////////////// bugs
+tester.testSrc("var R=f()[0](); fcn f{T('wrap(){p:=4; p+4})} p:=5;",Void,Void,8,__LINE__);
+tester.testSrc("var R=f()[0](); fcn f{T('wrap(){reg p=4; p+4})} p:=5;",Void,Void,8,__LINE__);
+tester.testSrc("var R; fcn{}.Void","SyntaxError",Void,Void,__LINE__);
+
+
+tester.stats();
+returnClass(tester);

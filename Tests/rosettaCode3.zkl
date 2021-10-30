@@ -1,0 +1,1649 @@
+//-*-c-*-
+// Test solutions posted to Rosetta Code
+// http://rosettacode.org/wiki/Category:Zkl
+
+tester := TheVault.Test.UnitTester.UnitTester(__FILE__);
+
+const{ Import("Time.Date",1); }	// when testing zklIgnoreWad
+
+const{ try{ Import.lib("zklBigNum"); } catch{} }  // load links
+try{ var [const] BN=Import.lib("zklBigNum") } catch{}
+
+
+class Solve24{		/////////////////////////////////////// 24 game/Solve
+//A brute for search for all solutions. Lexicographical duplicates are removed.
+//File solve24.zkl:
+var [const] H=Utils.Helpers;
+fcn u(xs){ xs.reduce(fcn(us,s){us.holds(s) and us or us.append(s) },L()) }
+var ops=u(H.combosK(3,"+-*/".split("")).apply(H.permute).flatten());
+var fs=T(
+   fcn f0(a,b,c,d,x,y,z){ Op(z)(Op(y)(Op(x)(a,b),c),d) }, // ((AxB)yC)zD
+   fcn f1(a,b,c,d,x,y,z){ Op(y)(Op(x)(a,b),Op(z)(c,d)) }, // (AxB)y(CzD)
+   fcn f2(a,b,c,d,x,y,z){ Op(z)(Op(x)(a,Op(y)(b,c)),d) }, // (Ax(ByC))zD
+   fcn f3(a,b,c,d,x,y,z){ Op(x)(a,Op(z)(Op(y)(b,c),d)) }, // Ax((ByC)zD)
+   fcn f4(a,b,c,d,x,y,z){ Op(x)(a,Op(y)(b,Op(z)(c,d))) }, // Ax(By(CzD))
+);
+
+var fts= // format strings for human readable formulas
+  T("((d.d).d).d", "(d.d).(d.d)", "(d.(d.d)).d", "d.((d.d).d)", "d.(d.(d.d))")
+  .pump(List,T("replace","d","%d"),T("replace",".","%s"));
+
+fcn f2s(digits,ops,f){
+   fts[f.name[1].toInt()].fmt(digits.zip(ops).flatten().xplode(),digits[3]);
+}
+
+fcn game24Solver(digitsString){
+   digits:=digitsString.split("").apply("toFloat");
+   [[(digits4,ops3,f); H.permute(digits); ops;    // list comprehension
+     fs,{ try{f(digits4.xplode(),ops3.xplode()).closeTo(24,0.001) }
+          catch(MathError){ False } };
+     { f2s(digits4,ops3,f) }]];
+}
+
+#<<<#
+solutions:=u(game24Solver(ask(0,"digits: ")));
+println(solutions.len()," solutions:");
+solutions.apply2(Console.println);
+#<<<#
+}
+
+tester.testRun(Solve24.game24Solver.fp("6795"),Void,
+  L("6+((7-5)*9)","6-((5-7)*9)","6-(9*(5-7))","6+(9*(7-5))",
+    "(9*(7-5))+6","((7-5)*9)+6"), __LINE__);
+tester.testRun(Solve24.game24Solver.fp("1111"),Void,L(),__LINE__);
+tester.testRun(fcn{ Solve24.game24Solver("3388"):Solve24.u(_) },Void,
+   L("8/(3-(8/3))"),__LINE__);
+
+
+		//////////////////////////// Aliquot sequence classifications
+{class Aliquot{
+fcn aliquot(k){  //-->Walker
+   Walker(fcn(rk){
+      k:=rk.value;
+      rk.set((1).reduce((k + 1)/2, fcn(s,n,k){
+	 s + (k%n==0 and k!=n and n) // s + False == s + 0
+      },0,k));
+      k
+   }.fp(Ref(k)))
+}//(10).walk(15).println();  //-->L(10,8,7,1,0,0,0,0,0,0,0,0,0,0,0)
+
+fcn classify(k){
+   const MAX=(2).pow(47);  // 140737488355328
+   ak,aks:=aliquot(k), ak.walk(16);
+   _,a2,a3:=aks;
+   if(a2==k) return("perfect");
+   if(a3==k) return("amicable");
+   aspiring:='wrap(){
+      foreach n in (aks.len()-1){ if(aks[n]==aks[n+1]) return(True) }
+      False
+   };
+   cyclic:='wrap(){
+      foreach n in (aks.len()-1){ if(aks[n+1,*].holds(aks[n])) return(aks[n]) }
+      False
+   };
+   (if(aks.filter1('==(0))!=False) "terminating"
+    else if(n:=aks[1,*].filter1n('==(k))) "sociable of length " + (n+1)
+    else if(aks.filter1('>(MAX)))  "non-terminating"
+    else if(aspiring())		   "aspiring"
+    else if((c:=cyclic())!=False)  "cyclic on " + c
+    else			   "non-terminating" )
+   + " " + aks.filter();
+}
+#<<<#
+[1..10].pump(fcn(k){ "%6d is %s".fmt(k,classify(k)).println() });
+T(11,12,28,496,220,1184,12496,1264460,790,909,562,1064,1488)
+//T(1488,15355717786080)
+   .pump(fcn(k){ "%6d is %s".fmt(k,classify(k)).println() });
+#<<<#
+}
+tester.testRun(Aliquot.classify.fp(1),Void,"terminating L(1)",__LINE__);
+tester.testRun(Aliquot.classify.fp(4),Void,"terminating L(4,3,1)",__LINE__);
+tester.testRun(Aliquot.classify.fp(6),Void,"perfect",__LINE__);
+tester.testRun(Aliquot.classify.fp(220),Void,"amicable",__LINE__);
+tester.testRun(Aliquot.classify.fp(562),Void,"cyclic on 284 L(562,284,220,284,220,284,220,284,220,284,220,284,220,284,220,284)",__LINE__);
+}
+
+		//////////////////////////////////////// Arithmetic/Rational
+{class ArithmeticRational{
+class Rational{  // Weenie Rational class, can handle BigInts
+   fcn init(_a,_b){ var a=_a, b=_b; normalize(); }
+   fcn toString{
+      if(b==1) a.toString()
+      else     "%d//%d".fmt(a,b) 
+   }
+   var [proxy] isZero=fcn{ a==0 };
+   fcn normalize{  // divide a and b by gcd
+      g:= a.gcd(b);
+      a/=g; b/=g;
+      if(b<0){ a=-a; b=-b; } // denominator > 0
+      self
+   }
+   fcn abs       { a=a.abs(); self }
+   fcn __opNegate{ a=-a;      self }			    // -Rat
+   fcn __opAdd(n){
+      if(Rational.isChildOf(n)) self(a*n.b + b*n.a, b*n.b); // Rat + Rat
+      else self(b*n + a, b);				    // Rat + Int
+   }
+   fcn __opSub(n){ self(a*n.b - b*n.a, b*n.b) }		    // Rat - Rat
+   fcn __opMul(n){
+      if(Rational.isChildOf(n)) self(a*n.a, b*n.b);	    // Rat * Rat
+      else self(a*n, b);				    // Rat * Int
+   }
+   fcn __opDiv(n){ self(a*n.b,b*n.a) }			    // Rat / Rat
+   fcn __opEQ(r){				       // Rat==Rat, Rat==n
+      if(Rational.isChildOf(r)) a==r.a and b=r.b;
+      else			b==1   and a==r;
+   }
+}
+#<<<#
+foreach p in ([2 .. (2).pow(19)]){
+   sum,limit := Rational(1,p), p.toFloat().sqrt();
+   foreach factor in ([2 .. limit]){
+      if(p%factor == 0) sum+=Rational(1,factor) + Rational(factor,p);
+   }
+   if(sum.b==1) println("Sum of recipr. factors of %6s = %s exactly%s"
+			.fmt(p, sum, (sum==1) and ", perfect." or "."));
+}
+#<<<#
+}
+Rational:=ArithmeticRational.Rational;
+tester.testRun('wrap{
+reg r;
+foreach p in ([2 .. 500]){
+   sum,limit := Rational(1,p), p.toFloat().sqrt();
+   foreach factor in ([2 .. limit]){
+      if(p%factor == 0) sum+=Rational(1,factor) + Rational(factor,p);
+   }
+   if(sum.b==1) r="Sum of recipr. factors of %6s = %s exactly%s"
+		   .fmt(p, sum, (sum==1) and ", perfect." or ".");
+}
+r
+},Void,"Sum of recipr. factors of    496 = 1 exactly, perfect.",__LINE__);
+}
+
+
+if(BN){
+{class ArthCoding{ //////// Arithmetic coding/As a generalized change of radix
+//{{libheader|GMP}} GNU Multiple Precision Arithmetic Library
+//Uses libGMP (GNU MP Bignum Library)
+//var [const] BN=Import.lib("zklBigNum");  // libGMP
+
+fcn cumulativeFreq(freqHash){
+   total,cf := 0,Dictionary();
+   foreach b in (256){ if(v:=freqHash.find(b)){ cf[b]=total; total+=v; } }
+   cf
+}
+ 
+fcn arithmethicCoding(str, radix){
+   bytes   :=str.split("").apply("toAsc");   // string to bytes: "0"-->0x31
+   freqHash:=Dictionary(); bytes.pump(Void,freqHash.incV); // frequency chars
+   cf      :=cumulativeFreq(freqHash);		// The cumulative frequency
+ 
+   base,lower:=bytes.len(), BN(0);	// Lower bound
+   pf:=BN(1);				// Product of all frequencies
+ 
+   // Each term is multiplied by the product of the
+   // frequencies of all previously occurring symbols
+   foreach b in (bytes){
+      lower.mul(base).add(pf*cf[b]);  // gets quite large
+      pf.mul(freqHash[b]);	      // gets big
+   }
+
+   upper,powr := lower + pf, 0;
+   while(1){
+      pf.div(radix);	// in place BigInt math, no garbage
+      if(pf==0) break;
+      powr+=1;
+   }
+   enc:=(upper - 1)/BN(radix).pow(powr);
+
+   return(enc,powr,freqHash);
+}
+ 
+fcn arithmethicDecoding(enc, radix, powr, freqHash){
+   enc*=radix.pow(powr);
+   base:=freqHash.values.sum(0);
+   cf  :=cumulativeFreq(freqHash);   // Create the cumulative frequency table
+   dict:=cf.pump(Dictionary(),// Invert/transpose cumulative table, keys are strings
+		fcn(kv){ kv.reverse().apply("toInt") });
+   // Fill the gaps in the dictionary
+   lchar:=Void;
+   foreach b in (base){
+      if(v:=dict.find(b)) lchar=v;
+      else if(lchar)      dict[b]=lchar;
+   }
+ 
+   // Decode the input number
+   decoded:=Data();	// byte bucket
+   foreach n in ([base-1..0, -1]){
+      pow:=BN(base).pow(n);	// a big number
+      div:=(enc/pow).toInt();	// a small number, convert from BigInt
+      c,fv,cv := dict[div],freqHash[c],cf[c];
+      decoded.append(c.toChar());
+      enc.sub(pow*cv).div(fv);	// in place BigInt math, no garbage
+   }
+   decoded.text    // Return the decoded output
+}
+ 
+radix:=10;
+testStrings:=T(
+        "DABDDB",
+        "DABDDBBDDBA",
+        "ABRACADABRA",
+        "TOBEORNOTTOBEORTOBEORNOT",);
+ 
+#if 0
+foreach  str in (testStrings){
+    enc,pow,freq := arithmethicCoding(str,radix);
+    dec:=arithmethicDecoding(enc, radix, pow, freq);
+    print("%-25s=> %19s * %d^%s\n".fmt(str,enc,radix,pow));
+ 
+    if(str!=dec) println("\tHowever that is incorrect!");
+}
+#endif
+var textFcn='wrap{
+   foreach  str in (testStrings){
+      enc,pow,freq := arithmethicCoding(str,radix);
+      dec:=arithmethicDecoding(enc, radix, pow, freq);
+      if(str!=dec) return(False);
+   }
+   True
+}
+}}
+tester.testRun(ArthCoding.textFcn(0),Void,True,__LINE__);
+}
+
+
+{	///////////////////////////////////////// Associative array/Iteration
+#<<<#
+   d:=Dictionary("A","alpha","D","delta", "B","beta", "C", "gamma");
+   d.keys.pump(Console.print,fcn(k){ String(k,",") })
+   d.values.apply("toUpper").println();
+   d.makeReadOnly();  // can only iterate over k,v pairs if read only
+   foreach k,v in (d){ print(k,":",v,"; ") }
+#<<<#
+tester.testRun(fcn{
+   d:=Dictionary("A","alpha","D","delta", "B","beta", "C", "gamma");
+   d.keys.pump(String,fcn(k){ String(k,",") })
+},Void,"A,B,C,D,",__LINE__);
+tester.testRun(fcn{
+   d:=Dictionary("A","alpha","D","delta", "B","beta", "C", "gamma");
+   d.values.apply("toUpper")
+},Void,L("ALPHA","BETA","GAMMA","DELTA"),__LINE__);
+
+tester.testRun(fcn{
+   d:=Dictionary("A","alpha","D","delta", "B","beta", "C", "gamma");
+   d.makeReadOnly();  // can only iterate over k,v pairs if read only
+   sink:=Sink(String);
+   foreach k,v in (d){ sink.write(k,":",v,"; ") }
+   sink.close()
+},Void,"A:alpha; B:beta; C:gamma; D:delta; ",__LINE__);
+}
+
+
+{		/////////////////////////////////// Averages/Arithmetic mean
+// Converts int to floats (implicitly):
+fcn mean(a,b,c,etc){ z:=vm.arglist; z.reduce('+,0.0)/z.len() }
+#<<<#
+mean(3,1,4,1,5,9); //-->3.83333
+mean(); //-->Exception thrown: MathError(NaN (Not a number))
+
+To pass in a vector/list:
+fcn meanV(z){ z.reduce('+,0.0)/z.len() }
+meanV(T(3,1,4,1,5,9)); // --> 3.83333
+#<<<#
+fcn meanV(z){ z.reduce('+,0.0)/z.len() }
+
+tester.testRun(fcn{ mean(3,1,4,1,5,9).closeTo(3.83333,0.00001) },Void,True,__LINE__);
+//tester.testRun(mean.fp(),"MathError",Void,__LINE__);
+tester.testRun(fcn{ mean().toString().holds("-nan") },Void, True, __LINE__);
+tester.testRun(fcn{ meanV(T(3,1,4,1,5,9)).closeTo(3.83333,0.00001) },Void,True,__LINE__);
+}
+
+
+{		//////////////////////////////////////// Dijkstra's algorithm
+const INF=(0).MAX;
+fcn dijkstra(graph,start,dst){
+   Q   :=graph.copy();
+   prev:=graph.keys.pump(Dictionary().add.fp1(Void));
+   dist:=graph.keys.pump(Dictionary().add.fp1(INF));
+   dist[start]=0;
+   while(Q){
+#if 1
+      Q.reduce('wrap(min,[(v,_)],ru){ 
+           if((d:=dist[v])<min){ ru.set(v); d } else min },
+        INF,ru:=Ref(Void));
+      if(not u:=ru.value) return("Can't get there");
+#else
+      vs,ds,min:=Q.keys,vs.pump(List,dist.get),(0).min(ds); // (names), (dists)
+      if(min==INF) return("Can't get there");
+      u:=vs[ds.index(min)];		// reverse search
+#endif
+      if(u==dst){
+         S:=List(); do{ S.append(u); u=prev[u]; }while(u);
+	 return(S.reverse());
+      }
+      Q.del(u);
+      foreach v,len in (graph[u]){  // (neighborVertex,len to neighbor)...
+	  alt:=dist[u] + len;
+	  if(alt<dist[v]){ dist[v]=alt; prev[v]=u; }
+      }
+   }
+}
+
+graph:=Dictionary(  // directed graph
+   "a", T(T("b", 7.0), T("c", 9.0), T("f",14.0)),
+   "b", T(T("c",10.0), T("d",15.0)),
+   "c", T(T("d",11.0), T("f", 2.0)),
+   "d", T(T("e", 6.0)),
+   "e", T(T("f", 9.0)),
+   "f", T,
+);
+//dijkstra(graph,"a","e").println();
+//dijkstra(graph,"e","a").println();
+
+tester.testRun(dijkstra.fp(graph,"a","e"),Void,L("a","c","d","e"),__LINE__);
+tester.testRun(dijkstra.fp(graph,"e","a"),Void,"Can't get there",__LINE__);
+}
+
+
+{			////////////////////////////////////// Discordian date
+//{{trans|D}}
+fcn discordianDate(y,m,d){
+   var [const]
+   seasons=T("Chaos","Discord","Confusion","Bureaucracy","The Aftermath"),
+   weekday=T("Sweetmorn","Boomtime","Pungenday","Prickle-Prickle","Setting Orange"),
+   apostle=T("Mungday","Mojoday","Syaday","Zaraday","Maladay"),
+   holiday=T("Chaoflux","Discoflux","Confuflux","Bureflux","Afflux");
+ 
+   dYear,isLeapYear := y + 1166, Time.Date.isLeapYear(y);
+   if(isLeapYear and m==2 and d==29)
+      return("St. Tib's Day, in the YOLD " + dYear);
+
+   doy:=Time.Date.nthDayInYear(y,m,d);
+   if(isLeapYear and doy>=60) doy-=1;
+   dsDay:=(if(doy%73==0) 73 else doy%73); // Season day.
+   if(dsDay== 5) return(String(apostle[doy/73],", in the YOLD ",dYear));
+   if(dsDay==50) return(String(holiday[doy/73],", in the YOLD ",dYear));
+ 
+   dSeas:=seasons[(if(doy%73==0) doy-1 else doy)/73];
+   dWday:=weekday[(doy - 1)%5];
+   "%s, day %s of %s in the YOLD %s".fmt(dWday,dsDay,dSeas,dYear);
+}
+#<<<#
+foreach y,m,d in (T(T(2010,7,22), T(2012,2,28), T(2012,2,29), T(2013,2,29), 
+		    T(2012,3,1),T(2010,1, 5), T(2011,5, 3))){
+   "%d-%02d-%02d is -->%s".fmt(y,m,d,discordianDate(y,m,d)).println();
+}
+#<<<#
+tester.testRun(discordianDate.fp(2010,7,22),Void,"Pungenday, day 57 of Confusion in the YOLD 3176",__LINE__);
+tester.testRun(discordianDate.fp(2012,2,28),Void,"Prickle-Prickle, day 59 of Chaos in the YOLD 3178",__LINE__);
+tester.testRun(discordianDate.fp(2012,2,29),Void,"St. Tib's Day, in the YOLD 3178",__LINE__);
+tester.testRun(discordianDate.fp(2013,2,29),Void,"Setting Orange, day 60 of Chaos in the YOLD 3179",__LINE__);
+tester.testRun(discordianDate.fp(2012,3,1),Void,"Setting Orange, day 60 of Chaos in the YOLD 3178",__LINE__);
+tester.testRun(discordianDate.fp(2010,1, 5),Void,"Mungday, in the YOLD 3176",__LINE__);
+tester.testRun(discordianDate.fp(2011,5, 3),Void,"Discoflux, in the YOLD 3177",__LINE__);
+}
+
+
+{			//////////////////////////////////// Doubly-linked list
+// chunks of this class are used for the various tasks
+class Node{
+   fcn init(_value,_prev=Void,_next=Void)
+      { var value=_value, prev=_prev, next=_next; }
+   fcn toString{ value.toString() }
+   fcn append(value){  // loops not allowed: create a new Node
+      b,c := Node(value,self,next),next;
+      next=b;
+      if(c) c.prev=b;
+      b
+   }
+   fcn delete{ 
+      if(prev) prev.next=next;
+      if(next) next.prev=prev; 
+      self 
+   }
+   fcn last  { n,p := self,self; while(n){ p,n = n,n.next } p }
+   fcn first { n,p := self,self; while(n){ p,n = n,n.prev } p }
+   fcn walker(forward=True){
+      dir:=forward and "next" or "prev";
+      Walker(fcn(rn,dir){ 
+         if(not (n:=rn.value)) return(Void.Stop);
+	 rn.set(n.setVar(dir));
+         n.value;
+      }.fp(Ref(self),dir))
+   }
+}
+
+    //////////////////////////////////// Doubly-linked list/Element definition
+a,b:=Node(1),Node("three");
+a.next=b; b.prev=a;
+//println(a.next,"  ",b.prev);
+tester.testRun('wrap{ String(a.next,b.prev) },Void,"three1",__LINE__);
+
+
+    ///////////////////////////////////// Doubly-linked list/Element insertion
+a:=Node("a"); 
+a.append("b").append("c");
+//println(a,"  ",a.next,"  ",a.next.next);
+tester.testRun('wrap{ String(a,a.next,a.next.next) },Void,"abc",__LINE__);
+
+
+    //////////////////////////////////////////// Doubly-linked list/Traversal
+a,c := Node("a"), a.append("b").append("c");
+#<<<#
+n:=a; while(n){ print(n,"  "); n=n.next }
+println();
+n:=c; while(n){ print(n,"  "); n=n.prev }
+println();
+#<<<#
+tester.testRun('wrap{ 
+   out:=Sink(String);
+   n:=a; while(n){ out.write(n); n=n.next }
+   n:=c; while(n){ out.write(n); n=n.prev }
+   out.close()
+},Void,"abccba",__LINE__);
+
+
+    ////////////////////////////////////// Doubly-linked list/Element removal
+a:=Node("a"); 
+a.append("b").append("c");
+a.next.delete();
+//n:=a; while(n){ print(n,"  "); n=n.next }
+tester.testRun('wrap{ String(a,a.next) },Void,"ac",__LINE__);
+tester.testRun(fcn{ Node(1).delete().toString() },Void,"1",__LINE__);
+
+a,b:=Node("a"),a.append("b"); b.append("c");
+a.last().delete();
+tester.testRun('wrap{ String(a,a.next) },Void,"ab",__LINE__);
+
+a,b:=Node("a"),a.append("b"); b.append("c");
+a.delete();
+tester.testRun(b.setVar("next").toString,Void,"c",__LINE__);
+
+
+    //////////////////////////////////////////// Doubly-linked list/Definition
+a:=Node("a"); 
+a.append("c").append("d");
+a.last().append("e");
+a.last().first().append("b");
+//foreach n in (a){ print(n,"  ") } println();
+//foreach n in (a.last().walker(False)){ print(n,"  ") } println();
+tester.testRun('wrap{ 
+   out:=Sink(String);
+   foreach n in (a){ out.write(n) }
+   foreach n in (a.last().walker(False)){ out.write(n) }
+   out.close()
+},Void,"abcdeedcba",__LINE__);
+}
+
+
+{			//////////////////////////////////// Egyptian fractions
+//{{trans|Tcl}}
+# Just compute the denominator terms, as the numerators are always 1
+fcn egyptian(num,denom){
+   result,t := List(),Void;
+   t,num=num.divr(denom);      // reduce fraction
+   if(t) result.append(T(t));  // signal t isn't a denominator
+   while(num){
+      # Compute ceil($denom/$num) without floating point inaccuracy
+      term:=denom/num + (denom/num*num < denom);
+      result.append(term);
+      z:=denom%num;
+      num=(if(z) num-z else 0);
+      denom*=term;
+   }
+   result
+}
+fcn efrac(fraction){  // list to string, format list of denominators
+   fraction.pump(List,fcn(denom){
+      if(denom.isType(List)) denom[0]
+      else 		     String("1/",denom);
+   }).concat(" + ")
+}
+
+#<<<#
+foreach n,d in (T(T(43,48), T(5,121), T(2014,59))){
+   println("%s/%s --> %s".fmt(n,d, egyptian(n,d):efrac(_)));
+}
+#<<<#
+tester.testRun(fcn{ egyptian(43,48):efrac(_) },Void,
+   "1/2 + 1/3 + 1/16",__LINE__);
+tester.testRun(fcn{ egyptian(5,121):efrac(_) },Void,
+   "1/25 + 1/757 + 1/763309 + 1/873960180913 + 1/1025410058030422033",__LINE__);
+tester.testRun(fcn{ egyptian(2014,59):efrac(_) },Void,
+   "34 + 1/8 + 1/95 + 1/14947 + 1/670223480",__LINE__);
+
+
+if(BN){
+//{{libheader|GMP}} GNU Multiple Precision Arithmetic Library
+//var [const] BN=Import.lib("zklBigNum");  // libGMP
+lenMax,denomMax := List(0,Void),List(0,Void);
+foreach n,d in (Walker.cproduct([1..99],[1..99])){ // 9801 fractions
+   e,eLen,eDenom := egyptian(BN(n),BN(d)), e.len(), e[-1];
+   if(eDenom.isType(List)) eDenom=1;
+   if(eLen  >lenMax[0])   lenMax  .clear(eLen,  T(n,d));
+   if(eDenom>denomMax[0]) denomMax.clear(eDenom,T(n,d));
+}
+#<<<#
+println("Term max is %s/%s with %d terms".fmt(lenMax[1].xplode(), lenMax[0]));
+dStr:=denomMax[0].toString();
+println("Denominator max is %s/%s with %d digits %s...%s"
+    .fmt(denomMax[1].xplode(), dStr.len(), dStr[0,5], dStr[-5,*]));
+#<<<#
+tester.testRun(lenMax.noop,Void,L(9,L(97,53)),__LINE__);
+denomMax[0]=denomMax[0].len();
+tester.testRun(denomMax.noop,Void,L(150,L(8,97)),__LINE__);
+}
+}
+
+
+{		///////////////////////////////////////// Enumerations
+#<<<#
+Enums as thing or type is not supported but they can be simulated by
+running code at parse time (ie modify the AST before the compiler
+compiles it).
+#<<<#
+tester.testRun(fcn{
+const RGB_COLOR{  // put color names in a name space
+   const RED =0xf00;
+   const BLUE=0x0f0, GREEN = 0x00f;
+   const CYAN=BLUE + GREEN;  // → 0x0ff
+}
+//println(RGB_COLOR.BLUE);
+RGB_COLOR.BLUE
+},Void,240,__LINE__);
+
+const{ var _n=-1; var [proxy] N=fcn{ _n+=1 } } // code that only exists at parse time
+// A proxy var means that referencing the var will run the function (vs return it)
+// Vars in const space are what the programmer sees as constants
+#<<<#
+const X0=N;        // --> 0
+const A=N,B=N,C=N; // --> 1,2,3
+const{ _n=-1; }    // reset Enum, this should be a const space function
+const X=N;	   // -->0
+#<<<#
+tester.testRun(fcn{
+   const X0=N;    // --> 0
+   X0
+},Void,0,__LINE__);
+
+tester.testRun(fcn{
+   const A=N,B=N,C=N;	// --> 1,2,3
+   C
+},Void,3,__LINE__);
+
+tester.testRun(fcn{
+   const{ _n=-1; } 	// reset Enum
+   const X=N;		// -->0
+   X
+},Void,0,__LINE__);
+#<<<#
+#Since const space runs at a different time [vs compile space], you need
+#to really careful if you mix the two [spaces]:
+z:=N;      // -->2 NOT 1 as it is set AFTER Y (compile time vs parse time)
+const Y=N; // -->1! because it is set before z
+#<<<#
+tester.testRun(fcn{
+   z:=N;
+   const Y=N;
+   return(z,Y)
+},Void,T(2,1),__LINE__);
+}
+
+
+{			//////////////////////////////////// Farey sequence
+//{{trans|C}}
+fcn farey(n){
+   f1,f2:=T(0,1),T(1,n);  // fraction is (num,dnom)
+   print("%d/%d %d/%d".fmt(0,1,1,n));
+   while(f2[1]>1){
+      k,t  :=(n + f1[1])/f2[1], f1;
+      f1,f2 = f2,T(f2[0]*k - t[0], f2[1]*k - t[1]);
+      print(" %d/%d".fmt(f2.xplode()));
+   }
+   println();
+}
+//foreach n in ([1..11]){ print("%2d: ".fmt(n)); farey(n); }
+
+fcn fareyTEST(n){
+   f1,f2:=T(0,1),T(1,n);  // fraction is (num,dnom)
+sink:=Sink(String);
+   while(f2[1]>1){
+      k,t  :=(n + f1[1])/f2[1], f1;
+      f1,f2 = f2,T(f2[0]*k - t[0], f2[1]*k - t[1]);
+      sink.write(" %d/%d".fmt(f2.xplode()));
+   }
+sink.close();
+}
+tester.testRun(fareyTEST.fp(8),Void,
+   " 1/7 1/6 1/5 1/4 2/7 1/3 3/8 2/5 3/7 1/2 4/7 3/5 5/8 2/3 5/7 3/4 4/5 5/6 6/7 7/8 1/1",
+   __LINE__);
+
+
+fcn farey_len(n){
+   var cache=Dictionary();	// 107 keys to 1,000; 6323@10,000,000
+   if(z:=cache.find(n)) return(z);
+ 
+   len,p,q := n*(n + 3)/2, 2,0;
+   while(p<=n){
+      q=n/(n/p) + 1;
+      len-=self.fcn(n/p) * (q - p);
+      p=q;
+   }
+   cache[n]=len;   // len is returned
+}
+
+#<<<#
+foreach n in ([100..1000,100]){ 
+   println("%4d: %7,d items".fmt(n,farey_len(n)));
+}
+n:=0d10_000_000;
+println("\n%,d: %,d items".fmt(n,farey_len(n)));
+#<<<#
+
+tester.testRun(farey_len.fp(1000),Void,304193,__LINE__);
+}
+
+
+			///////////////////////////////// Faulhaber's formula
+if(BN){	 // this test is skipped if BigNum isn't available
+//{{libheader|GMP}} GNU Multiple Precision Arithmetic Library
+//Uses code from the Bernoulli numbers task (copied here).
+//var [const] BN=Import.lib("zklBigNum");   // libGMP (GNU MP Bignum Library)
+
+fcn faulhaberFormula(p){  //-->(Rational,Rational...)
+   [p..0,-1].pump(List(),'wrap(k){ B(k)*BN(p+1).binomial(k) })
+   .apply('*(Rational(1,p+1)))
+}
+
+foreach p in (10){ 
+//   println("F(%d) --> %s".fmt(p,polyRatString(faulhaberFormula(p))))
+}
+tester.testRun(polyRatString.fp(faulhaberFormula(5)),Void,
+   "-1/12n^2 + 5/12n^4 + 1/2n^5 + 1/6n^6 ",__LINE__);
+tester.testRun(polyRatString.fp(faulhaberFormula(9)),Void,
+   "-3/20n^2 + 1/2n^4 - 7/10n^6 + 3/4n^8 + 1/2n^9 + 1/10n^10 ",__LINE__);
+
+class Rational{  // Weenie Rational class, can handle BigInts
+   fcn init(_a,_b){ var a=_a, b=_b; normalize(); }
+   fcn toString{ 
+      if(b==1) a.toString()
+      else     "%d/%d".fmt(a,b) 
+   }
+   var [proxy] isZero=fcn{ a==0 };
+   fcn normalize{  // divide a and b by gcd
+      g:= a.gcd(b);
+      a/=g; b/=g;
+      if(b<0){ a=-a; b=-b; } // denominator > 0
+      self
+   }
+   fcn __opAdd(n){
+      if(Rational.isChildOf(n)) self(a*n.b + b*n.a, b*n.b); // Rat + Rat
+      else self(b*n + a, b);				    // Rat + Int
+   }
+   fcn __opSub(n){ self(a*n.b - b*n.a, b*n.b) }		    // Rat - Rat
+   fcn __opMul(n){
+      if(Rational.isChildOf(n)) self(a*n.a, b*n.b);	    // Rat * Rat
+      else self(a*n, b);				    // Rat * Int
+   }
+   fcn __opDiv(n){ self(a*n.b,b*n.a) }			    // Rat / Rat
+}
+fcn B(N){	// calculate Bernoulli(n) -->Rational
+   var A=List.createLong(100,0);  // aka static aka not thread safe
+   foreach m in (N+1){
+      A[m]=Rational(BN(1),BN(m+1));
+      foreach j in ([m..1, -1]){ A[j-1]= (A[j-1] - A[j])*j; }
+   }
+   A[0]
+}
+fcn polyRatString(terms){ // (a1,a2...)-->"a1n + a2n^2 ..."
+   str:=[1..].zipWith('wrap(n,a){ if(a.isZero) "" else "+ %sn^%s ".fmt(a,n) },
+        terms)
+   .pump(String)
+   .replace(" 1n"," n").replace("n^1 ","n ").replace("+ -","- ");
+   if(not str)     return(" ");  // all zeros
+   if(str[0]=="+") str[1,*];     // leave leading space
+   else            String("-",str[2,*]);
+}
+tester.testRun(polyRatString.fp(T(Rational(1,1),Rational(2,1),Rational(3,1))),
+   Void," n + 2n^2 + 3n^3 ",__LINE__);
+tester.testRun(polyRatString.fp(T(Rational(0,1))),
+   Void," ",__LINE__);
+tester.testRun(polyRatString.fp(T(Rational(0,1),Rational(0,1),Rational(0,1))),
+   Void," ",__LINE__);
+}
+
+			///////////////////////////////// Faulhaber's triangle
+if(BN){	 // this test is skipped if BigNum isn't available
+#<<<#
+{{libheader|GMP}} GNU Multiple Precision Arithmetic Library
+Uses the code from [[Faulhaber's formula#zkl]]
+#<<<#
+
+#<<<#
+foreach p in (10){ 
+   faulhaberFormula(p).apply("%7s".fmt).concat().println();
+}
+#<<<#
+
+n:=
+// each term of faulhaberFormula is BigInt/BigInt
+[1..].zipWith(fcn(n,rat){ rat*BN(1000).pow(n) }, faulhaberFormula(17))
+.walk()		// -->(0, -3617/60 * 1000^2, 0, 595/3 * 1000^4 ...)
+.reduce('+)	// rat + rat + ...
+.println();
+
+tester.testRun(n.noop, Void,
+   "56056972216555580111030077961944183400198333273050000",__LINE__);
+}
+
+
+if(BN){	////////////////// Find largest left truncatable prime in a given base
+//{{libheader|GMP}} GNU Multiple Precision Arithmetic Library
+//var [const] BN=Import.lib("zklBigNum");  // libGMP
+fcn largest_lefty_prime(base){
+   primes,p:=List(),BN(1); while(p.nextPrime()<base){ primes.append(p.copy()) }
+   b,biggest := BN(1),0;
+   while(primes){
+      b*=base;  // base,base^2,base^3... gets big
+      ps:=List(); 
+      foreach p,n in (primes,[1..base-1]){
+         if((z:=(p + b*n)).probablyPrime()){
+	    ps.append(z);
+	    if(z>biggest) biggest=z;
+	 }
+      }
+      primes=ps;  // the number of lists is small
+   }
+   biggest
+}
+
+//foreach n in ([3..17]){ println("%2d %s".fmt(n,largest_lefty_prime(n))) }
+tester.testRun(largest_lefty_prime.fp(7),Void,BN(817337),__LINE__);
+tester.testRun(largest_lefty_prime.fp(13),Void,BN(812751503),__LINE__);
+}
+
+
+if(BN){			//////////////////////// Factors of a Mersenne number
+//{{trans|EchoLisp}}
+//{{libheader|GMP}} GNU Multiple Precision Arithmetic Library
+//var [const] BN=Import.lib("zklBigNum");  // libGMP
+
+    // M = 2^P - 1 , P prime
+    // Look for a prime divisor q such as: 
+    //     q < M.sqrt(), q = 1 or 7 modulo 8, q = 1 + 2kP
+    // q is divisor if 2.powmod(P,q) == 1
+    // m-divisor returns q or False
+fcn m_divisor(P){
+   // must limit the search as M.sqrt() may be HUGE and I'm slow
+   maxPrime:='wrap{ BN(2).pow(P).sqrt().min(0d5_000_000) };
+   t,b2:=BN(0),BN(2);  // so I can do some in place BigInt math
+   foreach q in (maxPrime(P*2)){ // 0..maxPrime -1, faster than just odd #s
+      if((q%8==1 or q%8==7) and t.set(q).probablyPrime() and
+	 b2.powm(P,q)==1) return(q);
+   }
+   False
+}
+#<<<#
+m_divisor(929).println();	// 13007
+m_divisor(4423).println();	// False
+(BN(2).pow(4423) - 1).probablyPrime().println();  // True
+#<<<#
+tester.testRun(m_divisor.fp(929),Void,13007,__LINE__);
+}
+
+
+{			//////////////////////////////////////// Fractran
+var fracs="17/91, 78/85, 19/51, 23/38, 29/33, 77/29, 95/23, 77/19, 1/17,"
+   "11/13,  13/11, 15/14, 15/2, 55/1";
+fcn fractranW(n,fracsAsOneBigString){ //-->Walker (iterator)
+  fracs:=(fracsAsOneBigString-" ").split(",").apply(
+	 fcn(frac){ frac.split("/").apply("toInt") }); //( (n,d), (n,d), ...)
+   Walker(fcn(rn,fracs){
+      n:=rn.value;
+      foreach a,b in (fracs){
+	 if(n*a%b == 0){ 
+	    rn.set(n*a/b);
+	    return(n);
+	 }
+      }
+   }.fp(Ref(n),fracs))
+}
+//fractranW(2,fracs).walk(20).println();
+tester.testRun(fractranW(2,fracs).walk.fp(7),Void,L(2,15,825,725,1925,2275,425),__LINE__);
+
+if(BN){
+//{{trans|Python}}
+//{{libheader|GMP}} GNU Multiple Precision Arithmetic Library
+//var [const] BN=Import.lib("zklBigNum");  // libGMP
+fcn fractranPrimes{
+   foreach n,fr in ([1..].zip(fractranW(BN(2),fracs))){
+      if(fr.num1s==1){
+	 p:=(fr.toString(2) - "1").len();  // count zeros
+	 if(p>1)
+	    println("Prime %3d from the nth Fractran(%8d): %d".fmt(p,n,fr));
+if(n>2000) return(p);
+      }
+   }
+} 
+//fractranPrimes();
+tester.testRun(fractranPrimes,Void,11,__LINE__);
+}   
+}
+
+
+{		////////////////////////////////////////////////// Hash join
+//Join two tables by hashing on the common key (name).  The resulting
+//  join is the intersection of the two tables.
+
+ageName:=T(27,"Jonah", 18,"Alan", 28,"Glory", 18,"Popeye", 28,"Alan");
+nameNemesis:=T("Jonah","Whales", "Jonah","Spiders", "Alan","Ghosts", 
+      "Alan","Zombies", "Glory","Buffy");
+ 
+fcn addAN(age,name,d){  // keys are names, values are ( (age,...),() )
+   if (r:=d.find(name)) d[name] = T(r[0].append(age),r[1]);
+   else d.add(name,T(T(age),T));
+   d	// return d so pump will use that as result for assignment
+}
+fcn addNN(name,nemesis,d){ // values-->( (age,age...), (nemesis,...) )
+   if (r:=d.find(name)){
+      ages,nemesises := r;
+      d[name] = T(ages,nemesises.append(nemesis));
+   }
+}
+    // Void.Read --> take existing i, read next one, pass both to next function
+d:=ageName.pump(Void,Void.Read,T(addAN,Dictionary()));
+nameNemesis.pump(Void,Void.Read,T(addNN,d));
+ 
+//d.println();  // the union of the two tables
+//d.keys.sort().pump(Console.println,'wrap(name){  //pretty print the join
+d=
+d.keys.sort().pump(String,'wrap(name){  //pretty print the join
+   val:=d[name]; if (not val[1])return(Void.Skip);
+   String(name,":",d[name][1].concat(","));
+});
+#zkl Dictionaries only have one key
+
+tester.testRun(d.noop,Void,
+   "Alan:Ghosts,ZombiesGlory:BuffyJonah:Whales,Spiders",__LINE__);
+}
+
+
+{		///////////////////////// Hofstadter-Conway $10,000 sequence
+// {{Trans|D,Go}}
+fcn hofstadterConwaySequence(m){
+   a:=List.createLong(m + 1,0);
+   a[0]=a[1]=1;
+   v,p2,lg2, amax, mallow := a[2],4,1, 0.0, Void;
+ 
+   foreach n in ([2 .. m]){
+      v=a[n]=a[v] + a[n - v];
+      f:=1.0*v/n;
+      if(f>=0.55) mallow=n;
+      amax=amax.max(f);
+      if(n==p2){
+//	 println("Max in [2^%d, 2^%d]: %f".fmt(lg2, lg2+1, amax));
+	 amax,p2 = 0.0, (n+1).nextPowerOf2;
+	 lg2+=1;
+      }
+   }
+   if(mallow) println("Winning number = ",mallow);
+}
+ 
+//hofstadterConwaySequence((2).pow(20));
+
+tester.testRun(hofstadterConwaySequence.fp((2).pow(13)),Void,
+   "Winning number = 1489",__LINE__);
+}
+
+	///////////////////////////////////////////////////// Names to numbers
+{class NamesToNumbers{
+var names=T("zero","one","two","three","four","five","six","seven","eight",
+	    "nine","ten","eleven","twelve","thirteen","fourteen","fifteen",
+	    "sixteen","seventeen","eighteen","nineteen","twenty",
+	    "thirty","forty","fifty","sixty","seventy","eighty","ninety",
+	    "hundred","thousand","million","billion", "trillion")
+	 .zip([0..20].chain([30..90,10]).walk().append(
+	      100,1000,1000000,1000000000,1000000000000))
+	 .toDictionary();
+
+fcn stringToNumber(s){
+   s=s.toLower().replace(",","").replace(" and "," ").replace("-"," ");
+   words,minus,total,hund,prev := s.split(), 1,0,0,0;
+   if(not words) return(0);
+   if(words[0]=="minus"){ minus=-1; words=words[1,*]; }
+   foreach w in (words){
+      n:=names.find(w);
+      if(Void==n) throw(Exception.ValueError("I don't know "+w));
+      if(n<100){
+      	 dn,dp := n.numDigits,prev.numDigits;  // 0,1,2 and 0,1,2,3,...
+	 if(dp<3)
+	    if((dn==dp==1) or dn==0 or dp==0) hund*=10; 
+	    else if(dn==2)		      hund*=100; 
+	 hund+=n;
+      }
+      else if(n==100) hund*=n;
+      else{ total+=hund*n; hund=0; }
+      prev=n;
+   }
+   minus*(total + hund)  
+}
+
+#<<<#
+foreach s in (T("eighty-five thousand and one ",
+     " one hundred and fifty-five thousand and nineteen",
+     "one thousand,   nine hundred and eighty-four","Nineteen Eighty-Four", 
+     "six thousand Nineteen Eighty-Four",
+     "","zero","zero zero one","one zero","one zero two","one one three",
+     "ninety one","one ninety","ninety ninety",
+     "minus four million, five hundred and forty-seven thousand",
+     "six million, seven hundred and sixty-six thousand and twenty-seven")){
+   println("\"%s\" is %,d".fmt(s,stringToNumber(s)));
+}
+#<<<#
+}
+
+tester.testRun(fcn{
+  T("eighty-five thousand and one ",
+     " one hundred and fifty-five thousand and nineteen",
+     "one thousand,   nine hundred and eighty-four","Nineteen Eighty-Four", 
+     "six thousand Nineteen Eighty-Four",
+     "","zero","zero zero one","one zero","one zero two","one one three",
+     "ninety one","one ninety","ninety ninety",
+     "minus four million, five hundred and forty-seven thousand",
+     "six million, seven hundred and sixty-six thousand and twenty-seven")
+   .pump(List,NamesToNumbers.stringToNumber)
+},Void,T(85001,155019,1984,1984,7984,0,0,1,10,102,113,91,190,9090,-4547000,6766027),__LINE__);
+}
+
+
+/////////////////////////////////////////////////////////////// Number names
+{class NumberNames{
+//{{trans|Scala}}
+var 
+   ns   =[1..20].chain([30..90,10]).walk(),
+   names=T("one","two","three","four","five","six","seven","eight","nine",
+           "ten","eleven","twelve","thirteen","fourteen","fifteen","sixteen",
+           "seventeen","eighteen","nineteen","twenty",
+	   "thirty","forty","fifty","sixty","seventy","eighty","ninety"),
+   hs    =T(  100,     1000,      1000000, 1000000000,1000000000000),
+   hnames=T("hundred","thousand","million","billion", "trillion");
+
+fcn numberToString(n){ // n>0
+   fcn(n){
+      if(100<=n<0d100_000_0000_000){
+	 idx,h,name,r := hs.filter1n('>(n))-1, hs[idx], hnames[idx], n%h;
+	 String(self.fcn(n/h),name, 
+	    if(r==0) "" else if(0<r<100) " and " else ", ", 
+	    self.fcn(r));
+      }else if(0<n<=90){
+	 idx,t,name,r := ns.filter1n('>(n))-1, ns[idx], names[idx], n-t;
+	 String(name, if(0<r<10) "-" else " ", self.fcn(r));
+      }else ""
+   }(n).strip()  // sometimes there is a trailing space
+}
+
+#<<<#
+foreach n in (T(1984,85001,155019,4547000,6766027,55555555555)){
+   println("%,d is %s".fmt(n,numberToString(n)));
+}
+#<<<#
+}
+tester.testRun(fcn{ T(1984,85001,155019,4547000,6766027,55555555555)
+   .pump(List, NumberNames.numberToString)
+},Void,T(
+"one thousand, nine hundred and eighty-four",
+"eighty-five thousand and one",
+"one hundred and fifty-five thousand and nineteen",
+"four million, five hundred and forty-seven thousand",
+"six million, seven hundred and sixty-six thousand and twenty-seven",
+"fifty-five billion, five hundred and fifty-five million, five hundred and fifty-five thousand, five hundred and fifty-five"
+),__LINE__);
+}
+
+{		//////////////////////////////////// Palindrome detection
+fcn pali(text){
+   if (text.len()<2) return(False);
+   text==text.reverse();
+}
+fcn pali2(text){ pali((text - " \t\n.,").toLower()) }  // or whatever punctuation is
+#<<<#
+pali("red rum sir is murder") //--> False
+pali("red rum sir is murder" - " ") //-->True, remove spaces
+pali2("In girum imus nocte et consumimur igni") //-->True
+#<<<#
+
+tester.testRun(pali.fp("red rum sir is murder"),Void,False,__LINE__);
+tester.testRun(pali.fp("red rum sir is murder" - " "),Void,True,__LINE__);
+tester.testRun(pali2.fp("In girum imus nocte et consumimur igni"),
+   Void,True,__LINE__);
+}
+
+
+{class PolyLongDivision{	///////////////////// Polynomial long division
+fcn polyLongDivision(a,b){  // (a0 + a1x + a2x^2 + a3x^3 ...)
+   _assert_(degree(b)>=0,"degree(%s) < 0".fmt(b));
+   q:=List.createLong(a.len(),0.0);
+   while((ad:=degree(a)) >= (bd:=degree(b))){
+      z,d,m := ad-bd, List.createLong(z,0.0).extend(b), a[ad]/b[bd];;
+      q[z]=m;
+      d,a = d.apply('*(m)), a.zipWith('-,d);
+   }
+   return(q,a);		// may have trailing zero elements
+}
+fcn degree(v){  // -1,0,..len(v)-1, -1 if v==0
+   v.len() - v.copy().reverse().filter1n('!=(0)) - 1;
+}
+fcn polyString(terms){ // (a0,a1,a2...)-->"a0 + a1x + a2x^2 ..."
+   str:=[0..].zipWith('wrap(n,a){ if(a) "+ %sx^%s ".fmt(a,n) else "" },terms)
+   .pump(String)
+   .replace("x^0 "," ").replace(" 1x"," x").replace("x^1 ","x ")
+   .replace("+ -", "- ");
+   if(not str)     return(" ");  // all zeros
+   if(str[0]=="+") str[1,*];     // leave leading space
+   else            String("-",str[2,*]);
+}
+
+q,r:=polyLongDivision(T(-42.0, 0.0, -12.0, 1.0),T(-3.0, 1.0));
+//println("Quotient  = ",polyString(q));
+//println("Remainder = ",polyString(r));
+}
+
+q,r:=PolyLongDivision.polyLongDivision(T(-42.0, 0.0, -12.0, 1.0),T(-3.0, 1.0));
+tester.testRun(PolyLongDivision.polyString.fp(q),Void,"-27 - 9x + x^2 ",__LINE__);
+tester.testRun(PolyLongDivision.polyString.fp(r),Void,"-123 ",__LINE__);
+
+tester.testRun(PolyLongDivision.polyString.fp(T(1,2,3)),Void,
+   " 1 + 2x + 3x^2 ",__LINE__);
+tester.testRun(PolyLongDivision.polyString.fp(T(0,0,0)),Void,
+   " ",__LINE__);
+}
+
+
+{			////////////////////////////////////////// Rep-string
+//{{trans|D}}
+fcn repString(s){
+   foreach n in ([s.len()/2+1..1,-1]){ 
+      Walker.cycle(s[0,n]).pump(s.len(),String) : 
+      if(_==s and n*2<=s.len()) return(n); 
+   }
+   return(False)
+}
+
+//{{trans|Python}}
+fcn repString2(s){
+   foreach n in ([s.len()/2..0,-1]){ 
+      if(s.matches(s[n,*] + "*") and n*2<=s.len()) return(n); 
+   }
+   return(False)
+}
+
+#<<<#
+words:=("1001110011 1110111011 0010010010 1010101010 "
+         "1111111111 0100101101 0100100 101 11 00 1").split(" ");
+foreach w in (words){
+//print(w," ");println(repString(w));
+   if(not n:=repString2(w)) "No repeat in ".println(w);
+   else [0..*,n].tweak('wrap(z){ if(s:=w[z,n]) s else Void.Stop })
+        .walk().concat(" ").println();
+}
+#<<<#
+fcn repStringFmt(w){
+   n:=repString(w);
+   [0..*,n].tweak('wrap(z){ if(s:=w[z,n]) s else Void.Stop })
+        .walk().concat(" ")
+}
+tester.testRun(repString .fp("1001110011"),Void,5,__LINE__);
+tester.testRun(repString2.fp("1001110011"),Void,5,__LINE__);
+
+tester.testRun(repString .fp("0100101101"),Void,False,__LINE__);
+tester.testRun(repString2.fp("0100101101"),Void,0,__LINE__);
+
+tester.testRun(repStringFmt.fp("1110111011"),Void,"1110 1110 11",__LINE__);
+tester.testRun(repStringFmt.fp("00"),Void,"0 0",__LINE__);
+}
+
+
+{		////////////////////////////////////////////////////// Rot-13
+// Actually, rot13.zkl:
+#<<<#
+#!/home/craigd/Bin/zkl
+fcn rot13(text){
+   text.translate("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
+   		  "nopqrstuvwxyzabcdefghijklmNOPQRSTUVWXYZABCDEFGHIJKLM");
+}
+text:=(vm.arglist or File.stdin);  // command line or pipe
+text.pump(File.stdout,rot13);      // rotate each word and print it
+if(text.isType(List)) File.stdout.writeln();	// command line gets ending newline
+
+$ ./rot13.zkl "Hello World!"
+Uryyb Jbeyq!
+
+$ ./rot13.zkl Hello " " 'World!'
+Uryyb Jbeyq!
+
+$ echo "Uryyb Jbeyq!" | ./rot13.zkl
+Hello World!
+
+$ ./rot13.zkl < rot13.zkl
+#!/ubzr/penvtq/Ova/mx
+#<<<#
+fcn rot13(text){
+   text.translate("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
+   		  "nopqrstuvwxyzabcdefghijklmNOPQRSTUVWXYZABCDEFGHIJKLM");
+}
+//rot13("Hello World!").println();  //--> "Uryyb Jbeyq!"
+//rot13("Uryyb Jbeyq!").println();  //--> "Hello World!"
+tester.testRun(rot13.fp("Hello World!"),Void,"Uryyb Jbeyq!",__LINE__);
+tester.testRun(rot13.fp("Uryyb Jbeyq!"),Void,"Hello World!",__LINE__);
+}
+
+
+			///////////////////////// Sequence of primorial primes
+// this test is skipped if BigNum isn't available
+if(BN){
+//{{trans|C}}
+//{{libheader|GMP}} GNU Multiple Precision Arithmetic Library
+#if 0
+var [const] BN=Import.lib("zklBigNum");  // libGMP
+p,s,i,n:=BN(1),BN(1), 0,0;
+do{ n+=1;
+    s.nextPrime();	// in place, probabilistic
+    p.mul(s);		// in place
+    if((p+1).probablyPrime() or (p-1).probablyPrime()){
+       println("%3d  %5d digits".fmt(n,p.len()));
+       i+=1;
+    }
+}while(i<20);
+#else
+tester.testRun(fcn{ 
+p,s,i,n:=BN(1),BN(1), 0,0;
+sink:=List();
+do{ n+=1;
+    s.nextPrime();	// in place, probabilistic
+    p.mul(s);		// in place
+    if((p+1).probablyPrime() or (p-1).probablyPrime()){
+//       println("%3d  %5d digits".fmt(n,p.len()));
+sink.write(n.toInt());
+       i+=1;
+    }
+}while(i<10);
+sink.close()
+},Void,L(1,2,3,4,5,6,11,13,24,66),__LINE__);
+
+#endif
+}
+
+
+	///////////////////////////////////////////////// Set consolidation
+{
+//{{trans|Tcl}}
+fcn consolidate(sets){  // set are munged if they are read/write
+   if(sets.len()<2) return(sets);
+   r,r0 := List(List()),sets[0];
+   foreach x in (consolidate(sets[1,*])){
+      i,ni:=x.filter22(r0.holds); //-->(intersection, !intersection)
+      if(i) r0=r0.extend(ni);
+      else  r.append(x);
+   }
+   r[0]=r0;
+   r
+}
+fcn prettize(sets){
+   sets.apply("concat"," ").pump(String,"(%s),".fmt)[0,-1]
+//   sets.pump(String,T("concat"," "),"(%s),".fmt)[0,-1]
+}
+#if 0
+foreach sets in (T( 
+  T(T("A","B")), 
+  T(T("A","B"),T("C","D")), 
+  T(L("A","B"),L("B","D")),
+  T(L("A","B"),L("C","D"),L("D","B")),
+  T(L("H","I","K"),L("A","B"),L("C","D"),L("D","B"),L("F","G","H")),
+  T(L("A","H"),L("H","I","K"),L("A","B"),L("C","D"),L("D","B"),L("F","G","H")),
+  T(L("H","I","K"),L("A","B"),L("C","D"),L("D","B"),L("F","G","H"), L("A","H")),
+)){
+   prettize(sets).print(" --> ");
+   consolidate(sets) : prettize(_).println();
+}
+#endif
+
+fcn scrt(sets){ consolidate(sets) : prettize(_) }
+tester.testRun(scrt.fp(T(L("A","B"))),Void,"(A B)",__LINE__);
+tester.testRun(scrt.fp(T(L("A","B"),L("C","D"))),Void,"(A B),(C D)",__LINE__);
+tester.testRun(scrt.fp(T(L("A","B"),L("B","D"))),Void,"(A B D)",__LINE__);
+tester.testRun(scrt.fp(T(L("A","B"),L("C","D"),L("D","B"))),Void,"(A B C D)",__LINE__);
+tester.testRun(scrt.fp(
+   T(T("H","I","K"),T("A","B"),T("C","D"),T("D","B"),T("F","G","H"))),
+   Void,"(H I K F G),(A B C D)",__LINE__);
+tester.testRun(scrt.fp(
+  T(T("A","H"),T("H","I","K"),T("A","B"),T("C","D"),T("D","B"),T("F","G","H")),),
+  Void,"(A H I K F G B C D)",__LINE__);
+tester.testRun(scrt.fp(
+  T(T("H","I","K"),T("A","B"),T("C","D"),T("D","B"),T("F","G","H"), T("A","H")),),
+  Void,"(H I K A B C D F G)",__LINE__);
+}
+
+
+	/////////////////////////////////////// Shortest common supersequence
+{
+//{{trans|C}}
+class Link{ var len,letter,next;
+   fcn init(l=0,c="",lnk=Void){ len,letter,next=l,c,lnk; }
+}
+fcn scs(x,y,out){
+   lx,ly:=x.len(),y.len();
+//   lnk:=(ly+1).pump(List,'wrap(_){ (lx+1).pump(List(),Link.create) });
+   lnk:=List.createLong(ly+1,List.createLong.fp(lx+1,Link,True),True);
+
+   foreach i in (ly){ lnk[i][lx]=Link(ly-i, y[i]) }
+   foreach j in (lx){ lnk[ly][j]=Link(lx-j, x[j]) }
+ 
+   foreach i,j in ([ly-1..0,-1],[lx-1..0,-1]){
+      lp:=lnk[i][j];
+      if (y[i]==x[j]){
+	 lp.next  =lnk[i+1][j+1];
+	 lp.letter=x[j];
+      }else if(lnk[i][j+1].len < lnk[i+1][j].len){
+	 lp.next  =lnk[i][j+1];
+	 lp.letter=x[j];
+      }else{
+	 lp.next  =lnk[i+1][j];
+	 lp.letter=y[i];
+      }
+      lp.len=lp.next.len + 1;
+   }
+
+   lp:=lnk[0][0]; while(lp){ out.write(lp.letter); lp=lp.next; }
+   out.close()
+}
+
+//scs("abcbdab","bdcaba", Sink(String)).println();
+
+tester.testRun(scs.fp("abcbdab","bdcaba", Sink(String)),Void,"abdcabdab",__LINE__);
+}
+
+
+{		///////////////////////////////////// Sierpinski triangle
+//{{trans|D}}
+level,d := 3,T("*");
+foreach n in (level + 1){
+   sp:=" "*(2).pow(n);
+   d=d.apply('wrap(a){ String(sp,a,sp) }).extend(
+     d.apply(fcn(a){ String(a," ",a) }));
+}
+//d.concat("\n").println();
+d=d.concat("\n");
+
+tester.testRun(d.noop,Void,
+#<<<
+"               *               
+              * *              
+             *   *             
+            * * * *            
+           *       *           
+          * *     * *          
+         *   *   *   *         
+        * * * * * * * *        
+       *               *       
+      * *             * *      
+     *   *           *   *     
+    * * * *         * * * *    
+   *       *       *       *   
+  * *     * *     * *     * *  
+ *   *   *   *   *   *   *   * 
+* * * * * * * * * * * * * * * *",__LINE__);
+#<<<
+}
+
+
+{class CheckerBoard{	////////////////////////////// Straddling checkerboard
+//{{trans|D}}
+var [const]
+   val2key=Dictionary(
+    "A","30",  "B","31",  "C","32",  "D","33",  "E","5",   "F","34",  "G","35",
+    "H","0",   "I","36",  "J","37",  "K","38",  "L","2",   "M","4",   ".","78", 
+    "N","39",  "/","79",  "O","1",   "0","790", "P","70",  "1","791", "Q","71", 
+    "2","792", "R","8",   "3","793", "S","6",   "4","794" ,"T","9",   "5","795",
+    "U","72",  "6","796", "V","73",  "7","797", "W","74",  "8","798", "X","75",
+    "9","799", "Y","76",  "Z","77"),
+   key2val=val2key.pump(Dictionary(),"reverse");
+ 
+fcn encode(txt){ txt.toUpper().pump(String,val2key.find.fp1("")) }
+fcn decode(str){ RegExp("79.|3.|7.|.").pump(str,String,key2val.get) }
+
+#<<<#
+txt:="One night-it was on the twentieth of March, 1888-I was returning";
+str:=encode(txt);
+println("Encoded: ", str);
+println("Decoded: ", decode(str));
+#<<<#
+}
+
+txt:="One night-it was on the twentieth of March, 1888-I was returning";
+tester.testRun(CheckerBoard.encode.fp(txt),Void,
+"139539363509369743061399059745399365901344308320791798798798367430685972839363935",
+   __LINE__);
+tester.testRun('wrap{ CheckerBoard.decode(CheckerBoard.encode(txt)) },Void,
+   "ONENIGHTITWASONTHETWENTIETHOFMARCH1888IWASRETURNING", __LINE__);
+}
+
+
+{		//////////////////// Strip a set of characters from a string
+#<<<#
+println("She was a soul stripper. She took my heart!"-"aei")
+//-->Sh ws  soul strppr. Sh took my hrt!
+#<<<#
+tester.testRun(fcn{ "She was a soul stripper. She took my heart!" - "aei" },
+   Void,"Sh ws  soul strppr. Sh took my hrt!",__LINE__);
+}
+
+
+{class SubsetSumProblem{  ///////////////////////////////// Subset sum problem
+//{{trans|C}}
+var items=T(
+T("alliance",  -624),  T("archbishop",  -915),  T("balm",        397),
+T("bonnet",     452),  T("brute",        870),  T("centipede",  -658),
+T("cobol",      362),  T("covariate",    590),  T("departure",   952),
+T("deploy",      44),  T("diophantine",  645),  T("efferent",     54),
+T("elysee",    -326),  T("eradicate",    376),  T("escritoire",  856),
+T("exorcism",  -983),  T("fiat",         170),  T("filmy",      -874),
+T("flatworm",   503),  T("gestapo",      915),  T("infra",      -847),
+T("isis",      -982),  T("lindholm",     999),  T("markham",     475),
+T("mincemeat", -880),  T("moresby",      756),  T("mycenae",     183),
+T("plugging",  -266),  T("smokescreen",  423),  T("speakeasy",  -745),
+T("vein",       813));
+ 
+fcn subSum(set,i,weight){
+   if(i and not weight){
+      itms:=i.pump(List,'wrap(n){ items[set[n]][0] });
+#if 0
+      println(itms.len(),": ",itms.concat(","));
+      throw(Exception.TheEnd);	// bail out of recursion
+#else
+      throw(Exception.TheEnd(	// bail out of recursion
+          "%d: %s".fmt(itms.len(),itms.concat(","))));
+#endif
+   }
+   foreach j in ([i and set[i-1] + 1 or 0 .. items.len()-1]){
+      set[i]=j;
+      self.fcn(set, i+1, weight + items[j][1]);  // recurse
+   }
+}
+
+//set:=List.createLong(items.len(),0);
+//try{ subSum(set,0,0); }catch(TheEnd){}
+
+fcn test{
+   set:=List.createLong(items.len(),0);
+   try{ subSum(set,0,0); }catch(TheEnd){ __exception.text }
+}
+}
+tester.testRun(SubsetSumProblem.test,Void,
+"22: alliance,archbishop,balm,bonnet,brute,centipede,cobol,covariate,departure,deploy,diophantine,efferent,elysee,eradicate,escritoire,exorcism,fiat,filmy,flatworm,mincemeat,plugging,speakeasy",
+ __LINE__);
+
+}
+
+
+{		///////////////////////////////////////////// Sum of squares
+#<<<#
+T().reduce(fcn(p,n){ p + n*n },0)               //-->0
+T(3,1,4,1,5,9).reduce(fcn(p,n){ p + n*n },0.0) //-->133.0
+[1..5].reduce(fcn(p,n){ p + n*n },0)          //-->55
+#<<<#
+tester.testRun(fcn{ T().reduce(fcn(p,n){ p + n*n },0) },Void,0, __LINE__);
+tester.testRun(fcn{ T(3,1,4,1,5,9).reduce(fcn(p,n){ p + n*n },0.0) },Void,133.0, __LINE__);
+tester.testRun(fcn{ [1..5].reduce(fcn(p,n){ p + n*n },0) },Void,55, __LINE__);
+}
+
+
+{		/////////////////////////////// Trabb Pardo–Knuth algorithm
+fcn f(x){ x.abs().pow(0.5) + x.pow(3)*5 }
+#<<<#
+reg ns; do{
+   ns=ask("Type 11 numbers seperated by spaces: ");
+   try{ ns=ns.split(" ").filter().apply("toFloat") }catch{}
+}while(not ns.isType(List) or ns.len()!=11);
+ns.reverse().apply(fcn(x){
+   fx:=f(x); "f(%7.3f)-->%s".fmt(x, if(fx>400) "Overflow" else fx) })
+.pump(Console.println);
+#<<<#
+
+fcn tpkTest{
+reg ns; do{
+   ns="10 -1 1     2 3 4 4.3 4.305 4.303 4.302 4.301";
+   try{ ns=ns.split(" ").filter().apply("toFloat") }catch{}
+}while(not ns.isType(List) or ns.len()!=11);
+ns.reverse().apply(fcn(x){
+   fx:=f(x); "f(%7.3f)-->%s\n".fmt(x, if(fx>400) "Overflow" else fx) })
+.pump(String);
+}
+tester.testRun(tpkTest,Void,
+#<<<
+"f(  4.301)-->399.886
+f(  4.302)-->Overflow
+f(  4.303)-->Overflow
+f(  4.305)-->Overflow
+f(  4.300)-->399.609
+f(  4.000)-->322
+f(  3.000)-->136.732
+f(  2.000)-->41.4142
+f(  1.000)-->6
+f( -1.000)-->-4
+f( 10.000)-->Overflow
+", __LINE__);
+#<<<
+}
+
+
+class TwoSum{		///////////////////////////////////////////// Two Sum
+// The sorted O(n) no external storage solution:
+fcn twoSum(sum,ns){
+   i,j:=0,ns.len()-1;
+   while(i<j){
+      if((s:=ns[i] + ns[j]) == sum) return(i,j);
+      else if(s<sum) i+=1;
+      else if(s>sum) j-=1;
+   }
+}
+//twoSum(21,T(0,2,11,19,90)).println();
+//twoSum(25,T(0,2,11,19,90)).println();
+
+// The unsorted O(n!) all solutions solution:
+fcn twoSum2(sum,ns){
+   Utils.Helpers.combosKW(2,ns).filter('wrap([(a,b)]){ a+b==sum })  // lazy combos
+   .apply('wrap([(a,b)]){ return(ns.index(a),ns.index(b)) })
+}
+//twoSum2(21,T(0,2,11,19,90,21)).println();
+//twoSum2(25,T(0,2,11,19,90,21)).println();
+}
+{
+   ns:=T(0,2,11,19,90);
+   tester.testRun(TwoSum.twoSum.fp(21,ns),Void,L(1,3), __LINE__);
+   tester.testRun(TwoSum.twoSum.fp(25,ns),Void,False, __LINE__);
+
+   ns:=T(0,2,11,19,90,21);
+   tester.testRun(TwoSum.twoSum2.fp(21,ns),Void,L(L(0,5),L(1,3)), __LINE__);
+   tester.testRun(TwoSum.twoSum2.fp(25,ns),Void,T, __LINE__);
+}
+
+
+{	///////////////////////////////////////////////////////// URL decoding
+tester.testRun(fcn{
+"http%3A%2F%2Ffoo%20bar%2F".pump(String,  // push each char through these fcns:
+   fcn(c){ if(c=="%") return(Void.Read,2); return(Void.Skip,c) },// %-->read 2 chars else pass through
+   fcn(_,b,c){ (b+c).toInt(16).toChar() })  // "%" (ignored)  "3"+"1"-->0x31-->"1"
+},Void,"http://foo bar/",__LINE__);
+}
+
+
+{	////////////////////////////////////////// Variable-length quantity
+//{{trans|C}}
+fcn to_seq(x){ //--> list of ints
+   z:=(x.log2()/7);
+   (0).pump(z+1,List,'wrap(j){
+      x.shiftRight((z-j)*7).bitAnd(0x7f).bitOr((j!=z) and 0x80 or 0)
+   });
+}
+fcn from_seq(in){ in.reduce(fcn(p,n){p.shiftLeft(7).bitOr(n.bitAnd(0x7f))},0) }
+
+ns:=T(0x7f, 0x4000, 0, 0x3ffffe, 0x1fffff, 0x200000, 0x3311a1234df31413);
+ms:=ns.apply(to_seq); 
+#<<<#
+ns.zipWith(fcn{ "%8,x --> %s --> %,x".fmt(vm.arglist.xplode()).println() },
+   ms.apply("apply","%,x".fmt),
+   ms.apply(from_seq));
+#<<<#
+
+r:=ns.zipWith(fcn{ "%8,x --> %s --> %,x".fmt(vm.arglist.xplode()) },
+   ms.apply("apply","%,x".fmt),
+   ms.apply(from_seq));
+
+tester.testRun(r.get.fp(0),Void,0'|      7f --> L("7f") --> 7f|, __LINE__);
+tester.testRun(r.get.fp(2),Void,0'$       0 --> L("0") --> 0$, __LINE__);
+tester.testRun(r.get.fp(5),Void,0'$20|00|00 --> L("81","80","80","0") --> 20|00|00$, __LINE__);
+}
+
+
+{	//////////////////////////////////////////////////// Variable size/Get
+#<<<#
+(123).len() //-->1 (byte)
+(0).MAX.len()   //-->8 (bytes), ie the max number of bytes in an int
+(1.0).MAX.len() //-->8 (bytes), ie the max number of bytes in an float
+"this is a test".len() //-->14
+L(1,2,3,4).len()   //-->4
+Dictionary("1",1, "2",2).len() //-->2 (keys)
+Data(0,Int,1,2,3,4).len() //-->4 (bytes)
+#<<<#
+
+tester.testRun((123).len,Void,1, __LINE__);
+tester.testRun((0).MAX.len,Void,8, __LINE__);
+tester.testRun((1.0).MAX.len,Void,8, __LINE__);
+tester.testRun("this is a test".len,Void,14, __LINE__);
+tester.testRun(L(1,2,3,4).len,Void,4, __LINE__);
+tester.testRun(Dictionary("1",1, "2",2).len,Void,2, __LINE__);
+tester.testRun(Data(0,Int,1,2,3,4).len,Void,4, __LINE__);
+}
+
+
+{class Vector{	///////////////////////////////////////////////////// Vector
+#<<<#
+This uses polar coordinates for everything (radians for storage, degrees
+for i/o), converting to (x,y) on demand.  Math is done in place rather
+than generating a new vector.  Using the builtin polar/rectangular
+conversions keeps the vectors normalized.
+#<<<#
+   var length,angle;  // polar coordinates, radians
+   fcn init(length,angle){  // angle in degrees
+      self.length,self.angle = vm.arglist.apply("toFloat");
+      self.angle=self.angle.toRad();
+   }
+   fcn toXY{ length.toRectangular(angle) }
+   // math is done in place
+   fcn __opAdd(vector){
+      x1,y1:=toXY(); x2,y2:=vector.toXY();
+      length,angle=(x1+x2).toPolar(y1+y2);
+      self
+   }
+   fcn __opSub(vector){
+      x1,y1:=toXY(); x2,y2:=vector.toXY();
+      length,angle=(x1-x2).toPolar(y1-y2);
+      self
+   }
+   fcn __opMul(len){ length*=len; self }
+   fcn __opDiv(len){ length/=len; self }
+   fcn print(msg=""){
+#<<<
+"Vector%s:
+   Length: %f
+   Angle:  %f\Ub0;
+   X: %f
+   Y: %f"
+#<<<
+      .fmt(msg,length,angle.toDeg(),length.toRectangular(angle).xplode())
+      .println();
+   }
+   fcn toString{ "Vector(%f,%f\Ub0;)".fmt(length,angle.toDeg()) }
+}
+#<<<#
+Vector(2,45).println();
+Vector(2,45).print(" create");
+(Vector(2,45) * 2).print(" *");
+(Vector(4,90) / 2).print(" /");
+(Vector(2,45) + Vector(2,45)).print(" +");
+(Vector(4,45) - Vector(2,45)).print(" -");
+#<<<#
+
+tester.testRun(Vector(2,45).toString,Void,"Vector(2.000000,45.000000\Ub0;)", __LINE__);
+tester.testRun(fcn{ (Vector(2,45) * 2).print() },Void,
+#<<<
+"Vector:
+   Length: 4.000000
+   Angle:  45.000000\Ub0;
+   X: 2.828427
+   Y: 2.828427"
+#<<<
+, __LINE__);
+tester.testRun(fcn{ (Vector(2,45) + Vector(2,45)).toString() },Void,
+   "Vector(4.000000,45.000000\Ub0;)", __LINE__);
+}
+
+
+{	///////////////////////////////////////////////////// Vector products
+#<<<#
+The [(a1,a2,a3)] parameter notation just means add a preamble to the
+function body to do list assignment:  a1,a2,a3:=arglist[0].  Since we
+don't need the vector as such, don't bother to name it (in the parameter
+list)
+#<<<#
+
+fcn dotp(a,b){ a.zipWith('*,b).sum() } //1 slow but concise
+fcn crossp([(a1,a2,a3)],[(b1,b2,b3)])  //2
+   { return(a2*b3 - a3*b2, a3*b1 - a1*b3, a1*b2 - a2*b1) }
+ 
+a,b,c := T(3,4,5), T(4,3,5), T(-5,-12,-13);
+#<<<#
+dotp(a,b).println();   //5 --> 49
+crossp(a,b).println(); //6 --> (5,5,-7)
+dotp(a, crossp(b,c)).println();   //7 --> 6
+crossp(a, crossp(b,c)).println(); //8 --> (-267,204,-3)
+#<<<#
+
+tester.testRun(dotp.fp(a,b),Void,49,__LINE__);
+tester.testRun('wrap{ crossp(a,b) },Void,L(5,5,-7),__LINE__);
+tester.testRun('wrap{ dotp(a, crossp(b,c)) },Void,6,__LINE__);
+tester.testRun('wrap{ crossp(a, crossp(b,c)) },Void,L(-267,204,-3),__LINE__);
+}
+
+
+{class YCombinator{	/////////////////////////////////////// Y combinator
+   fcn Y(f){ fcn(g){ g(g) }( 'wrap(h){ f( 'wrap(a){ h(h)(a) }) }) }
+#<<<#
+Functions don't get to look outside of their scope so data in enclosing
+scopes needs to be bound to a function, the fp (function
+application/cheap currying) method does this.  'wrap is syntactic sugar
+for fp.
+#<<<#
+
+   fcn almost_factorial(f){ fcn(n,f){ if(n<=1) 1 else n*f(n-1) }.fp1(f) }
+//   Y(almost_factorial)(6).println();
+//   [0..10].apply(Y(almost_factorial)).println();
+
+   fcn almost_fib(f){ fcn(n,f){ if(n<2) 1 else f(n-1)+f(n-2) }.fp1(f) }
+//   Y(almost_fib)(9).println();
+//   [0..10].apply(Y(almost_fib)).println();
+
+   fcn test1{ Y(almost_factorial)(6) }
+   fcn test2{ Y(almost_fib)(9);      }
+}
+
+tester.testRun(YCombinator.test1,Void,720, __LINE__);
+tester.testRun(YCombinator.test2,Void,55, __LINE__);
+}
+
+
+
+tester.stats();
+returnClass(tester);

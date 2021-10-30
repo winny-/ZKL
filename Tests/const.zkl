@@ -1,0 +1,178 @@
+// -*-c-*-
+// Test const
+
+tester := TheVault.Test.UnitTester(__FILE__);
+
+
+tester.testSrc("const k = \"True\"; var R = k;",Void,Void,"True",__LINE__);
+tester.testSrc("const k = True; var R = k;",Void,Void,True,__LINE__);
+tester.testSrc("const k = False; var R = k;",Void,Void,False,__LINE__);
+tester.testSrc("const k = Void; var R = k;",Void,Void,Void,__LINE__);
+tester.testSrc("const k = 123; var R = k;",Void,Void,123,__LINE__);
+tester.testSrc("const k = 1.23; var R = k;",Void,Void,1.23,__LINE__);
+tester.testSrc("const k = (1.0).pi; var R = k;",Void,Void,(1.0).pi,__LINE__);
+tester.testSrc("const k = 0xaf; var R = k;",Void,Void,0xAF,__LINE__);
+tester.testSrc("const k = \"a\\n\"; var R = k;",Void,Void,"a\n",__LINE__);
+
+tester.testSrc("const k^ = 1;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("const 1 = 123; var R=k;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("x = 123; const k = x; var R=k;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("const 1 = 123; var R=1;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("const 1 = 123;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var x=1; const k = x;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("const k = Language; var R = k;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("const k = 123; var R = k.foo;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("const k = 123; var R = k.name;",Void,Void,"Int",__LINE__);
+
+tester.testSrc("const k = 123; const k = 666; var R = k;",Void,Void,666,__LINE__);
+tester.testSrc("const k = 1 + 2; var R=k;",Void,Void,3,__LINE__);
+tester.testSrc("const k = 1.23; var R=k;",Void,Void,1.23,__LINE__);
+tester.testSrc("const kfcn = fcn(a) { return(a + 1); };"
+    "const k = kfcn(3); var R=k;",Void,Void,4,__LINE__);
+tester.testSrc("const kfcn = fcn(a) { return(a + 1); };"
+    "const k2 = 5; const k = k2 + kfcn(3); var R=k;",Void,Void,9,__LINE__);
+tester.testSrc("const kfcn = fcn { return(666); }; var R=kfcn;",Void,Void,666,__LINE__);
+tester.testSrc("const x = 1; const kfcn = fcn { return(x+=1); };"
+    "var R=kfcn;",Void,Void,2,__LINE__);
+tester.testSrc("const x = 1; const kfcn = fcn { return(x+=1); };"
+    "var R=kfcn; R=x",Void,Void,2,__LINE__);
+tester.testSrc("const k = 1; k = 2; var R = k;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("const k = 1; k := 2; var R = k;",Void,Void,2,__LINE__);
+tester.testSrc("const k = L(1,2,3); const k2 = k[2]; var R=k2;",Void,Void,3,__LINE__);
+tester.testSrc("var R = k; const k = 2;",Void,Void,2,__LINE__);
+tester.testSrc("const k = 1; var R = k; const k = 2;",Void,Void,2,__LINE__);
+tester.testSrc("const R = 1; var R;",Void,Void,Void,__LINE__);
+tester.testSrc("const R = 1; var R = 5;",Void,Void,5,__LINE__);
+tester.testSrc("const R = 1; var R = R;",Void,Void,Void,__LINE__);
+tester.testSrc("var R = R; const R = 3;",Void,Void,Void,__LINE__);
+tester.testSrc("var R = 5; const R = 1;",Void,Void,5,__LINE__);
+tester.testSrc("const r = 1; reg r; var R = r;",Void,Void,Void,__LINE__);
+tester.testSrc("const r = 1; reg r=5; var R = r;",Void,Void,5,__LINE__);
+
+tester.testSrc("const f = fcn(x){x}; f();","MissingArg",Void,Void,__LINE__);
+tester.testSrc("const f = fcn(x){x}; f;",  "MissingArg",Void,Void,__LINE__);
+
+tester.testSrc("const k = 666; var R;"
+    "class Foo { fcn init { R = k; }  }(); ",
+    Void,Void,666,__LINE__);
+tester.testSrc("const k = 666; var R;"
+    "class Foo { const k = 777; fcn init { R = k; }  }(); ",
+    Void,Void,777,__LINE__);
+tester.testSrc("const k = 666; var R;"
+    "class Foo { const k = 777; fcn init { R = k; }  }(); R = k;",
+    Void,Void,666,__LINE__);
+tester.testSrc("const k = 666; var R; fcn foo { R = k; }(); ",Void,Void,666,__LINE__);
+tester.testSrc("const k = 666; var R; fcn foo { const k = 777; R = k; }(); ",
+    Void,Void,777,__LINE__);
+
+tester.testSrc("const x = Language; const x = x.versionString;"
+    "var R=x.isType(\"\");", Void,Void,True,__LINE__);
+
+tester.testSrc("const k = fcn(x) { \"foo\" + x }; var R = k(1);",
+    Void,Void,"foo1",__LINE__);
+tester.testSrc("const k = fcn(x) { \"foo\" + x }; var R = k(\"bar\");",
+    Void,Void,"foobar",__LINE__);
+tester.testSrc("const k = fcn(x) { \"foo\" + x }; var R = k();",
+    "MissingArg",Void,Void,__LINE__);
+
+tester.testSrc("var x; const { println(x); }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("const { class Foo {} println(Foo); } var R=1;",Void,Void,1,__LINE__);
+
+//tester.testSrc("const k = L(1,2,3); var R=k[1];",Void,Void,2);
+
+	// scoping
+tester.testSrc("class { const K = 1; } var R=K;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class C { const K=12; } var R=C.K;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("const K = 1; class { const K = 2; } var R=K;",Void,Void,1,__LINE__);
+tester.testSrc("var R; class { const K = 2; class { R = K; }}",Void,Void,2,__LINE__);
+tester.testSrc("var R; class { const K = 2; class { R = K; }}();",Void,Void,2,__LINE__);
+tester.testSrc("var R; class { class { const K = 2; }  R = K; }();","SyntaxError",Void,Void,__LINE__);
+tester.testSrc(
+   "var R; class { const K = 2; class { const K = 3; class { R = K; }}};",
+   Void,Void,3,__LINE__);
+
+
+tester.testSrc("const a=\"123\"; var R = (a).holds(\"3\");",Void,Void,True,__LINE__);
+tester.testSrc("const a=\"123\"; var R = a.holds(\"3\");",Void,Void,True,__LINE__);
+tester.testSrc("const a=\"123\"; var R; { R = (a).holds(\"3\"); }",
+    Void,Void,True,__LINE__);
+tester.testSrc("const a=\"123\"; var R; { R = a.holds(\"3\"); }",
+    Void,Void,True,__LINE__);
+
+tester.testSrc("const k = 1; var k; var R;",Void,Void,Void,__LINE__);
+
+tester.testSrc("var R;"
+    "class { const k = \"12\"; class { R = (k).holds(\"1\") } }()",
+    Void,Void,True,__LINE__);
+tester.testSrc("var R;"
+    0'|class { const k = "12"; class { R = k.holds("1") } }()|,
+    Void,Void,True,__LINE__);
+
+tester.testSrc("const COLOR{ const RED=1 } var R=COLOR.RED",Void,Void,1,__LINE__);
+tester.testSrc("const COLOR{const RED=1} const RED=3; var R = COLOR.RED",
+    Void,Void,1,__LINE__);
+tester.testSrc("const COLOR{const RED=1} const RED=3; var R = RED",
+    Void,Void,3,__LINE__);
+tester.testSrc(0'|const K { const k = fcn{"X"}; } var R=K.k;|,
+    Void,Void,"X",__LINE__);
+tester.testSrc(0'|const K { const k = fcn{"X"}; } var R=K.k();|,
+    Void,Void,"X",__LINE__);
+tester.testSrc(0'|const K { const k = fcn{"X"}; } var R=K.k(1,2,3);|,
+    Void,Void,"X",__LINE__);
+tester.testSrc(0'|const K { const k = fcn(x){"X"+x}; } var R=K.k(3);|,
+    Void,Void,"X3",__LINE__);
+
+tester.testSrc("const K { const K { const k = 5 }} var R=K.K.k;",
+    Void,Void,5,__LINE__);
+tester.testSrc("const K { const K { const k = fcn(x) {x+3} }} var R=K.K.k(3);",
+    Void,Void,6,__LINE__);
+
+tester.testSrc("var R; const;",Void,Void,Void,__LINE__);
+tester.testSrc("const K=4}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("const k=4,; var R=k;",Void,Void,4,__LINE__);
+tester.testSrc("const k=4,k2=5,k3=6; var R=T(k,k2,k3)",Void,Void,T(4,5,6),__LINE__);
+tester.testSrc("const k=4,k2=5,; var R=T(k,k2)",Void,Void,T(4,5),__LINE__);
+tester.testSrc("const K {const k=6}, Z {const z=7};"
+    "var R=T(K.k,Z.z)",Void,Void,T(6,7),__LINE__);
+tester.testSrc("const K {const k=6}, z=7;"
+    "var R=T(K.k,z)",Void,Void,T(6,7),__LINE__);
+tester.testSrc("const K {const k=6}, Z {const z=7}"
+    "var R=T(K.k,Z.z)",Void,Void,T(6,7),__LINE__);
+tester.testSrc("const K { const K2 { const k=6}, K3 {const k=7} }"
+    "var R=T(K.K2.k,K.K3.k)",Void,Void,T(6,7),__LINE__);
+tester.testSrc("const K { const K2 { const k=6} const K3 {const k=7} }"
+    "var R=T(K.K2.k,K.K3.k)",Void,Void,T(6,7),__LINE__);
+
+tester.testSrc("const K=4, Z=(K+4); var R=Z;",Void,Void,8,__LINE__);
+
+
+tester.testSrc("const K=4;  var R=K;",Void,Void,4,__LINE__);
+tester.testSrc("const K=-4; var R=K;",Void,Void,-4,__LINE__);
+
+
+tester.testSrc("const DD=Data(Void,1,2,3); fcn f{ DD } var R=f()[1];",
+    Void,Void,2,__LINE__);
+tester.testSrc("const DD=Data(Void,0,1,2,3); fcn f{ DD } var R=f()[1];",
+    Void,Void,1,__LINE__);
+tester.testSrc("const DD=Data(Void,3,2,1,0); fcn f{ DD } var R=f()[1];",
+    Void,Void,2,__LINE__);
+
+tester.testSrc("const{ var _n=-1; var[proxy]N=fcn{ _n+=1 } } const a=N, b=N;"
+   "var R=b", Void,Void,1,__LINE__);
+
+
+    		//////////////////////////////////////////////////// bugs
+tester.testSrc("const b=-3; b:=6; var R=b;", Void,Void,6,__LINE__);
+tester.testSrc("const b=-3; b=6;","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("const X=1.0, Z=X/10; var R=Z.isType(Float);",Void,Void,True,__LINE__);
+tester.testSrc("const X=1,   Z=X.toFloat()/10; var R=Z.isType(Float);",Void,Void,True,__LINE__);
+tester.testSrc("const X=1,   Z=X.toFloat(); var R=Z.isType(Float);",Void,Void,True,__LINE__);
+tester.testSrc("const X=1,   Z=X.toFloat()/1; var R=Z.isType(Float);",Void,Void,True,__LINE__);
+
+
+		
+
+tester.stats();
+returnClass(tester);
+

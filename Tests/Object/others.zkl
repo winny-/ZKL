@@ -1,0 +1,713 @@
+// -*-c-*-
+// Test other objects: Op, Deferred
+
+tester := TheVault.Test.UnitTester.UnitTester(__FILE__);
+
+
+	///////////////////////////////////////////// Op
+tester.testSrc(0'|var R=Op("+").call(1,2);|,Void,Void,3,__LINE__);
+tester.testSrc(0'|var R=Op("+").call(1,2,3);|,Void,Void,6,__LINE__);
+tester.testSrc(0'|var R=Op("+").call(1,2,3,4,5);|,Void,Void,15,__LINE__);
+
+tester.testSrc(0'|var R=Op("+",10)(1);|,Void,Void,11,__LINE__);
+tester.testSrc(0'|var R=Op("+",10)(1,2);|,Void,Void,13,__LINE__);
+tester.testSrc(0'|var R=Op("+",10)(1,2,3,4,5);|,Void,Void,25,__LINE__);
+tester.testSrc(0'|var R=T(1,2,3).reduce('+);|,Void,Void,6,__LINE__);
+tester.testSrc(0'|var R=fcn(x){x}('+()(1,2));|,Void,Void,3,__LINE__);
+tester.testSrc(0'|var R=fcn(x){x}('+()(1,2)+3);|,Void,Void,6,__LINE__);
+tester.testSrc(0'|var R=fcn(x){x}(3+'+()(1,2));|,Void,Void,6,__LINE__);
+tester.testSrc(0'|var R=fcn(x){x}(3+'+()(1,2)+4);|,Void,Void,10,__LINE__);
+tester.testSrc(0'|var R=T(1,2,"3").apply(Op("+",5));|,Void,Void,T(6,7,"35"),__LINE__);
+tester.testSrc(0'|var R=T(1,2,"3").apply('+(5));|,Void,Void,T(6,7,"35"),__LINE__);
+tester.testSrc(0'|var R=T(1,2,"3").apply(Op("+").fp(5));|,Void,Void,T(6,7,8),__LINE__);
+tester.testSrc(0'|var R=T(1,2,"3").apply('+.fp(5));|,Void,Void,T(6,7,8),__LINE__);
+tester.testSrc(0'|var R=T(1,2,"3").apply('+().fp(5));|,Void,Void,T(6,7,8),__LINE__);
+tester.testSrc(0'|var R=T(1,2,"3").apply('+.);|,"SyntaxError",Void,Void,__LINE__);
+tester.testSrc(0'|var R=T(1,2,"3").apply('+().FOO);|,Void,"NotFoundError",Void,__LINE__);
+tester.testSrc(0'|var R=T(1,2,"3").apply('+.FOO);|,Void,"NotFoundError",Void,__LINE__);
+
+tester.testSrc(0'|var R=Op("-").call(5,1);|,Void,Void,4,__LINE__);
+tester.testSrc(0'|var R=Op("-").call(5,1,2);|,Void,Void,2,__LINE__);
+tester.testSrc(0'|var R=Op("-",1)(10);|,Void,Void,9,__LINE__);
+tester.testSrc(0'|var R=Op("-",1)(10,2,3);|,Void,Void,4,__LINE__);
+tester.testSrc(0'|var R=T(1,2,3).reduce('-);|,Void,Void,-4,__LINE__);
+
+tester.testSrc(0'|var R=T(1,2,3).reduce('*);|,Void,Void,6,__LINE__);
+
+tester.testSrc(0'|var R=T(20,5,2).reduce('/);|,Void,Void,2,__LINE__);
+
+tester.testSrc(0'|var R=T(20,5,2).apply('%(2));|,Void,Void,T(0,1,0),__LINE__);
+
+tester.testSrc(0'|var R=Op("<").call(1,2);|,Void,Void,True,__LINE__);
+tester.testSrc(0'|var R=Op("<")(1,2,3);|,Void,Void,True,__LINE__);
+tester.testSrc(0'|var R=Op("<").call(1,2,2);|,Void,Void,False,__LINE__);
+tester.testSrc(0'|var R=T(1,2,3).filter('<,2);|,Void,Void,T(1),__LINE__);
+
+tester.testSrc(0'|x:=1;  var R=Op("<").call(5,x,10);|,Void,Void,False,__LINE__);
+tester.testSrc(0'|x:=7;  var R=Op("<")(5,x,10);|,Void,Void,True,__LINE__);
+tester.testSrc(0'|x:=15; var R=Op("<").call(5,x,10);|,Void,Void,False,__LINE__);
+
+tester.testSrc(0'|var R=Op("==").call(1,1);|,Void,Void,True,__LINE__);
+tester.testSrc(0'|var R=Op("==").call(1,2);|,Void,Void,False,__LINE__);
+tester.testSrc(0'|var R=Op("==")(1,1,1);|,Void,Void,True,__LINE__);
+tester.testSrc(0'|var R=Op("==")(1,1,2);|,Void,Void,False,__LINE__);
+tester.testSrc(0'|var R=T(1,2,3).filter('==,2);|,Void,Void,T(2),__LINE__);
+
+tester.testSrc(0'|var R=Op("==",1).call(1,1,1);|,Void,Void,True,__LINE__);
+tester.testSrc(0'|var R=Op("==",1)(1,1,2);|,Void,Void,False,__LINE__);
+
+tester.testSrc(0'|var R=Op("!=").call(1,1);|,Void,Void,False,__LINE__);
+tester.testSrc(0'|var R=Op("!=").call(1,2);|,Void,Void,True,__LINE__);
+tester.testSrc(0'|var R=Op("!=")(1,1,1);|,Void,Void,False,__LINE__);
+tester.testSrc(0'|var R=Op("!=")(1,1,2);|,Void,Void,False,__LINE__);
+tester.testSrc(0'|var R=Op("!=")(1,2,1);|,Void,Void,True,__LINE__);
+tester.testSrc(0'|var R=T(1,2,3).filter('!=(2));|,Void,Void,T(1,3),__LINE__);
+
+tester.testSrc(0'|var R=Op("not")(False);|,Void,Void,True,__LINE__);
+tester.testSrc(0'|var R=Op("not")(True);|,Void,Void,False,__LINE__);
+tester.testSrc(0'|var R=Op("not")(0);|,Void,Void,True,__LINE__);
+tester.testSrc(0'|var R=Op("not")(1,0);|,Void,Void,False,__LINE__);
+tester.testSrc(0'|var R=Op("not").toString();|,Void,Void,"Op(not)",__LINE__);
+tester.testSrc(0'|var R=self.fcn.idFcn('!(self.fcn.idFcn)(0));|,Void,Void,True,__LINE__);
+tester.testSrc(0'|var R=self.fcn.idFcn('!(self.fcn.idFcn)(1));|,Void,Void,False,__LINE__);
+
+tester.testSrc(0'|(123) : '+();|,"SyntaxError",Void,Void,__LINE__);
+tester.testSrc(0'|fcn{}('+{});|,"SyntaxError",Void,Void,__LINE__);
+
+
+
+	///////////////////////////////////////////// Deferred
+tester.testSrc(0'|var R=Deferred(fcn{1});|
+    "if (R.BaseClass.toBool()) R=3 else R=5;",Void,Void,5,__LINE__);
+tester.testSrc(0'|var R=Deferred(fcn{123}); R.noop(); if (R) R=3 else R=5;|,
+    Void,Void,3,__LINE__);
+tester.testSrc(0'|var R=Deferred(fcn{123}); R=R.noop(); |, Void,Void,123,__LINE__);
+
+tester.testSrc(0'|var R=Deferred(fcn{return(fcn(x){x+123})}); R=R(5);|,
+    Void,Void,128,__LINE__);
+
+fcn nextFib(a,b)  { return(a,Deferred(fcn(a,b){nextFib(b,a+b)},a,b)); }
+fcn nthFib(seq,n) { if (n <= 1) return(seq[0]); return(self.fcn(seq[1],n-1)); }
+
+tester.testRun(fcn { nthFib( Deferred(nextFib,1,1),  10) }, Void,55,__LINE__);
+
+tester.testSrc(0'|var a = Deferred(fcn{ a }); a.noop();|,
+    Void,"AssertionError",Void,__LINE__);
+
+tester.testSrc(0'|var a = Deferred(fcn{ b }), b = Deferred(a); a.noop();|,
+    Void,"AssertionError",Void,__LINE__);
+tester.testSrc(0'|var a = Deferred(fcn{ b }), b = Deferred(a); b.noop();|,
+    Void,"AssertionError",Void,__LINE__);
+
+tester.testSrc(0'|var R=Deferred(Deferred(Deferred(fcn{4}))).noop();|,
+    Void,Void,4,__LINE__);
+tester.testSrc(0'|var R=Deferred(123,456).noop();|,Void,Void,456,__LINE__);
+tester.testSrc("var a=Deferred(123,56); fcn f{a} var b=Deferred(f);"
+    "var R=b.noop()",Void,Void,56,__LINE__);
+
+tester.testSrc("fcn g { Deferred(0,123) } a:=Deferred(g);"
+    "var R=a.noop()",Void,Void,123,__LINE__);
+tester.testSrc("fcn g { Deferred(g) } Deferred(g).noop();",
+    Void,"AssertionError",Void,__LINE__);
+
+tester.testSrc("fcn fact(n){if (n>1) Deferred(fact,n-1)*n else 1}"
+    "var R=fact(5);",Void,Void,120,__LINE__);
+
+tester.testSrc("var d=Deferred(fcn{ 1/0 }); d.noop()", Void,"MathError",Void,__LINE__);
+tester.testSrc("var d=Deferred(fcn{ 1/0 }); try {d.noop()}catch{} d.noop();",
+    Void,"MathError",Void,__LINE__);
+
+
+    		///////////////////////////////////// Deferred ops
+tester.testSrc(0'|var R=Deferred(fcn{ 1 + 1 }); R=(2==R);|,
+   Void,Void,True,__LINE__);
+tester.testSrc(0'|var R=Deferred(fcn{ 1 + 1 }); R=(R==2);|,
+   Void,Void,True,__LINE__);
+tester.testSrc(0'|var R=Deferred(fcn{ 1 + 1 }); R=(R>1);|,
+   Void,Void,True,__LINE__);
+tester.testSrc(0'|var R=Deferred(Deferred(fcn{ 1 + 1 })); R=(R==2);|,
+   Void,Void,True,__LINE__);
+tester.testSrc(0'|var R=Deferred(Deferred(Deferred(fcn{ 1 + 1 }))); R=(R==2);|,
+   Void,Void,True,__LINE__);
+
+tester.testSrc(0'|var R=Deferred; R=(R==Deferred);|,
+   Void,Void,True,__LINE__);
+tester.testSrc(0'|var R=Deferred; R=(Deferred==R);|,
+   Void,Void,True,__LINE__);
+
+tester.testSrc(0'|var R=Deferred; R=(Deferred==1);|,
+   Void,Void,False,__LINE__);
+tester.testSrc(0'|var R=Deferred; R=(Deferred>1);|,
+   Void,"NotImplementedError",Void,__LINE__);
+
+
+
+    		///////////////////////////////////// Deferred.value
+tester.testSrc(0'|var R=Deferred(String,"foo"); R=R.BaseClass.value;|,
+   Void,Void,"foo",__LINE__);
+tester.testSrc(0'|var R=Deferred; R=R.BaseClass.value;|,
+   Void,Void,Deferred,__LINE__);
+
+
+class DeferredThread
+{
+   fcn init
+   {
+      var [const] pipe = Thread.Pipe();
+      returnClass( Deferred(fcn{self.launch(); pipe}) );
+   }
+   fcn liftoff { pipe.wait(1); pipe.close(); }
+}
+
+fcn d1 { reg pipe = DeferredThread(); (not pipe); }
+tester.testRun(d1,Void,True,__LINE__);
+
+fcn d2 { reg pipe = DeferredThread(); pipe.write(123); pipe.read(1); }
+tester.testRun(d2,Void,123,__LINE__);
+
+fcn d3 { reg pipe = DeferredThread(); Deferred.isType(pipe); }
+tester.testRun(d3,Void,True,__LINE__);
+
+
+tester.testSrc(0'|class C {var v;} var R=Deferred(C,5); R=R.isType(C);|,
+    Void,Void,True,__LINE__);
+tester.testSrc(0'|class C {var v;} var R=Deferred(C,5); R=R.isType(self);|,
+    Void,Void,True,__LINE__);
+tester.testSrc(0'|class C {var v;} var R=Deferred(C,5); R=R.isInstanceOf(C);|,
+    Void,Void,True,__LINE__);
+
+tester.testSrc(0'|var R = Deferred(String,"foo"); R=R.len();|,
+    Void,Void,3,__LINE__);
+
+tester.testSrc(0'|var R; d := Deferred(Int.create,5); R=d.toString();|,
+    Void,Void,"5",__LINE__);
+
+tester.testSrc(0'|var R; d := Deferred(Int.create,5); R=d.toBool();|,
+    Void,Void,True,__LINE__);
+tester.testSrc(0'|var R; d := Deferred(Int.create,0); R=d.toBool();|,
+    Void,Void,False,__LINE__);
+tester.testSrc(0'|var R="%b".fmt(Deferred(5,5));|,Void,Void,"True",__LINE__);
+tester.testSrc(0'|var R=(if(Deferred(True)) 123);|,Void,Void,123,__LINE__);
+tester.testSrc(0'|var R="%b".fmt(Deferred(5,5).noop());|,Void,Void,"True",__LINE__);
+tester.testSrc(0'|var R="%b".fmt(Deferred(5,5).toBool());|,Void,Void,"True",__LINE__);
+tester.testSrc(0'|var R=println(Deferred(True));|,Void,Void,"Deferred",__LINE__);
+
+tester.testSrc(0'|var R; d := Deferred(5,5); R=d.toInt();|,
+    Void,Void,5,__LINE__);
+
+tester.testSrc(0'|var R = Deferred.toString();|,Void,Void,"Deferred",__LINE__);
+tester.testSrc(0'|var R = Deferred.toInt();|,Void,"NotImplementedError",Void,__LINE__);
+tester.testSrc(0'|var R = Deferred; R=R.toInt();|,
+   Void,"NotImplementedError",Void,__LINE__);
+
+tester.testSrc(0'|var R=Deferred("hoho".len).noop();|,
+    Void,Void,4,__LINE__);
+tester.testSrc(0'|var R=T(Deferred("hoho".len)).apply("noop");|,
+    Void,Void,T(4),__LINE__);
+
+    		/////// nested Deferred
+tester.testSrc(0'|var R=Deferred(fcn(x){ 123+x }.fp(1)).noop()|,
+    Void,Void,124,__LINE__);
+
+    		///// Deferred garbage collection
+#if 0
+tester.testSrc(0'|class C { var v,r; |
+    "fcn init(x) { r = GarbageMan.WeakRef(x); v = x }}"
+    "c := C(Deferred(fcn{123})); c.v.noop(); do(2){GarbageMan.collect()}"
+    "var R = T(c.r.isDead,Deferred.isType(c.v),c.v);",
+    Void,Void,T(True,False,123),__LINE__);
+#endif
+tester.testSrc(0'|class C { var v,r; |
+    "fcn init(x) { r = GarbageMan.WeakRef(x); v = x }}"
+    "c := C(Deferred(fcn{123}));  var R = Deferred.isType(c.v);",
+    Void,Void,True,__LINE__);
+
+tester.testSrc(0'|class C { var v,r; |
+    "fcn init(x) { r = GarbageMan.WeakRef(x); v = x }}"
+    "c := C(Deferred(fcn{throw(Exception.BadDay)}));"
+    "try{c.v.noop();}catch{} do(2){GarbageMan.collect()}"
+    "var R = T(c.r.isDead,Deferred.isType(c.v));",
+    Void,Void,T(False,True),__LINE__);
+
+tester.testSrc(0'|class C { var v,r; |
+    "fcn init(x) { r = GarbageMan.WeakRef(x); v = x }}"
+    "c := C(self.fcn.idFcn.fp(123));"
+    "c.v.noop(); do(2){GarbageMan.collect()}"
+    "var R = T(c.r.isDead,Deferred.isType(c.v));",
+    Void,Void,T(False,True),__LINE__);
+
+#if 0
+tester.testSrc(
+    0'|r := GarbageMan.WeakRef(c := Deferred("","foo"));|
+    "c := T(c); c[0].noop(); do(2){GarbageMan.collect()}"
+    "var R = T(r.isDead,Deferred.isType(c[0]),c[0]);",
+    Void,Void,T(True,False,"foo"),__LINE__);
+
+tester.testSrc(
+    0'|r := GarbageMan.WeakRef(c := Deferred("","foo"));|
+    "c := Thread.List(c); c[0].noop(); do(2){GarbageMan.collect()}"
+    "var R = T(r.isDead,Deferred.isType(c[0]),c[0]);",
+    Void,Void,T(True,False,"foo"),__LINE__);
+
+tester.testSrc("var R;"
+    "fcn f(x){R=GarbageMan.WeakRef(x); x.noop(); do(2){GarbageMan.collect()}x}"
+    0'|r := f(Deferred("","foo")); R = T(R.isDead,r);|,
+    Void,Void,T(True,"foo"),__LINE__);
+#endif
+
+tester.testSrc("var R;"
+   "fcn Y(f){ fcn(g){g(g)}( 'wrap(h){ f( 'wrap(a){ h(h)(a) } ) } )}"
+   "fcn almost_factorial(f){ fcn(n,f){ if(n<=1) 1 else n*f(n-1) }.fp1(f) }"
+   "R=Y(almost_factorial)(5);",Void,Void,120,__LINE__);
+
+
+   	///////////////////////// .BaseClass
+tester.testSrc(0'|var R = Deferred(String,"foo"); R=R.BaseClass.len();|,
+    Void,Void,0,__LINE__);
+tester.testSrc(0'|var R; d := Deferred(String,"foo"); d.BaseClass.len();|
+    "if (d.BaseClass.toBool()) R = 666;",Void,Void,Void,__LINE__);
+tester.testSrc(0'|var R; d := Deferred(String,"foo"); d.BaseClass.len();|
+    "d.BaseClass.toBool(); R = d.BaseClass.toBool();",Void,Void,False,__LINE__);
+tester.testSrc(0'|var R; d := Deferred.once(String,"foo"); d();|
+    "R=d.BaseClass.len();",Void,Void,0,__LINE__);
+
+tester.testSrc(0'|var R; d := Deferred(5,5); R=d.BaseClass.toInt();|,
+    Void,"NotImplementedError",Void,__LINE__);
+tester.testSrc(0'|var R; d := Deferred(5,5); R=d.BaseClass.toString();|,
+    Void,Void,"Deferred",__LINE__);
+
+tester.testSrc("d:=Deferred(5,5); var R = d.BaseClass; R=R.toString();",
+    Void,Void,"Method(Deferred.BaseClass)",__LINE__);
+tester.testSrc("d:=Console.println.fp(5); var R=d.BaseClass; R=R.toString();",
+    Void,Void,"Method(Deferred.BaseClass)",__LINE__);
+tester.testSrc("d:=Deferred.once(5,5);"
+    "var R=d.BaseClass.BaseClass.instance.BaseClass.toString();",
+    Void,Void,"Deferred",__LINE__);
+tester.testSrc("d:=Deferred.once(5,5);"
+    "var R=d.BaseClass.BaseClass.instance.BaseClass.parts.toString();",
+    Void,Void,0'|L(1,"Deferred.once",5,L(5),Void)|,__LINE__);
+
+
+	///////////////////////////////////////////// Deferred.once
+tester.testSrc("var R = Deferred.once(fcn(x,y){x/2},10); R=R.noop();",
+    Void,Void,5,__LINE__);
+tester.testSrc("var R = Deferred.once(fcn(x,y){x/2},10); R=R();",
+    Void,Void,5,__LINE__);
+tester.testSrc("var R = Deferred.once(fcn(x,y){x/2},10); R=R(); R=R(666);",
+    Void,Void,666,__LINE__);
+tester.testSrc("var R = Deferred.once(fcn(x,y){x/2},10); R=R()(666);",
+    Void,Void,666,__LINE__);
+tester.testSrc("r := Deferred.once(fcn(x,y){x/2},10); r=r(); var R=r;",
+    Void,Void,5,__LINE__);
+tester.testSrc("var R = Deferred.once(fcn(x,y){x/2},10); R=R(5)",
+    Void,Void,5,__LINE__);
+tester.testSrc("var R = Deferred.once(fcn(x,y){x/2},10); R=R.name;",
+    Void,Void,"Int",__LINE__);
+
+
+	///////////////////////////////////////////// Partials
+tester.testSrc("var R = fcn(x,y){x/y}.fp(10); R=R(5)",
+    Void,Void,2,__LINE__);
+tester.testSrc("fcn f{} var R = f.fp(10).name;",Void,Void,"f",__LINE__);
+tester.testSrc("fcn f{} var R = f.fp(10).noop().toString();",
+    Void,Void,"Fcn(f)",__LINE__);
+tester.testSrc(0'|var R = "%d %d".fmt.fp(1)(2);|,Void,Void,"1 2",__LINE__);
+
+tester.testSrc(0'|fcn f(x,y,z){ "%s%s%s".fmt(x,y,z) } |
+    "pf1 := f.fp(1); pf2 := pf1.fp(2);"
+    "var R = pf2(3);", Void,Void,"123",__LINE__);
+tester.testSrc(0'|fcn f(x,y,z){ "%s%s%s".fmt(x,y,z) } |
+    "pf1 := f.fp(1); pf2 := pf1.fp(2); pf3 := pf2.fp(3);"
+    "var R = pf3();", Void,Void,"123",__LINE__);
+tester.testSrc(0'|fcn f(x,y,z){ "%s%s%s".fmt(x,y,z) } |
+    "var R=f.fp(1).fp(2).fp(3)();", Void,Void,"123",__LINE__);
+
+tester.testSrc(0'|fcn f(x,y,z){ "%s%s%s".fmt(x,y,z) } |
+    "pf1 := f.fp(1); pf2 := pf1.BaseClass.fp(2);"
+    "var R = pf2(3);", Void,Void,"123",__LINE__);
+
+tester.testSrc(0'|fcn f(x,y,z){"%s%s%s".fmt(x,y,z)} |
+    "pf1 := f.fp(1); pf2 := pf1.fp(2);"
+    "var R = pf2(3);", Void,Void,"123",__LINE__);
+tester.testSrc(0'|fcn f(x,y,z){"%s%s%s".fmt(x,y,z)} |
+    "pf := f.fp(1).fp(2).fp(3); var R = pf();", Void,Void,"123",__LINE__);
+
+tester.testSrc("fib := fcn(ab){a,b:=ab; ab.del(0)+(a+b); a}.fp(L(0,1))"
+    "var R=Utils.wap(fib).walk(7)",Void,Void,T(0,1,1,2,3,5,8),__LINE__);
+tester.testSrc("fib := fcn(ab){a,b:=ab; ab.del(0)+(a+b); a}.fp(L(0,1))"
+    "var R=(0).pump(7,List,(fib))",Void,Void,T(0,1,1,2,3,5,8),__LINE__);
+
+tester.testSrc("f := fcn(a,b){a+b}.fp(1); var R=(f(3)+1);",Void,Void,5,__LINE__);
+tester.testSrc("f := fcn(a,b){a+b}.fp1(1);"
+    "var R=(f(3)+1);",Void,Void,5,__LINE__);
+
+tester.testSrc("f := (7).fp(8); var R=f();",Void,Void,8,__LINE__);
+tester.testSrc("f := (1-1).fp(8); var R=f.toBool();",Void,Void,False,__LINE__);
+tester.testSrc("f := (7).fp(8); var R=f.toBool();",Void,Void,True,__LINE__);
+
+tester.testSrc("fcn f(x){x+1} fcn g(x){x*2} fcn h(x){x-3}"
+    "fgh:=f.fp(g.fp(h.fp(10))); var R=fgh();", Void,Void,15,__LINE__);
+
+tester.testSrc("f := (0).fp(1); var R=f.fp.toString();",
+   Void,Void,"Method(Deferred.fp)",__LINE__);
+tester.testSrc("f := (0).fp(1); var R=f.fp.BaseClass.toString();",
+   Void,Void,"Method(Deferred.fp)",__LINE__);
+
+
+	///////////////////////////////////////////// fpM
+tester.testSrc(0'|fcn f(x,y){x*y} pf := f.fpM("1_",2);|
+    "var R=pf(5);", Void,Void,10,__LINE__);
+tester.testSrc(0'|fcn f(x,y){x*y} pf := f.fpM("1_",2);|
+    "var R; pf(5); R=pf(15);", Void,Void,30,__LINE__);
+
+tester.testSrc(0'|pf := fcn{vm.arglist}.fpM("1",1);|
+    "var R=pf(5,6);", Void,Void,T(1,5,6),__LINE__);
+tester.testSrc(0'|pf := fcn{vm.arglist}.fp(1);|
+    "var R=pf(5,6);", Void,Void,T(1,5,6),__LINE__);
+
+tester.testSrc(0'|pf := fcn{vm.arglist}.fpM("01",1);|
+    "var R=pf(5,6);", Void,Void,T(5,1,6),__LINE__);
+tester.testSrc(0'|pf := fcn{vm.arglist}.fp1(1);|
+    "var R=pf(5,6);", Void,Void,T(5,1,6),__LINE__);
+
+tester.testSrc(0'|pf := fcn{vm.arglist}.fpM("001",1);|
+    "var R=pf(5,6);", Void,Void,T(5,6,1),__LINE__);
+tester.testSrc(0'|pf := fcn{vm.arglist}.fp2(1);|
+    "var R=pf(5,6);", Void,Void,T(5,6,1),__LINE__);
+
+tester.testSrc(0'|pf := fcn{vm.arglist}.fpM("0001",1);|
+    "var R=pf(5,6,7);", Void,Void,T(5,6,7,1),__LINE__);
+tester.testSrc(0'|pf := fcn{vm.arglist}.fpN(3,1);|
+    "var R=pf(5,6,7);", Void,Void,T(5,6,7,1),__LINE__);
+
+
+tester.testSrc(0'|pf := fcn(x,y){x/y}.fpM("_1",5);|
+    "var R=pf(30);", Void,Void,6,__LINE__);
+
+tester.testSrc(0'|pf := "%d %d".fmt.fpM("_1",666);|
+    "var R=pf(1);", Void,Void,"1 666",__LINE__);
+
+tester.testSrc(0'|fcn f(x,y,z) { (x + y) * z }|
+    0'|g := f.fpM("1_1",1,3); var R=g(2);|,
+    Void,Void,9,__LINE__);
+
+tester.testSrc(0'|var R; pf := fcn(x,y,z){}.fpM("1_1");|,
+    Void,Void,Void,__LINE__);
+tester.testSrc(0'|var R; pf := fcn(x,y,z){}.fpM("1_1",1);|,
+    Void,Void,Void,__LINE__);
+tester.testSrc(0'|var R; pf := fcn(x,y,z){}.fpM("1_1",1,2);|,
+    Void,Void,Void,__LINE__);
+
+tester.testSrc(0'|var R; pf := fcn(x,y,z){}.fpM("1_1"); R=pf(1,2,3)|,
+    Void,"MissingArg",Void,__LINE__);
+tester.testSrc(0'|var R; pf := fcn(x,y,z){}.fpM("1_1",1); R=pf(1,2)|,
+    Void,"MissingArg",Void,__LINE__);
+tester.testSrc(0'|var R; pf := fcn(x,y,z){}.fpM("1_1",1,2); R=pf(1,2)|,
+    Void,Void,Void,__LINE__);
+
+tester.testSrc(0'|pf := fcn(x,y,z){String(x,y,z)}.fpM("___");|
+    "var R=pf(1,2,3);", Void,Void,"123",__LINE__);
+tester.testSrc(0'|pf := fcn(x,y,z){String(x,y,z)}.fpM("___");|
+    "var R=Deferred.isType(pf);", Void,Void,False,__LINE__);
+tester.testSrc(0'|pf := fcn(x,y,z){String(x,y,z)}.fpM("___",1);|
+    "var R=Deferred.isType(pf);", Void,Void,False,__LINE__);
+
+tester.testSrc(0'|pf:=fcn(x,y,z){String(x,y,z)}.fpM("1__",1);|
+    "var R=pf(2,3);", Void,Void,"123",__LINE__);
+tester.testSrc(0'|pf:=fcn(x,y,z){String(x,y,z)}.fpM("_1_",2);|
+    "var R=pf(1,3);", Void,Void,"123",__LINE__);
+tester.testSrc(0'|pf:=fcn(x,y,z){String(x,y,z)}.fpM("__1",3);|
+    "var R=pf(1,2);", Void,Void,"123",__LINE__);
+
+tester.testSrc(0'|pf:=fcn(x,y,z){String(x,y,z)}.fpM("11_",1,2);|
+    "var R=pf(3);", Void,Void,"123",__LINE__);
+tester.testSrc(0'|pf:=fcn(x,y,z){String(x,y,z)}.fpM("1_1",1,3);|
+    "var R=pf(2);", Void,Void,"123",__LINE__);
+tester.testSrc(0'|pf:=fcn(x,y,z){String(x,y,z)}.fpM("_11",2,3);|
+    "var R=pf(1);", Void,Void,"123",__LINE__);
+
+tester.testSrc(0'|pf:=fcn(x,y,z){String(x,y,z)}.fpM("111",1,2,3);|
+    "var R=pf();", Void,Void,"123",__LINE__);
+
+tester.testSrc(0'|f:=fcn{vm.arglist}.fpM("11",1,2); |
+    "var R = f(3,4);", Void,Void,T(1,2,3,4),__LINE__);
+tester.testSrc(0'|f:=fcn{vm.arglist}.fpM("11",1,2,3); |
+    "var R = f(3,4);", Void,Void,T(1,2,3,4),__LINE__);
+
+tester.testSrc(0'|fcn f(x,y,z){ "%s%s%s".fmt(x,y,z) } |
+    0'|pf1:=f.fpM("1__",1); pf2:=pf1.fpM("1_",2);|
+    "var R=pf2(3);", Void,Void,"123",__LINE__);
+tester.testSrc(0'|fcn f(x,y,z){ "%s%s%s".fmt(x,y,z) } |
+    0'|pf1:=f.fpM("1__",1); pf2:=pf1.fpM("1_",2);|
+    "var R=Deferred.isType(pf2.BaseClass.f);", Void,Void,True,__LINE__);
+
+tester.testSrc(0'|fcn f(a,b,c){ String(a,b,c) }|
+    0'|g:=f.fpM("001",1).fpM("01",2).fpM("1",3);|
+    "var R=g();", Void,Void,"321",__LINE__);
+
+tester.testSrc(0'|var R=fcn{vm.arglist}.fpM("001",3)(7,8);|,
+    Void,Void,T(7,8,3),__LINE__);
+tester.testSrc(0'|var R=fcn{vm.arglist}.fpM("1",3)(7,8);|,
+    Void,Void,T(3,7,8),__LINE__);
+
+tester.testSrc(0'|var R=fcn{vm.arglist}.fpM("",3)(7,8);|,
+    Void,Void,T,__LINE__);
+tester.testSrc(0'|var R=fcn{vm.arglist}.fpM("-",3)(7,8);|,
+    Void,Void,T,__LINE__);
+tester.testSrc(0'|var R=fcn{vm.arglist}.fpM("1-",3)(7,8);|,
+    Void,Void,T(3),__LINE__);
+tester.testSrc(0'|var R=fcn{vm.arglist}.fpM("1-",3)();|,
+    Void,Void,T(3),__LINE__);
+tester.testSrc(0'|var R=fcn{vm.arglist}.fpM("1--",3)(7,8);|,
+    Void,Void,T(3),__LINE__);
+tester.testSrc(0'|var R=fcn{vm.arglist}.fpM("1--1",3)(7,8);|,
+    Void,Void,T(3),__LINE__);
+tester.testSrc(0'|var R=fcn{vm.arglist}.fpM("11--1",3,4)(7,8);|,
+    Void,Void,T(3,4),__LINE__);
+tester.testSrc(0'|var R=fcn{vm.arglist}.fpM("11--1",3,4)();|,
+    Void,Void,T(3,4),__LINE__);
+tester.testSrc(0'|var R=fcn(z=22){vm.arglist}.fpM("0-")(7,8);|,
+    Void,Void,T(7),__LINE__);
+
+
+	///////////////////////////////////////////// .fp, .fp1, .fp2, .fpN
+tester.testSrc(0'|var R=L(),f=fcn(x,y){"%s %s".fmt(x,y)}; |
+    0'|var g=Utils.Helpers.fcomp(R.append,f.fp1(10));|
+    "g(3);", Void,Void,T("3 10"),__LINE__);
+tester.testSrc(0'|var R=L(),f=fcn(x,y){"%s %s".fmt(x,y)}; |
+    0'|var g=Utils.Helpers.fcomp(R.append,f.fp1(10));|
+    "g(3);", Void,Void,T("3 10"),__LINE__);
+
+tester.testSrc(0'|var R=L(),filter=Op("==");|
+    0'|fcn f(x,filter,list){if(filter(x))list.append(x)}|
+    0'|var g=f.fp1(filter.fp(10),R);|
+    "g(3); g(10);", Void,Void,T(10),__LINE__);
+
+tester.testSrc(0'|var R=L(),filter=Op("==");|
+    0'|fcn f(x,filter,list){if(filter(x))list.append(x)}|
+    0'|var g=f.fp1(filter.fp(10),R);|
+    "g(3); g(10);", Void,Void,T(10),__LINE__);
+
+tester.testSrc(0'|var R=fcn(a,b){a+b}.fp(1).noop().isType(self.fcn)|,
+    Void,Void,True,__LINE__);
+tester.testSrc(0'|var R=T(fcn(a,b){a+b}.fp(1)).apply("noop")[0].isType(self.fcn)|,
+    Void,Void,True,__LINE__);
+
+tester.testSrc(0'|fcn f(a,b,c){a*a + b*b + c*c} g:=f.fp(1).fp(2).fp(3);|
+    "var R=g();", Void,Void,14,__LINE__);
+tester.testSrc(0'|fcn f(a,b,c){String(a,b,c)} g:=f.fp(1).fp(2).fp(3);|
+    "var R=g();", Void,Void,"123",__LINE__);
+tester.testSrc(0'|fcn f(a,b,c){String(a,b,c)} g:=f.fp(1).fp1(2).fp(3);|
+    "var R=g();", Void,Void,"132",__LINE__);
+tester.testSrc(0'|fcn f(a,b,c){String(a,b,c)} g:=f.fp2(1).fp1(2).fp(3);|
+    "var R=g();", Void,Void,"321",__LINE__);
+tester.testSrc("fcn f(a,b,c){String(a,b,c)}"
+    "g:=f.fp2(1); g=g.fp1(2); g=g.fp(3); var R=g();", Void,Void,"321",__LINE__);
+tester.testSrc("fcn f(a,b,c){String(a,b,c)}"
+    "g:=f.fp(1); g=g.fp1(2); g=g.fp2(3); var R=g();", Void,"MissingArg",Void,__LINE__);
+tester.testSrc("fcn f(a,b,c){String(a,b,c)}"
+    "g:=f.fp(1); g=g.fp(2); g=g.fp(3); var R=g();", Void,Void,"123",__LINE__);
+
+tester.testSrc("fcn f{vm.arglist} g:=f.fp2(3);"
+    "var R=g(5);", Void,"MissingArg",Void,__LINE__);
+tester.testSrc("fcn f{vm.arglist} g:=f.fp2(3);"
+    "var R=g(5,6);", Void,Void,T(5,6,3),__LINE__);
+tester.testSrc("fcn f{vm.arglist} g:=f.fp2(3);"
+    "var R=g(5,6,7);", Void,Void,T(5,6,3,7),__LINE__);
+
+tester.testSrc("fcn f{vm.arglist} g:=f.fp2(3,4);"
+    "var R=g(5);", Void,"MissingArg",Void,__LINE__);
+tester.testSrc("fcn f{vm.arglist} g:=f.fp2(3,4);"
+    "var R=g(5,6);", Void,Void,T(5,6,3,4),__LINE__);
+tester.testSrc("fcn f{vm.arglist} g:=f.fp2(3,4);"
+    "var R=g(5,6,7);", Void,Void,T(5,6,3,4,7),__LINE__);
+
+tester.testSrc("fcn f(a,b=4,c=5,d=6,e=7){vm.arglist} g:=f.fp2(9);"
+    0'|var R=g("a","b","c");|, Void,Void,T("a","b",9,"c",7),__LINE__);
+tester.testSrc("fcn f(a,b=4,c=5,d=6,e=7){vm.arglist} g:=f.fp2(9);"
+    0'|var R=g();|, Void,"MissingArg",Void,__LINE__);
+tester.testSrc("fcn f(a,b=4,c=5,d=6,e=7){vm.arglist} g:=f.fp2(9);"
+    0'|var R=g("a");|, Void,"MissingArg",Void,__LINE__);
+tester.testSrc("fcn f(a,b,c=5,d=6,e=7){vm.arglist} g:=f.fp2(9);"
+    0'|var R=g("a","b");|, Void,Void,T("a","b",9,6,7),__LINE__);
+
+tester.testSrc(0'|pf := fcn(x,y,z){String()}.fp();|
+    "var R=Deferred.isType(pf);", Void,Void,True,__LINE__);
+tester.testSrc(0'|pf := fcn(x,y,z){String()}.fp1();|
+    "var R=Deferred.isType(pf);", Void,Void,False,__LINE__);
+tester.testSrc(0'|pf := fcn(x,y,z){String()}.fp2();|
+    "var R=Deferred.isType(pf);", Void,Void,False,__LINE__);
+tester.testSrc(0'|pf := fcn(x,y,z){String(x,y,z)}.fpN(2);|
+    "var R=Deferred.isType(pf);", Void,Void,False,__LINE__);
+
+tester.testSrc("f:=List.fp(1,2); g:=fcn(f){ f(0) }.fp(f); var R=g(0);",
+    Void,Void,T(1,2,0),__LINE__);
+tester.testSrc("f:=fcn{ vm.arglist }.fp(1,2); g:=fcn(f){ f(0) }.fp(f);"
+    "var R=g(0);", Void,Void,T(1,2,0),__LINE__);
+
+tester.testSrc(0'|var R=self.fcn.idFcn.fp(1,2).fp(3).fp(4)();|,
+    Void,Void,T(1,2,3,4),__LINE__);
+
+
+	///////////////////////////////////////////// Utils.Helpers.fcomp
+#if 0
+tester.testSrc(0'|var R = Utils.Helpers.fcomp(self.fcn);|,
+    Void,"ValueError",Void,__LINE__);
+#endif
+
+tester.testSrc(0'|var R = Utils.Helpers.fcomp(Op("+",1),Op("*",2),Op("-",3));|
+    "R=R(10);",Void,Void,15,__LINE__);
+tester.testSrc(0'|var R = Utils.Helpers.fcomp(Op("+",1),Op("*",2),Op("-",3));|
+    "R=R.isStatic;",Void,Void,True,__LINE__);
+tester.testSrc(0'|fcn f(x){x+1} fcn g(x){x*2} fcn h(x){x-3}|
+    0'|var R = Utils.Helpers.fcomp(Op("+",1),Op("*",2),Op("-",3));|
+    "R=R(10);",Void,Void,15,__LINE__);
+
+tester.testSrc(0'|even := Utils.Helpers.fcomp(Op("not"),Op("%",2));|
+    "var R=even(1);",Void,Void,False,__LINE__);
+tester.testSrc(0'|even := Utils.Helpers.fcomp(Op("not"),Op("%",2));|
+    "var R=even(2);",Void,Void,True,__LINE__);
+
+tester.testSrc(0'|fg:=Utils.Helpers.fcomp((1).create,L(1,2,3).walker().next);|
+    "fg(); var R=fg();",Void,"MissingArg",Void,__LINE__);
+tester.testSrc(0'|fg:=Utils.Helpers.fcomp((1).create,L(1,2,3).walker().next);|
+    "fg(Void); var R=fg(Void);",Void,Void,2,__LINE__);
+
+
+    	/////////////////////// bug-ola
+tester.testSrc(0'|var R = Deferred(fcn{4}.fp(1)); R=R.noop(); |,
+    Void,Void,4,__LINE__);
+tester.testSrc(0'|var R = Deferred(fcn { fcn{4}.fp(1); }); R.noop(); R=R+1;|,
+    Void,Void,5,__LINE__);
+
+tester.testSrc(0'|var R; fcn f{Deferred( self.fcn.fp(f)) } f().noop(); |,
+    Void,"AssertionError",Void,__LINE__);
+
+tester.testSrc(0'|var ff=fcn{4}.fp(1); Deferred(fcn{ff}).noop();|
+    "var R = ff()",Void,Void,4,__LINE__);
+
+tester.testSrc(0'|var R = Deferred(fcn { fcn{ Deferred("","HOHO") }.fp(1); });|
+    "R = R.noop();",Void,Void,"HOHO",__LINE__);
+tester.testSrc(0'|var R = Deferred(fcn { fcn{ Deferred("","HOHO") }() });|
+    "R = R.noop();",Void,Void,"HOHO",__LINE__);
+
+
+    	////////////////////////////////////////////// fcn futures
+tester.testSrc(0'|fcn f(a){a+1} r:=f.future(3); var R=(r+1);|,
+    Void,Void,5,__LINE__);
+tester.testSrc(0'|fcn f(a){"abc"} var R=f.future().walker().walk(99);|,
+    Void,Void,T("a","b","c"),__LINE__);
+tester.testSrc(0'|fcn f(a){a+1} r:=Deferred(f.future,3); var R=(r+1);|,
+    Void,Void,5,__LINE__);
+tester.testSrc(0'|fcn f(a){1/0} r:=f.future(3); var R=(r+1);|,
+    Void,"MathError",5,__LINE__);
+tester.testSrc(0'|fcn f(a){1/0} r:=f.future(3); r+1; var R=(r+1);|,
+    Void,"MathError",5,__LINE__);
+
+tester.testSrc(0'|fcn f(a){a+1} r:=f.future(3); var R=r.noop();|,
+    Void,Void,4,__LINE__);
+tester.testSrc(0'|fcn f{123} r:=f.future(); var R=T(r).apply("noop");|,
+    Void,Void,T(123),__LINE__);
+tester.testSrc(0'|r:=fcn f{123}.future(); var R=T(r).apply(fcn(x){x.noop()});|,
+    Void,Void,T(123),__LINE__);
+tester.testSrc(0'|r:=Deferred(fcn f{123}.future);|
+    0'|var R=T(r).apply(fcn(x){x.noop()});|,Void,Void,T(123),__LINE__);
+tester.testSrc(0'|r:=Deferred(fcn f{123}.future);|
+    0'|var R=T(r).apply("noop");|,Void,Void,T(123),__LINE__);
+
+
+    // not actually parallel
+tester.testSrc("var R = f(5); fcn f(n){ if(n) f.future(n-1)*n; else 1; }",
+    Void,Void,120,__LINE__);
+
+
+		////////////////////////////////////////// Ref
+tester.testSrc("ri:=Ref(L()); var R;"
+    "foreach i in (L(1,2)){ri.set(ri.ref+i)} R=ri.ref;",Void,Void,T(1,2),__LINE__);
+tester.testSrc("r:=L(); ri:=Ref(r); var R;"
+    "foreach i in (L(1,2)){ri.set(ri.ref+i)} R=r;",Void,Void,T(1,2),__LINE__);
+tester.testSrc(0'|r:=""; ri:=Ref(r); var R;|
+    0'|foreach i in (L(1,2)){ri.set(ri.ref+i)} R=ri.ref;|,Void,Void,"12",__LINE__);
+tester.testSrc(0'|r:=""; ri:=Ref(r); var R;|
+    0'|foreach i in (L(1,2)){ri.set(ri.ref+i)} R=r;|,Void,Void,"",__LINE__);
+tester.testSrc("var R=5; n:= 5; r:=Ref(n); n=0; R=r.value;",Void,Void,5,__LINE__);
+
+tester.testSrc("var R=Ref(0).inc();",Void,Void,0,__LINE__);
+tester.testSrc("var R; r:=Ref(0); r.inc(); R=r.value",Void,Void,1,__LINE__);
+tester.testSrc("var R; r:=Ref(10); r.inc(); R=r.value",Void,Void,11,__LINE__);
+
+tester.testSrc("var R=Ref(0).dec();",Void,Void,0,__LINE__);
+tester.testSrc("var R; r:=Ref(0); r.dec(); R=r.value",Void,Void,-1,__LINE__);
+tester.testSrc("var R; r:=Ref(10); r.dec(); R=r.value",Void,Void,9,__LINE__);
+tester.testSrc("var R; r:=Ref(10.4); r.dec(); R=r.value",Void,Void,9,__LINE__);
+tester.testSrc(0'|var R; r:=Ref("hoho"); r.dec(); R=r.value|,Void,"ValueError",9,__LINE__);
+
+tester.testSrc(0'|var R=Ref(0).apply('+,1,2,3).value|,Void,Void,6,__LINE__);
+tester.testSrc(0'|var R=Ref(0).apply.fp('+)(1,2,3).value|,Void,Void,6,__LINE__);
+
+tester.testSrc(0'|var R=Ref(5);  R.inc();   R=R.value;|,Void,Void,6,__LINE__);
+tester.testSrc(0'|var R=Ref(5);  R.incN(50);R=R.value;|,Void,Void,55,__LINE__);
+tester.testSrc(0'|var R=Ref(""); R.inc();   R=R.value;|,Void,"ValueError",1,__LINE__);
+tester.testSrc(0'|var R=Ref(""); R.incN(50);R=R.value;|,Void,"ValueError",55,__LINE__);
+tester.testSrc(0'|var R=Ref("5");R.inc();   R=R.value;|,Void,Void,6,__LINE__);
+tester.testSrc(0'|var R=Ref("5");R.incN(50);R=R.value;|,Void,Void,6,__LINE__);
+tester.testSrc(0'|var R=Ref(5.6);R.inc();   R=R.value;|,Void,Void,6,__LINE__);
+tester.testSrc(0'|var R=Ref(5.6);R.incN(50);R=R.value;|,Void,Void,6,__LINE__);
+
+
+		////////////////////////////////////////// Console
+tester.testSrc(0'|var R; println().split();|,Void,Void,Void,__LINE__);
+tester.testSrc(0'|var R; println().spit();|,"SyntaxError",Void,Void,__LINE__);
+
+
+		////////////////////////////////////////// Sink
+tester.testSrc(0'|var R; s:=Sink(List); R="ho".pump(s).close();|,
+    Void,Void,L("h","o"),__LINE__);
+tester.testSrc(0'|var R; s:=Sink(List); R="hoho".pump(s).type;|,
+    Void,Void,"Sink",__LINE__);
+tester.testSrc(0'|var R; s:=Sink(String); R="hoho".pump(s).type;|,
+    Void,Void,"Sink",__LINE__);
+tester.testSrc(0'|var R; s:=Sink(String); "hoho".pump(s); R=s.isClosed;|,
+    Void,Void,False,__LINE__);
+tester.testSrc(0'|var R; s:=Sink(R=List(3)); s.write(1,2);|,
+    Void,Void,T(3,1,2),__LINE__);
+tester.testSrc(0'|var R; s:=Sink(a:=List(3)); s.write(1,2); R=s.close();|,
+    Void,Void,T(3,1,2),__LINE__);
+
+tester.testSrc(0'|var R; s:=Sink(List().write); s.write(1,2); R=s.close();|,
+    Void,Void,T(1,2),__LINE__);
+
+tester.testSrc(0'|var R; s:=Sink(""); s.write(1,2); s.close();|
+    "s.write(1);",Void,"AccessError",Void,__LINE__);
+tester.testSrc(0'|var R; s:=Sink(""); s.close(); "hoho".pump(s);|,
+   Void,"AccessError",Void,__LINE__);
+
+tester.testSrc(0'|var R; s:=Sink(Thread.Pipe()); s.write(1,2);|
+    "R=s.close().read();",Void,Void,1,__LINE__);
+tester.testSrc(0'|var R; s:=Sink(Thread.Pipe().write); s.write(1,2);|
+    "R=s.close().read();",Void,Void,1,__LINE__);
+tester.testSrc(0'|var R; s:=Sink(Thread.Pipe().write.fp(5)); s.write(1,2);|
+    "R=s.close().read();",Void,Void,5,__LINE__);
+
+tester.testSrc(0'|var R; s:=Sink(p:=Thread.Pipe()); s.write(1,2); s.close();|
+    "R=p.isClosed;",Void,Void,True,__LINE__);
+tester.testSrc(0'|var R; T(1,2).pump(p:=Thread.Pipe()); R=p.isClosed();|,
+    Void,Void,False,__LINE__);
+tester.testSrc(0'|var R; T(1,2).pump(p:=Sink(Thread.Pipe())); R=p.isClosed();|,
+    Void,Void,False,__LINE__);
+
+tester.testSrc(0'|var R; s:=Sink(R=List(3)); s2:=Sink(s); R=(s.id==s2.id);|,
+    Void,Void,True,__LINE__);
+
+tester.testSrc(0'|var R; s:=Sink(123); R=s.write(1).close();|,
+    Void,"TypeError",1,__LINE__);
+tester.testSrc(0'|var R; s:=Sink(Void); R=s.write(1).close();|,
+    Void,Void,1,__LINE__);
+
+tester.testSrc(0'|var R; s:=Sink(Void); R=Sink(s); R=(R.id==s.id)|,
+    Void,Void,True,__LINE__);
+
+
+
+tester.stats();
+returnClass(tester);

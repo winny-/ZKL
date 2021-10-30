@@ -1,0 +1,3098 @@
+//-*-c-*-
+// Test solutions posted to Rosetta Code
+// http://rosettacode.org/wiki/Category:Zkl
+
+tester := TheVault.Test.UnitTester.UnitTester(__FILE__);
+
+const{ try{ Import.lib("zklBigNum"); } catch{} }  // load links
+try{ var [const] BN=Import.lib("zklBigNum") } catch{}
+
+
+{ /////////////////////////////////////// 9 billion names of God the integer
+if(BN){
+#<<<#
+{{trans|C}}
+//{{libheader|GMP}}
+Takes its time getting to 100,000 but it does.  Uses the GMP big int
+library.  Does the big int math in place to avoid garbage creation.
+#<<<#
+
+//var [const] BN=Import.lib("zklBigNum");
+
+//const N=0d100_000;
+N:=123;
+p:=List.createLong(N+1,BN.fp(0),True);  // (0,0,...) all unique
+
+fcn calc(n,p){
+   p[n].set(0);  // reset array for each run
+   foreach k in ([1..n]){
+      d:=n - k *(3*k - 1)/2;
+      do(2){
+         if (d<0) break(2);
+	 if (k.isOdd) p[n].add(p[d]);
+	 else         p[n].sub(p[d]);
+	 d-=k;
+      }
+   }
+}
+ 
+idx:=T(23, 123, 1234, 12345, 20000, 30000, 40000, 50000, N);
+p[0].set(1);
+
+#<<<#
+foreach i in (idx){
+   (1).pump(i,Void,calc.fp1(p));	// for n in [1..i] do calc(n,p)
+   "%2d:\t%d".fmt(i,p[i]).println();
+}
+The .fp/.fp1 methods create a closure, fixing the first or second parameter.
+#<<<#
+tester.testRun('wrap{ foreach i in (N){ (1).pump(i,Void,calc.fp1(p)); } },
+	Void,p[N]==BN(2552338241),__LINE__);
+}}
+
+
+class Doors{ /////////////////////////////////////////////////// 100 doors
+fcn flipDoors1{
+   const N=100;
+   reg doors=(0).pump(N,List,False).copy();  //-->L(False, ...), mutable
+   n:=1; while(n<=N)
+      { [n-1..N-1,n].apply('wrap(n){ doors[n]=(not doors[n]) }); n+=1; }
+doors.enumerate().filter(fcn([(n,d)]){d}).apply(fcn([(n,d)]){n+1});
+}
+
+fcn flipDoors2{
+   const N=100;
+   reg doors=(0).pump(N,List,False).copy();
+//   [[(n,m); [1..N]; {[n-1..N-1,n]},'wrap(n,m){ doors[m]=(not doors[m]); False }; _ ]];
+   foreach n,m in ([1..N],[n-1..N-1,n]){ doors[m]=(not doors[m]); }
+doors.enumerate().filter(fcn([(n,d)]){d}).apply(fcn([(n,d)]){n+1});
+}
+
+fcn flipDoors3{
+   doors:=(100).pump(List(),False);
+   foreach n,m in (100,[n..99,n+1]){ doors[m]=(not doors[m]); }
+   doors.enumerate().filter("get",1).apply(fcn(nb){ nb[0] + 1 }) //.println();
+}
+}
+tester.testRun(Doors.flipDoors1,Void,T(1,4,9,16,25,36,49,64,81,100),__LINE__);
+tester.testRun(Doors.flipDoors2,Void,T(1,4,9,16,25,36,49,64,81,100),__LINE__);
+tester.testRun(Doors.flipDoors3,Void,T(1,4,9,16,25,36,49,64,81,100),__LINE__);
+
+
+{  ////////////////////////////////////////////////////////// ABC Problem
+var blocks=T("BO", "XK", "DQ", "CP", "NA", "GT", "RE", "TG", "QD", "FS", 
+	     "JW", "HU", "VI", "AN", "OB", "ER", "FS", "LY", "PC", "ZM", );
+ 
+fcn can_make_word(word){
+   fcn(blks,word){
+      if (not word) return(True);  // bottom of recursion
+      foreach b in (blks){ n:=__bWalker.idx;
+	 if(not b.holds(word[0])) continue; // letter not on this block
+	 blks.del(n);		// remove this block from pile
+	 if (self.fcn(blks,word[1,*])) return(True);  // try remaining blocks
+	 blks.insert(n,b);	// put block back in pile: backtracking
+      }
+      False;   // out of blocks but not out of word
+   }(blocks.copy(),word.toUpper())
+}
+ 
+tester.testRun(
+      T("","A","BarK","BOOK","TREAT","COMMON","SQUAD","Confuse","abba")
+      .apply.fp(can_make_word),Void,
+   T(True,True,True,False,True,False,True,True,True),__LINE__);
+}
+
+class Abun{ /////////// Abundant, deficient and perfect number classifications
+//fcn properDivs(n){ [1.. (n + 1)/2 + 1].filter('wrap(x){ n%x==0 and n!=x }) }
+ 
+fcn classify(n){
+   p:=properDivs(n).sum();
+   return(if(p<n) -1 else if(p==n) 0 else 1);
+}
+fcn test{
+//const rangeMax=20_000;
+const rangeMax=20_0;
+classified:=[1..rangeMax].apply(classify);
+perfect   :=classified.filter('==(0)).len();
+abundant  :=classified.filter('==(1)).len();
+println("Deficient=%d, perfect=%d, abundant=%d".fmt(
+   classified.len() - perfect - abundant, perfect, abundant));
+
+   return(classified.len() - perfect - abundant, perfect, abundant);
+}
+}
+tester.testRun(Abun.test,Void,T(152,2,46),__LINE__);
+
+
+class AP{  /////////////////////////////////////////////////// Amicable pairs
+#if 0
+fcn properDivs(n){ [1.. (n + 1)/2 + 1].filter('wrap(x){ n%x==0 and n!=x }) }
+const N=20000;
+sums:=[1..N].pump(T(-1),fcn(n){ properDivs(n).sum(0) });
+[0..].zip(sums).filter('wrap([(n,s)]){ (n<s<=N) and sums[s]==n }).println();
+#endif
+fcn test{
+   const N=2000;
+   sums:=[1..N].pump(T(-1),fcn(n){ properDivs(n).sum(0) });
+   [0..].zip(sums).filter('wrap([(n,s)]){ (n<s<=N) and sums[s]==n });
+}
+}
+tester.testRun(AP.test,Void,L(L(220,284),L(1184,1210)),__LINE__);
+
+
+
+{  /////////////////////////////////////////////// Averages/Mean time of day
+var TD=Import("Time.Date",True);
+fcn meanT(t1,t2,etc){
+   ts:=vm.arglist.apply(fcn(hms){
+     (TD.toFloat(hms.split(":").xplode())*15).toRad()
+   });
+   n:=ts.len(); 
+   mt:=(ts.apply("sin").sum(0.0)/n)
+       .atan2(ts.apply("cos").sum(0.0)/n)
+       .toDeg() /15;
+   if(mt<0) mt+=24;  //-0.204622-->23.7954
+   TD.toHour(mt).concat(":")
+}
+tester.testRun(meanT.fp("23:00:17", "23:40:20", "00:12:45", "00:17:19"),
+   Void,"23:47:43",__LINE__);
+}
+
+{	///////////////////////////////////////////////////// Averages/Median
+var quickSelect=qselect;
+fcn median(xs){
+   n:=xs.len();
+   if (n.isOdd) return(quickSelect(xs,n/2));
+   ( quickSelect(xs,n/2-1) + quickSelect(xs,n/2) )/2;
+}
+
+tester.testRun(median.fp(T( 5.1, 2.6, 6.2, 8.8, 4.6, 4.1 )),Void,4.85,__LINE__);
+tester.testRun(median.fp(T( 5.1, 2.6, 8.8, 4.6, 4.1 )),Void,4.6,__LINE__);
+}
+
+{	//////////////////////////////////////////////////////// Averages/Mode
+//This is a bit funky in that modes are returned as strings.
+fcn mode(items){
+   d:=Dictionary(); foreach i in (items){ d.incV(i) }
+//   d:=items.pump(Dictionary().incV);
+   m:=d.reduce(fcn(m,[(_,v)]){ v.max(m) },0);
+//   d.keys.filter('wrap(k){ d[k]==m })  // more garbage than necessary
+//   d.pump(List,'wrap([(k,v)]){ if(v==m) return(Void.Write,k); Void.Skip });
+   d.filter('wrap([(_,v)]){ v==m }).apply("get",0);
+}
+ 
+data:=T(1, 2, 3, 1, 2, 4, 2, 5, 3, 3, 1, 3, 6);
+tester.testRun(mode.fp(data),Void,T("3"),__LINE__);
+tester.testRun(mode.fp(data.append(2)),Void,T("2","3"),__LINE__);
+tester.testRun(fcn{ mode("this is a test".split("")).sort() },
+   Void,T(" ","s","t"),__LINE__);
+}
+
+{	//////////////////////////////////////////////////////// Best shuffle
+fcn bestShuffle(str){
+   s := str.split("").shuffle();    // -->List
+   if(not s) return(str,str.len()); // can't shuffle "" or "a"
+
+   n:=str.len();
+   foreach i in (n){
+      foreach j in (n){
+         if (i!=j and s[i]!=str[j] and s[j]!=str[i]){
+	    s.swap(i,j);
+	    break;
+	 }
+      }
+   } 
+   return(s.concat(), s.zipWith('==,str).sum(0));
+}
+
+tester.testRun(
+   T("abracadabra","immediately","grrrrrr","seesaw","pop","up","a","")
+   .pump(List,bestShuffle).apply.fp("get",1),Void,T(0,0,5,0,1,0,1,0),__LINE__);
+}
+
+{	///////////////////////////////////////// Bitcoin/address validation
+try{ var [const] MsgHash=Import.lib("zklMsgHash"); } catch{}
+fallthrough{
+//var [const] MsgHash=Import.lib("zklMsgHash"); // SHA-256, etc
+const symbols="123456789"  // 58 characters: no cap i,o; ell, zero
+	      "ABCDEFGHJKLMNPQRSTUVWXYZ"
+	      "abcdefghijkmnopqrstuvwxyz";
+
+fcn unbase58(str){  // --> Data (byte bucket)
+   out:=Data().fill(0,25);
+   str.pump(Void,symbols.index,'wrap(n){  // throws on out of range
+      [24..0,-1].reduce('wrap(c,idx){
+         c+=58*out[idx];  // throws if not enough data
+         out[idx]=c;
+         c/256;		  // should be zero when done
+      },n) : if(_) throw(Exception.ValueError("address too long"));
+   });
+   out;
+}
+
+fcn coinValide(addr){
+   reg dec,chkSum; 
+   try{ dec=unbase58(addr) }catch{ return(False) }
+   chkSum=dec[-4,*]; dec.del(21,*);
+   // hash then hash the hash --> binary hash (instead of hex string)
+   (2).reduce(MsgHash.SHA256.fp1(1,dec),dec);  // dec is i/o buffer
+   dec[0,4]==chkSum;
+}
+
+r:=T("1AGNa15ZQXAZUgFiqJ2i7Z2DPU2J6hW62i","1Q1pE5vPGEEMqRcVRMbtBK842Y6Pzo6nK9",
+  "1AGNa15ZQXAZUgFiqJ2i7Z2DPU2J6hW62X", // checksum changed, original data.
+  "1ANNa15ZQXAZUgFiqJ2i7Z2DPU2J6hW62i", // data changed, original checksum.
+  "1A Na15ZQXAZUgFiqJ2i7Z2DPU2J6hW62i", // invalid chars
+  "1AGNa15ZQXAZUgFiqJ2i7Z2DPU2J6hW62izz", // too long
+).apply(coinValide);
+tester.testRun(r.noop,Void,T(True,True,False,False,False,False),__LINE__);
+}}
+
+
+{	/////////////////////////////////// Bitcoin/public point to address
+if(MsgHash){
+// Uses shared library zklMsgHash.
+#<<<#
+var [const] MsgHash=Import.lib("zklMsgHash"); // SHA-256, etc
+const symbols = "123456789"  // 58 characters: no cap i,o; ell, zero
+		"ABCDEFGHJKLMNPQRSTUVWXYZ"
+		"abcdefghijkmnopqrstuvwxyz";
+#<<<#
+fcn base58Encode(bytes){ //Data-->String
+   bytes=bytes.copy(); sink:=Sink(String);
+   do(33){
+      bytes.len().reduce('wrap(n,idx){
+         n=n*256 + bytes[idx];
+         bytes[idx]=(n/58);
+         n%58;
+      },0) : symbols[_] : sink.write(_)
+   }
+   sink.close().reverse();
+}
+
+const COIN_VER=0;
+
+fcn coinEncode(x,y){ // throws if x or y not hex or (x+y) not even length
+   bytes:=(x+y).pump(Data,Void.Read,fcn(a,b){ (a+b).toInt(16) }).insert(0,4);
+   (MsgHash.SHA256(bytes,1,bytes) : MsgHash.RIPEMD160(_,1,bytes))
+	 .insert(0,COIN_VER);  // we are using bytes for in and out
+   d,chkSum := Data(), MsgHash.SHA256(bytes,1,d) : MsgHash.SHA256(_,1,d);
+   base58Encode(bytes.append(chkSum.del(4,*))); // first 4 bytes of hashed hash
+}
+
+e:=coinEncode(
+   "50863AD64A87AE8A2FE83C1AF1A8403CB53F53E486D8511DAD8A04887E5B2352",
+   "2CD470243453A299FA9E77237716103ABC11A1DF38855ED6F2EE187E9C582BA6");
+tester.testRun(e=="16UwLL9Risc3QfPqBUvKofHmBQ7wMtjvM",Void,True,__LINE__);
+}}
+
+
+{	///////////////////////////////////////// Chinese remainder theorem
+fcn catalan(n){ (1).reduce(n,fcn(p,n){ 2*(2*n-1)*p/(n+1) },1) }
+tester.testRun(catalan.fp(20),Void,0d6_564_120_420,__LINE__);
+}
+
+
+	//////////////////////////////////////////////////// Brace expansion
+class BraceExpansion{
+fcn eyeball(code,ps=L(),brace=False){ //-->indexes of valid braces & commas
+   cs:=L();
+   foreach c in (code){ // start fresh or continue (if recursing)
+      switch(c){
+	 case("\\"){ __cWalker.next(); }
+	 case(",") { if(brace) cs.append(__cWalker.n); } // maybe valid
+	 case("{") {  // this is real only if there is matching } and a comma
+	    n:=__cWalker.n;
+	    _,cz:=self.fcn(__cWalker,ps,True);
+	    if(cz){ ps.append(n,__cWalker.n); ps.extend(cz) } // valid {} pair
+	 }
+	 case("}"){ if(brace) return(ps,cs); }
+      }
+   }
+   return(ps,False)
+}
+
+fcn expando(code,strings=T("")){
+   reg [const] stack=List(); reg roots,cs; bs,_:=eyeball(code);
+   foreach c in (code){
+      if(bs.holds(__cWalker.n)){
+         if     (c=="{") { stack.append(cs); cs=0; roots=strings;       }
+	 else if(c==",") { stack.append(strings); strings=roots; cs+=1; }
+	 else if(c=="}") { do(cs){ strings=stack.pop().extend(strings); } cs=stack.pop(); }
+      }else   if(c=="\\"){
+	 c="\\"+__cWalker.next();
+	 strings=strings.apply('+(c));
+      }
+      else strings=strings.apply('+(c));
+   }
+   strings
+}
+}
+#if 0
+foreach bs in (T("It{{em,alic}iz,erat}e{d,}",  "~/{Downloads,Pictures}/*.{jpg,gif,png}",
+   "It{{em,alic}iz,erat}e{d,}, please.",  "a{2,1}b{X,Y,X}c",  0'|a\\{\\\{b,c\,d}|,
+   "{a,b{c{,{d}}e}f",  0'|{,{,gotta have{ ,\, again\, }}more }cowbell!|,
+   0'|{}} some }{,{\\{ edge, edge} \,}{ cases, {here} \\\\\}|))
+{      
+   "%s expands to\n   %s".fmt(bs,expando(bs)).println();
+}
+#endif
+
+tester.testRun(BraceExpansion.expando.fp(0'|{,{,gotta have{ ,\, again\, }}more }cowbell!|),Void,
+    T("cowbell!","more cowbell!","gotta have more cowbell!",0'|gotta have\, again\, more cowbell!|),
+    __LINE__);
+tester.testRun(
+   fcn{
+      BraceExpansion.expando(0'|{}} some }{,{\\{ edge, edge} \,}{ cases, {here} \\\\\}|)
+      .apply('==(0'|{}} some }{,{\\ edge \,}{ cases, {here} \\\\\}|)) 
+   },Void,T(True,True),__LINE__);
+
+
+{	///////////////////////////////////// Carmichael 3 strong pseudoprimes
+if(BN){
+var bi=BN(0); // gonna recycle bi
+primes:=T(2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61);
+var p2,p3;
+cs:=[[(p1,h3,d); primes; { [2..p1 - 1] }; // list comprehension
+      { [1..h3 + p1 - 1] },
+	{ ((h3 + p1)*(p1 - 1)%d == 0 and ((-p1*p1):mod(_,h3) == d%h3)) },//guard
+	{ (p2=1 + (p1 - 1)*(h3 + p1)/d):bi.set(_).probablyPrime() },//guard
+	{ (p3=1 + (p1*p2/h3)):bi.set(_).probablyPrime() },	 //guard
+	{ 1==(p2*p3)%(p1 - 1) };				 //guard
+   { T(p1,p2,p3) }  // return list of three primes in Carmichael number
+]];
+fcn mod(a,b) { m:=a%b; if(m<0) m+b else m }
+
+#if 0
+cs.len().println(" Carmichael numbers found:");
+cs.pump(Console.println,fcn([(p1,p2,p3)]){
+   "%2d * %4d * %5d = %d".fmt(p1,p2,p3,p1*p2*p3) });
+#endif
+tester.testRun(cs.len,Void,69,__LINE__);
+}}
+
+
+{	///////////////////////////////////////// Chinese remainder theorem
+    // this test is skipped if BigNum isn't available
+if(BN){
+var one=BN(1);
+fcn crt(xs,ys){
+   p:=xs.reduce('*,BN(1));
+   X:=BN(0);
+   foreach x,y in (xs.zip(ys)){
+      q:=p/x;
+      z,s,_:=q.gcdExt(x);
+      if(z!=one) throw(Exception.ValueError("%d not coprime".fmt(x)));
+      X+=y*s*q;
+   }
+//   return(X % p);
+   return((X % p).toInt());	// for testing
+}
+
+tester.testRun(crt.fp(T(3,5,7),  T(2,3,2)),Void,23,__LINE__);
+tester.testRun(crt.fp(T(11,12,13),T(10,4,12)),Void,1000,__LINE__);
+tester.testRun(crt.fp(T(11,22,19), T(10,4,9)),"ValueError",Void,__LINE__);
+}}
+
+
+fcn cmpLists(f,list){ //-->#True
+   f().flatten().flatten().zipWith(fcn(x,y){ x.closeTo(y,0.001) },list).sum()
+}
+
+	/////////////////////////////////////////////// Cholesky decomposition
+{
+fcn cholesky(mat){
+   rows:=mat.len();
+   r:=(0).pump(rows,List().write, (0).pump(rows,List,0.0).copy); // matrix of zeros
+   foreach i,j in (rows,i+1){ 
+      s:=(0).reduce(j,'wrap(s,k){ s + r[i][k]*r[j][k] },0.0);
+      r[i][j]=( if(i==j)(mat[i][i] - s).sqrt()
+	        else    1.0/r[j][j]*(mat[i][j] - s) );
+   }
+   r
+}
+ex1:=L( L(25.0,15.0,-5.0), L(15.0,18.0,0.0), L(-5.0,0.0,11.0) );
+tester.testRun(cmpLists.fp(cholesky.fp(ex1),
+    T(5.0,0.0,0.0,  3.0,3.0,0.0,  -1.0,1.0,3.0)),Void,9,__LINE__);
+}
+
+
+class DManip{	//////////////////////////////////////////////////// Date manipulation
+var Date=Import("Time.Date");
+//var Date=Time.Date;
+fcn add12h(dt){
+   re:=RegExp(0'|(\w+)\s+(\d+)\s+(\d+)\ +(.+)\s|);
+   re.search(dt);
+   _,M,D,Y,hms:=re.matched;    //"March","7","2009","7:30pm"
+   M=Date.monthNames.index(M); //3
+   h,m,s:=Date.parseTime(hms); //19,30,0
+   dti:=T(Y,M,D, h,m,s).apply("toInt");
+   Y,M,D, h,m,s = Date.addHMS(dti,12);
+   "%s %d %d %s".fmt(Date.monthNames[M],D,Y,Date.toAMPMString(h,m));
+}
+} 
+tester.testRun(DManip.add12h.fp("March 7 2009 7:30pm EST"),Void,
+    "March 8 2009 07:30AM",__LINE__);
+
+
+	////////////////////////////////////////////////////// Count the coins
+class CountCoins{
+fcn ways_to_make_change(x, coins=T(25,10,5,1)){
+   if(not coins) return(0);
+   if(x<0)  return(0);
+   if(x==0) return(1);
+   ways_to_make_change(x, coins[1,*]) + ways_to_make_change(x - coins[0], coins)
+}
+
+fcn make_change2(amount, coins){
+  n, m  := amount, coins.len();
+  table := (0).pump(n+1,List, (0).pump(m,List().write,1).copy);
+  foreach i,j in ([1..n],[0..m-1]){
+     table[i][j] = (if(i<coins[j]) 0 else table[i-coins[j]][j]) +
+                   (if(j<1)        0 else table[i][j-1])
+  }
+  table[-1][-1]
+}
+}
+tester.testRun(CountCoins.ways_to_make_change.fp(100),Void,242,__LINE__);
+tester.testRun(CountCoins.make_change2.fp(   100, T(1,5,10,25)),Void,242,__LINE__);
+
+
+{	////////////////////////////////////////////////////// Deconvolution/1D
+fcn deconv(g,f){
+   flen, glen, delta:=f.len(), g.len(),glen - flen + 1;
+   result:=List.createLong(delta); // allocate list with space for items
+   foreach n in (delta){
+      e:=g[n];
+      lowerBound:=(if (n>=flen) n - flen + 1 else 0);
+      foreach i in ([lowerBound .. n-1]){ e-=result[i]*f[n - i]; }
+      result.append(e/f[0]);
+    }
+    result;
+}
+ 
+h:=T(-8,-9,-3,-1,-6,7);
+f:=T(-3,-6,-1,8,-6,3,-1,-9,-9,3,-2,5,2,-2,-7,-1);
+g:=T(24,75,71,-34,3,22,-45,23,245,25,52,25,-67,
+                   -96,96,31,55,36,29,-43,-7);
+//println(deconv(g, f) == h, " ", deconv(g, f));
+//println(deconv(g, h) == f, " ", deconv(g, h));
+tester.testRun(deconv.fp(g, f),Void,h,__LINE__);
+tester.testRun(deconv.fp(g, h),Void,f,__LINE__);
+}
+
+
+	////////////////////////////////////////////////////// Deming's Funnel
+class Deming{
+fcn funnel(dxs, rule){
+   x:=0.0; rxs:=L();
+   foreach dx in (dxs){
+      rxs.append(x + dx);
+      x = rule(x,dx);
+   }
+   rxs
+}
+ 
+fcn mean(xs){ xs.sum(0.0)/xs.len() }
+ 
+fcn stddev(xs){
+   m:=mean(xs);
+   (xs.reduce('wrap(sum,x){ sum + (x-m)*(x-m) },0.0)/xs.len()).sqrt();
+}
+ 
+fcn experiment(label,dxs,dys,rule){
+   rxs:=funnel(dxs,rule); rys:=funnel(dys,rule);
+   label.println();
+   "Mean x, y    : %7.4f, %7.4f".fmt(mean(rxs),  mean(rys))  .println();
+   "Std dev x, y : %7.4f, %7.4f".fmt(stddev(rxs),stddev(rys)).println();
+   println();
+}
+ 
+var 
+ dxs=T( -0.533,  0.270,  0.859, -0.043, -0.205, -0.127, -0.071,  0.275,
+         1.251, -0.231, -0.401,  0.269,  0.491,  0.951,  1.150,  0.001,
+        -0.382,  0.161,  0.915,  2.080, -2.337,  0.034, -0.126,  0.014,
+         0.709,  0.129, -1.093, -0.483, -1.193,  0.020, -0.051,  0.047,
+        -0.095,  0.695,  0.340, -0.182,  0.287,  0.213, -0.423, -0.021,
+        -0.134,  1.798,  0.021, -1.099, -0.361,  1.636, -1.134,  1.315,
+         0.201,  0.034,  0.097, -0.170,  0.054, -0.553, -0.024, -0.181,
+        -0.700, -0.361, -0.789,  0.279, -0.174, -0.009, -0.323, -0.658,
+         0.348, -0.528,  0.881,  0.021, -0.853,  0.157,  0.648,  1.774,
+        -1.043,  0.051,  0.021,  0.247, -0.310,  0.171,  0.000,  0.106,
+         0.024, -0.386,  0.962,  0.765, -0.125, -0.289,  0.521,  0.017,
+         0.281, -0.749, -0.149, -2.436, -0.909,  0.394, -0.113, -0.598,
+         0.443, -0.521, -0.799,  0.087),
+ 
+ dys=T(  0.136,  0.717,  0.459, -0.225,  1.392,  0.385,  0.121, -0.395,
+         0.490, -0.682, -0.065,  0.242, -0.288,  0.658,  0.459,  0.000,
+         0.426,  0.205, -0.765, -2.188, -0.742, -0.010,  0.089,  0.208,
+         0.585,  0.633, -0.444, -0.351, -1.087,  0.199,  0.701,  0.096,
+        -0.025, -0.868,  1.051,  0.157,  0.216,  0.162,  0.249, -0.007,
+         0.009,  0.508, -0.790,  0.723,  0.881, -0.508,  0.393, -0.226,
+         0.710,  0.038, -0.217,  0.831,  0.480,  0.407,  0.447, -0.295,
+         1.126,  0.380,  0.549, -0.445, -0.046,  0.428, -0.074,  0.217,
+        -0.822,  0.491,  1.347, -0.141,  1.230, -0.044,  0.079,  0.219,
+         0.698,  0.275,  0.056,  0.031,  0.421,  0.064,  0.721,  0.104,
+        -0.729,  0.650, -1.103,  0.154, -1.720,  0.051, -0.385,  0.477,
+         1.537, -0.901,  0.939, -0.411,  0.341, -0.411,  0.106,  0.224,
+        -0.947, -1.424, -0.542, -1.032);
+ 
+//experiment("Rule 1:", dxs, dys, fcn(z,dz){ 0.0     });
+//experiment("Rule 2:", dxs, dys, fcn(z,dz){ -dz     });
+//experiment("Rule 3:", dxs, dys, fcn(z,dz){ -(z+dz) });
+//experiment("Rule 4:", dxs, dys, fcn(z,dz){ z+dz    });
+
+fcn aTest{
+   rule:=fcn(z,dz){ 0.0 };
+   rxs:=funnel(dxs,rule); rys:=funnel(dys,rule);
+   return(mean(rxs).closeTo(0.0004,0.00001), mean(rys).closeTo(0.0702,0.0001),
+   	  stddev(rxs).closeTo(0.7153,0.0001),stddev(rys).closeTo(0.6462,0.0001));
+}
+}
+tester.testRun(Deming.aTest,Void,T(True,True,True,True),__LINE__);
+
+
+	/////////////////////////////////////////////////////// Digital root
+class DigitalRoot{
+//fcn sum(n,b){ n.toString(b).split("").apply("toInt",b).sum(0) }
+fcn sum(n,b){ n.split(b).sum(0) }
+fcn droot(n,b=10,X=0) // -->(digital root, additive persistence)
+   { if(n<b)return(n,X); return(self.fcn(sum(n,b),b,X+1)) }
+}
+tester.testRun(DigitalRoot.droot.fp(627615),Void,T(9,2),__LINE__);
+tester.testRun(DigitalRoot.droot.fp(0x7e0,16),Void,T(6,2),__LINE__);
+
+
+	///////////////////////// Digital root/Multiplicative digital root
+class MDR{
+fcn mdroot1(n){ // Multiplicative digital root
+   mdr:=List(n);
+   while(mdr[-1]>9){
+//      mdr.append(mdr[-1].toString().apply("toInt").reduce('*,1));
+      mdr.append(mdr[-1].split().reduce('*,1));
+   }
+   return(mdr.len()-1, mdr[-1]);
+}
+
+fcn mdroot2(n){
+//   count:=0; mdr:=n;
+   count,mdr:=0,n;
+   while(mdr>9){
+//      m:=mdr; digitsMul:=1;
+      m,digitsMul:=mdr,1;
+      while(m){
+	 reg md;
+	 m,md=m.divr(10);
+	 digitsMul*=md;
+      }
+      mdr=digitsMul;
+      count+=1;
+   }
+   return(count,mdr);
+}
+}
+tester.testRun(MDR.mdroot1.fp(123321),Void,T(3,8),__LINE__);
+tester.testRun(MDR.mdroot1.fp(7739),Void,T(3,8),__LINE__);
+
+
+{	////////////////////////////////////////////////////////////// Entropy
+fcn entropy(text){
+   text.pump(Void,fcn(c,freq){ c=c.toAsc(); freq[c]+=1; freq }
+       .fp1( (0).pump(256,List,0.0).copy() )) // array[256] of 0.0
+   .filter()		      // remove all zero entries from array
+   .apply('/(text.len()))     // (num of char)/len
+   .apply(fcn(p){-p*p.log()}) // |p*ln(p)|
+   .sum(0.0)/(2.0).log();     // sum * ln(e)/ln(2) to convert to log2
+}
+tester.testRun(fcn{entropy("1223334444").closeTo(1.84644,0.01)},Void,True,__LINE__);
+}
+
+
+	//////////////////////////////////////////////////// Equilibrium index
+class EI{
+fcn equilibrium(lst){  // two pass
+   reg acc=List(), left=0,right=lst.sum(0),i=0;
+   foreach x in (lst){
+      right-=x;
+      if(left==right) acc.write(i);
+      i+=1; left+=x;
+   }
+   acc
+}
+
+fcn equilibrium2(lst){  // lst should immutable, n^2
+   (0).filter(lst.len(),'wrap(n){ lst[0,n].sum(0) == lst[n+1,*].sum(0) })
+}
+}
+tester.testRun(EI.equilibrium.fp(T(-7, 1, 5, 2, -4, 3, 0)),Void,T(3,6),__LINE__);
+tester.testRun(EI.equilibrium2.fp(T(-7, 1, 5, 2, -4, 3, 0)),Void,T(3,6),__LINE__);
+
+
+{	//////////////////////////////////////////// Ethiopian multiplication
+class Ethiopian{
+fcn ethiopianMultiply(l,r){ // l is a non-negative integer
+   halve  :=fcn(n){ n/2 };
+   double :=fcn(n){ n+n };
+   lr:=List(T(l,r)); // ( (l,r) .. (1,r*n) )
+   while(l>1){ lr.write( T(l=halve(l),r=double(r)) ) }
+   lr.filter(fcn([(l,r)]){ (not l.isEven) }) // strike out even left rows
+   .reduce(fcn(sum,[(l,r)]){ sum + r },0); // sum right column
+}
+}
+tester.testRun(Ethiopian.ethiopianMultiply.fp(17,34),Void,578,__LINE__);
+}
+
+
+{	///////////////////////////////////////////// Factors of an integer
+fcn fif(n){ (1).pump(n.toFloat().sqrt(), List,
+   'wrap(m){ ((n % m)==0) and T(m,n/m) or Void.Skip }) }
+tester.testRun(fif.fp(45),Void,T(T(1,45),T(3,15),T(5,9)),__LINE__);
+
+fcn fig(n){ [[(m); [1..n.toFloat().sqrt()],'wrap(m){ n%m==0 };
+                   'wrap(m){ T(m,n/m) } ]] }
+tester.testRun(fig.fp(45),Void,T(T(1,45),T(3,15),T(5,9)),__LINE__);
+
+fcn figg(n){ [[(m); [1..n.toFloat().sqrt()],'{ n%m==0 }; '{ T(m,n/m) } ]] }
+tester.testRun(figg.fp(45),Void,T(T(1,45),T(3,15),T(5,9)),__LINE__);
+}
+
+
+{	//////////////////////////////////////////////////// Fibonacci word
+// makes cool fractals too
+fcn bsEntropy(bs){ //binary String-->Float
+//   len:=bs.len(); num1s:=(bs-"0").len();
+   len,num1s:=bs.len(),(bs-"0").len();
+   T(num1s,len-num1s).filter().apply('wrap(p){ p=p.toFloat()/len; -p*p.log() })
+   .sum(0.0) / (2.0).log();
+}
+
+//"  N     Length      Entropy Fibword".println();
+ws:=L("1","0"); reg w;
+foreach n in ([1..8]){
+   if(n>2) ws.append(ws[-1]+ws[-2]);
+   w=ws[-1];
+//   "%3d %10d %2.10f %s".fmt(n,w.len(),entropy(w),
+//      w.len()<50 and w or "<too long>").println();
+}
+tester.testRun(w.noop,Void,"010010100100101001010",__LINE__);
+tester.testRun(fcn(w){ bsEntropy(w).closeTo(0.9587118830,0.0000000001) }.fp(w),
+   Void,True,__LINE__);
+}
+
+
+	//////////////////////////////////////////////////// Flatten a list
+class FlattenList{
+fcn flatten(list){ list.pump(List,  //!!!!! Void.Void-->recurse
+    fcn(i){ if(List.isType(i)) return(Void.Recurse,i,self.fcn); i }) 
+}}
+
+#<<<#
+This works by recursively writing the contents of lists to a new list.
+If a list is recursive or cyclic, it will blow the stack and throw an
+exception.
+#<<<#
+
+tester.testRun(
+   FlattenList.flatten.fp(L(L(1), L(2), L(L(3,4), 5), L(L(L())), L(L(L(6))), 7, 8, L())),
+   Void,T(1,2,3,4,5,6,7,8),__LINE__);
+
+
+{	/////////////////////////////////////////////////////// Four bit adder
+fcn xor(a,b) // a,b are 1|0 -->a^b(1|0)
+   { a.bitAnd(b.bitNot()).bitOr(b.bitAnd(a.bitNot())) }
+ 
+fcn halfAdder(a,b) // -->(carry, a+b) (1|0)
+   { return(a.bitAnd(b), xor(a,b)) }
+ 
+fcn fullBitAdder(c, a,b){ //-->(carry, a+b+c), a,b,c are 1|0
+   c1,s := halfAdder(a,c);
+   c2,s := halfAdder(s,b);
+   c3   := c1.bitOr(c2);
+   return(c3,s);
+}
+ 
+   // big endian
+fcn fourBitAdder(a3,a2,a1,a0, b3,b2,b1,b0){ //-->(carry, s3,s2,s1,s0)
+   c,s0 := fullBitAdder(0, a0,b0);
+   c,s1 := fullBitAdder(c, a1,b1);
+   c,s2 := fullBitAdder(c, a2,b2);
+   c,s3 := fullBitAdder(c, a3,b3);
+   return(c, s3,s2,s1,s0);
+}
+ 
+// add(10,9)  result should be 1 0 0 1 1 (0x13, 3 carry 1)
+tester.testRun(fourBitAdder.fp(1,0,1,0, 1,0,0,1),Void,T(1,0,0,1,1),__LINE__);
+
+fcn nBitAddr(as,bs){ //-->(carry, sn..s3,s2,s1,s0)
+   (ss:=List()).append(
+      [as.len()-1 .. 0,-1].reduce('wrap(c,n){
+         c2,s:=fullBitAdder(c,as[n],bs[n]); ss + s; c2
+      },0))
+   .reverse();
+}
+tester.testRun(nBitAddr.fp(T(1,0,1,0), T(1,0,0,1)),Void,T(1,0,0,1,1),__LINE__);
+}
+
+
+{	///////////////////////////////////////////////////// Gamma function
+fcn taylorGamma(x){
+   var table = T(
+     0x1p+0,                    0x1.2788cfc6fb618f4cp-1,
+    -0x1.4fcf4026afa2dcecp-1,  -0x1.5815e8fa27047c8cp-5,
+     0x1.5512320b43fbe5dep-3,  -0x1.59af103c340927bep-5,
+    -0x1.3b4af28483e214e4p-7,   0x1.d919c527f60b195ap-8,
+    -0x1.317112ce3a2a7bd2p-10, -0x1.c364fe6f1563ce9cp-13,
+     0x1.0c8a78cd9f9d1a78p-13, -0x1.51ce8af47eabdfdcp-16,
+    -0x1.4fad41fc34fbb2p-20,    0x1.302509dbc0de2c82p-20,
+    -0x1.b9986666c225d1d4p-23,  0x1.a44b7ba22d628acap-28,
+     0x1.57bc3fc384333fb2p-28, -0x1.44b4cedca388f7c6p-30,
+     0x1.cae7675c18606c6p-34,   0x1.11d065bfaf06745ap-37,
+    -0x1.0423bac8ca3faaa4p-38,  0x1.1f20151323cd0392p-41,
+    -0x1.72cb88ea5ae6e778p-46, -0x1.815f72a05f16f348p-48,
+     0x1.6198491a83bccbep-50,  -0x1.10613dde57a88bd6p-53,
+     0x1.5e3fee81de0e9c84p-60,  0x1.a0dc770fb8a499b6p-60,
+    -0x1.0f635344a29e9f8ep-62,  0x1.43d79a4b90ce8044p-66).reverse();
+ 
+    y  := x.toFloat() - 1.0;
+    sm := table[1,*].reduce('wrap(sm,an){ sm * y + an },table[0]);
+
+    return(1.0 / sm);
+}
+tester.testRun(fcn{taylorGamma(1.0/3).closeTo(2.6789385347077483424,1.e-10)},
+   Void,True,__LINE__);
+tester.testRun(fcn{taylorGamma(2).closeTo(1.0,1.e-10)}, Void,True,__LINE__);
+   
+fcn lanczosGamma(z) { z = z.toFloat();
+    // Coefficients used by the GNU Scientific Library.
+    // http://en.wikipedia.org/wiki/Lanczos_approximation
+    const g = 7, PI = (0.0).pi;
+    exp := (0.0).e.pow;
+    var table = T(
+             0.99999_99999_99809_93,
+           676.52036_81218_851,
+         -1259.13921_67224_028,
+           771.32342_87776_5313,
+          -176.61502_91621_4059,
+            12.50734_32786_86905,
+            -0.13857_10952_65720_12,
+             9.98436_95780_19571_6e-6,
+             1.50563_27351_49311_6e-7);
+ 
+    // Reflection formula.
+    if (z < 0.5) {
+        return(PI / ((PI * z).sin() * lanczosGamma(1.0 - z)));
+    } else {
+        z -= 1;
+        x := table[0];
+        foreach i in ([1 .. g + 1]){
+            x += table[i] / (z + i); }
+        t := z + g + 0.5;
+        return((2.0 * PI).sqrt() * t.pow(z + 0.5) * exp(-t) * x);
+    }
+}
+tester.testRun(fcn{lanczosGamma(1.0/3).closeTo(2.6789385347077483424,1.e-10)},
+   Void,True,__LINE__);
+tester.testRun(fcn{lanczosGamma(2).closeTo(1.0,1.e-10)}, Void,True,__LINE__);
+}
+
+
+{	///////////////////////////////////////////////// Gaussian elimination
+fcn gaussEliminate(a,b){  // modifies a&b --> vector
+   n:=b.len();
+   foreach dia in ([0..n-1]){
+      maxRow:=dia; max:=a[dia][dia];
+      foreach row in ([dia+1 .. n-1]){
+         if((tmp:=a[row][dia].abs()) > max){ maxRow=row; max=tmp; }
+      }
+      a.swap(dia,maxRow); b.swap(dia,maxRow);  // swap rows
+      foreach row in ([dia+1 .. n-1]){
+//         ar:=a[row]; ad:=a[dia]; tmp:=ar[dia] / ad[dia];
+         ar,ad,tmp:=a[row],a[dia],ar[dia] / ad[dia];
+	 foreach col in ([dia+1 .. n-1]){ ar[col]-=tmp*ad[col]; }
+	 ar[dia]=0.0;
+	 b[row]-=tmp*b[dia];
+      }
+   }
+   x:=(0).pump(n,List().write);  // -->list filled with garbage
+   foreach row in ([n-1 .. 0,-1]){
+      tmp:=b[row]; ar:=a[row];
+      foreach j in ([n-1 .. row+1,-1]){ tmp-=x[j]*ar[j]; }
+      x[row]=tmp/a[row][row];
+   }
+   x
+}
+
+a:=List( List(1.00, 0.00, 0.00,  0.00,  0.00, 0.00,),
+         List(1.00, 0.63, 0.39,  0.25,  0.16, 0.10,),
+         List(1.00, 1.26, 1.58,  1.98,  2.49, 3.13,),
+         List(1.00, 1.88, 3.55,  6.70, 12.62, 23.80,),
+         List(1.00, 2.51, 6.32, 15.88, 39.90, 100.28,),
+         List(1.00, 3.14, 9.87, 31.01, 97.41, 306.02) );
+b:=List( -0.01, 0.61, 0.91, 0.99, 0.60, 0.02 );
+tester.testRun(
+   'wrap(){ Utils.zipWith(fcn(a,b){ a.closeTo(b,0.00001) },
+      gaussEliminate(a,b), T(-0.01,1.60279,-1.6132,1.24549,-0.49099,0.0657607))
+   },
+   Void, T(True,True,True,True,True,True),__LINE__);
+}
+
+
+{	////////////////////////////////////////////////////// Happy numbers
+fcn happyNumbers{  // continously spew happy numbers
+   foreach N in ([1..]){
+       n:=N; while(1){
+//	 n=n.toString().reduce(fcn(p,n){ p+(0+n)*n },0);
+	 n=n.split().reduce(fcn(p,n){ p + n*n },0);
+	 if(n==1) { vm.yield(N); break; }
+	 if(n==4) break;  // unhappy cycle
+      }
+   }
+}
+h:=Utils.Generator(happyNumbers);
+tester.testRun(h.walk.fp(8), Void,T(1,7,10,13,19,23,28,31),__LINE__);
+}
+
+
+{	////////////////////////////////// Hofstadter Figure-Figure sequences
+fcn genRS(reset=False){ //-->(n,R,S)
+  var n=0, Rs=L(0,1), S=2;
+//  if(True==reset){ n=0; Rs=L(0,1); S=2; return(); }
+  if(True==reset){ n,Rs,S=0,L(0,1),2; return(); }
+
+  if (n==0) return(n=1,1,2);
+  R:=Rs[-1] + S; Rs.append(R);
+  foreach s in ([S+1..]){
+     if(not Rs.holds(s)){ S=s; break; }
+  }
+  return(n+=1,R,S);
+}
+fcn ffrs(n) { genRS(True); do(n){ n=genRS() } n[1,2] }  //-->( R(n),S(n) )
+//(0).pump(10,List,genRS).apply("get",1).println();
+
+tester.testRun(ffrs.fp(10), Void,T(69,14),__LINE__);
+tester.testRun(fcn{
+   genRS(True);  // reset
+   sink:=(0).pump(40,List,    'wrap(ns){ T(Void.Write,Void.Write,genRS()[1,*]) });
+   sink= (0).pump(960-40,sink,'wrap(ns){ T(Void.Write,genRS()[2]) });
+   (sink.sort()==[1..1000].pump(List))  // [1..n].pump(List)-->(1,2,3...)
+//      .println("<-- should be True");
+}, Void,True,__LINE__);
+
+}
+
+
+{	/////////////////////////////////////////////////////// Huffman coding
+#if 0
+fcn buildHuffman(text){  //-->(encode dictionary, decode dictionary)
+   N:=text.len(); ft:=Dictionary();
+   foreach c in (text){ ft[c]=ft.find(c,0)+1 }  // leafs w/count
+
+   // build the tree, which is a list of lists of ...
+   tree:=ft.toList().copy();  //-->L( (char,cnt), ...) writable
+   while(tree.len()>1){  // fake up a [lame] priorty queue
+      tree=tree.sort(fcn([(_,p1)],[(_,p2)]){ p1>p2 }); // low to high
+      a,b:=tree.pop(-2,2);		 // remove 2 least frequent letters
+      tree.append( T(1,a[1]+b[1],T(a,b)) ); // build node w/2 children
+   }
+
+   // walk the tree and generate the Huffman codes
+   fcn(node,code,encodeTable=Dictionary(), decodeTable=Dictionary()){
+      c:=node[0];
+      if(c==1){  // not a leaf: (1,sum cnts,(l,r))
+	 l,r:=node[2];	 // nodes or leafs
+	 self.fcn(l,code+"0",encodeTable,decodeTable);
+	 self.fcn(r,code+"1",encodeTable,decodeTable);
+      }
+      else { encodeTable[c]=code; decodeTable[code]=c; } // leaf: (char,cnt)
+      return(encodeTable,decodeTable);
+   }(tree[0],"") : _.apply("makeReadOnly");
+}
+#endif
+
+fcn buildHuffman(text){  //-->(encode dictionary, decode dictionary)
+   ft:=Dictionary();
+   foreach c in (text){ ft[c]=ft.find(c,0)+1 }  // leafs w/count
+
+   // build the tree, which is a list of lists of ...
+   tree:=ft.pump(List,fcn([(c,cnt)]){  //-->L( (cnt, ((sym,code))), ...)
+      L(cnt, L(L(c,"")))
+   }).copy();	// make it writable
+
+   while(tree.len()>1){  // fake up a [lame] priorty queue
+      tree=tree.sort(fcn(a,b){ a[0]>b[0] }); //prioritize high to low
+      a,b:=tree.pop(-2,2);	        //remove 2 least frequent symbols
+      mc:=fcn(n,c){ n[1] = c + n[1]; };	//(sym,code),"0"|"1"
+      a[1].apply2(mc,"0"); b[1].apply2(mc,"1");
+      tree.append( L(a[0]+b[0],a[1].extend(b[1])) ); //(a,b)-->new node
+   }//-->L(L(39, L( L(" ","000"),L("e","0010"),L("a","0011") ...
+
+   tree=tree[0][1].pump(List,fcn(i){ // flatten rather than traverse
+	if(T.isType(i))return(Void.Recurse,i,self.fcn); i });  //!!!!
+   encodeTable:=tree.toDictionary();  // symbol:Huffman code
+   decodeTable:=encodeTable.pump(Dictionary(),"reverse"); // code:symbol
+   return(encodeTable,decodeTable);
+}
+
+text:="this is an example for huffman encoding";
+encodeTable,decodeTable:=buildHuffman(text);
+
+fcn encode(text,table){ text.pump(String,table.get) }
+fcn decode(bits,table){  // this is a horrible decoder, for testing only
+   w:=bits.walker(); sink:=Sink(String);
+   try{ s:=""; while(1){
+      s+=w.next(); if(c:=table.find(s)) { sink.write(c); s=""; }
+   }}catch(TheEnd){}
+   sink.close();
+}
+
+tester.testRun(
+   'wrap(){ (encode(text,encodeTable) : decode(_,decodeTable)) == text },
+   Void,True,__LINE__);
+}
+
+
+	///////////////////////////////////////////// Iterated digits squaring
+class IDS{
+fcn check(number){  // a list of digits: 13 is L(0,0,0,0,0,0,1,3)
+   candidate:=number.reduce(fcn(sum,n){ sum*10 + n },0);  // digits to int
+
+   while(candidate != 89 and candidate != 1)  // repeatedly sum squares of digits
+//      { candidate = candidate.toString().reduce(fcn(sum,c){ sum + 1*c*c },0); }
+      { candidate = candidate.split().reduce(fcn(sum,c){ sum + c*c },0); }
+ 
+   if(candidate == 89){ // count permutations of these digits, they all sum to 89
+      digitsCount:=List(0,0,0,0,0,0,0,0,0,0);
+      foreach d in (number){ digitsCount[d] += 1; }
+      return(digitsCount.reduce(fcn(r,c){ r/factorial(c) },cacheBang)); // cacheBang==number.len()!
+   }
+   0 // this number doesn't sum to 89 (ie sums to 1)
+}
+fcn factorial(n) { (1).reduce(n,fcn(N,n){ N*n },1) }
+ 
+limit:=0d100_000_000;  limit:=0d100_000;
+cacheSize:=limit.toFloat().log10().ceil().toInt();
+number:=(0).pump(cacheSize,List().write,0); // list of zeros
+var result=0; //result:=0; 
+i:=cacheSize - 1;
+var cacheBang=factorial(cacheSize);  //== number.len()!
+ 
+while(True){  // create numbers s.t. no set of digits is repeated
+   if(i == 0 and number[i] == 9) break;
+   if(i == cacheSize - 1 and number[i] < 9){ number[i] += 1; result += check(number); }
+   else if(number[i] == 9) i -= 1;
+   else{
+      number[i] += 1;
+      foreach j in ([i + 1 .. cacheSize - 1]){ number[j] = number[i]; }
+      i = cacheSize - 1;
+      result += check(number);
+   }
+}
+//println(result);
+}
+tester.testRun(IDS.result.noop,Void,85623,__LINE__);
+
+
+	///////////////////////////// Index finite lists of positive integers
+class IFLPI{
+fcn rank(ns)   { BN(ns.concat("A"),11) }
+fcn unrank(bn) { bn.toString(11).split("a").apply("toInt") }
+fcn unrankS(bn){ bn.toString(11).split("a") }
+
+fcn rankz(ns,S=False){
+   ns.println();
+   rank(ns).println();
+   if(S) ns:rank(_):unrankS(_).println();
+   else  ns:rank(_):unrank(_).println();
+}
+//rankz(T(1,2,3,10,100,987654321));
+//rankz(T(1,2,3,10,100,987654321,"135792468107264516704251",7),True);
+}
+if(BN){
+   tester.testRun(IFLPI.rank.fp(T(1,2,3,10,100,987654321)),Void,BN("14307647611639042485573"),__LINE__);
+   tester.testRun(
+      fcn{IFLPI.rank(T(1,2,3,10,100,987654321,"135792468107264516704251",7)):IFLPI.unrankS(_)},
+      Void,T("1","2","3","10","100","987654321","135792468107264516704251","7"),__LINE__);
+}
+
+
+{	////////////////////////////////////////////////////// Jensen's Device
+fcn sum2(ri, lo,hi, term){
+   temp:=0.0; ri.set(lo);
+   do{ temp=term+temp; } while(ri.inc() < hi); // inc return previous value
+   return(temp);
+}
+ri:=Ref(0);
+tester.testRun(sum2(ri, 1,100, 'wrap(){ 1.0 / ri.value })
+   .closeTo.fp(5.187378,0.00001),Void,True,__LINE__);
+}
+
+
+{	///////////////////////////////////////////////////// Jort Sort
+fcn jort(list){ False!=list.reduce(fcn(a,b){ (a>b) and return(Void.Stop,False); b }) }
+tester.testRun(T(T(11,2,3),T(1,2,3)).apply.fp(jort),Void,T(False,True),__LINE__);
+}
+
+	///////////////////////////////////////////////////// Left factorials
+if(BN){
+fcn leftFact(n){
+   [1..n].reduce(fcn(p,n,rf){ p+=rf.value; rf.set(rf.value*n); p },
+      BN(0),Ref(BN(1)));
+}
+tester.testRun(fcn{[0..10].apply(leftFact).apply("toInt")},Void,
+   T(0,1,2,4,10,34,154,874,5914,46234,409114),__LINE__);
+}
+
+
+	///////////////////////////////////////////////////// Letter frequency
+fcn ccnt(textInBitBucket){
+   letters:=["a".."z"].pump(List().write,0); // array of 26 zeros
+   textInBitBucket.howza(0).pump(Void,'wrap(c){  // pump text as ints
+      if(97<=c<=122)     c-=97;
+      else if(65<=c<=90) c-=65;
+      else return(Void.Skip);
+      letters[c]+=1
+   });
+   sum:=letters.sum(); println(sum," letters");
+   letters.enumerate().pump(List,'wrap([(c,n)]){
+      "%s(%d:%d%)".fmt((c+65).toChar(),n,n*100/sum)})
+   .concat(",").println();
+}
+ 
+//ccnt(Data(0,Int,"This is a test"));
+//ccnt(File("dict.txt").read());
+tester.testRun(ccnt.fp(Data(0,Int,"This is a test")),Void,
+   "A(1:9%),B(0:0%),C(0:0%),D(0:0%),E(1:9%),F(0:0%),G(0:0%),H(1:9%),I(2:18%),J(0:0%),K(0:0%),L(0:0%),M(0:0%),N(0:0%),O(0:0%),P(0:0%),Q(0:0%),R(0:0%),S(3:27%),T(3:27%),U(0:0%),V(0:0%),W(0:0%),X(0:0%),Y(0:0%),Z(0:0%)",
+   __LINE__);
+
+
+{    /////////////////////////////////////////////// Levenshtein distance
+//{{trans|D}}
+fcn levenshtein(s1,s2){
+   sz2,costs := s2.len() + 1, List.createLong(sz2,0);  // -->zero filled List
+   foreach i in (s1.len() + 1){
+      lastValue:=i;
+      foreach j in (sz2){
+         if (i==0) costs[j]=j;
+	 else if (j>0){
+	    newValue:=costs[j-1];
+	    if (s1[i-1]!=s2[j-1])
+	       newValue=newValue.min(lastValue, costs[j]) + 1;
+	    costs[j-1]=lastValue;
+	    lastValue =newValue;
+	 }
+      }
+      if (i>0) costs[-1]=lastValue;
+   }
+   costs[-1]
+}
+#if 0
+foreach a,b in (T(T("kitten","sitting"), T("rosettacode","raisethysword"),
+	T("yo",""), T("","yo"), T("abc","abc")) ){
+   println(a," --> ",b,": ",levenshtein(a,b));
+}
+#endif
+tester.testRun(levenshtein.fp("kitten","sitting"),Void,3,__LINE__);
+}
+
+
+{	//////////////////////////////////////////////////////// Ludic numbers
+class Ludic{
+fcn dropNth(n,seq){
+   seq.tweak(fcn(n,skipper,idx){ if(0==idx.inc()%skipper) Void.Skip else n }
+	     .fp1(n,Ref(1)))  // skip every nth number of previous sequence
+} 
+fcn ludic{  //-->Walker
+   Walker(fcn(rw){ w:=rw.value; n:=w.next(); rw.set(dropNth(n,w)); n }
+	  .fp(Ref([3..*,2])))  // odd numbers starting at 3
+   .push(1,2);  // first two Ludic numbers
+}
+//ludic().walk(25).toString(*).println();
+//ludic().reduce(fcn(sum,n){ if(n<1000) return(sum+1); return(Void.Stop,sum); },0).println();
+//ludic().drop(1999).walk(6).println();  // Ludic's between 2000 & 2005
+
+//ls:=ludic().filter(fcn(n){ (n<250) and True or Void.Stop  });  // Ludic's < 250
+//ls.filter('wrap(n){ ls.holds(n+2) and ls.holds(n+6) }).apply(fcn(n){ T(n,n+2,n+6) }).println();
+}
+
+tester.testRun(Ludic.ludic().walk.fp(25),Void,
+   T(1,2,3,5,7,11,13,17,23,25,29,37,41,43,47,53,61,67,71,77,83,89,91,97,107),__LINE__);
+tester.testRun(
+   Ludic.ludic().reduce.fp(fcn(sum,n){ if(n<1000) return(sum+1); return(Void.Stop,sum); },0),
+   Void,142,__LINE__);
+tester.testRun(
+   fcn{
+      ls:=Ludic.ludic().filter(fcn(n){ (n<250) and True or Void.Stop  });  // Ludic's < 250
+      ls.filter('wrap(n){ ls.holds(n+2) and ls.holds(n+6) });
+   },Void,T(1,5,11,23,41,173,221,233),__LINE__);
+}
+
+
+
+{	///////////////////////////////////////////////// Haversine formula
+tester.testRun(
+   fcn{haversine(36.12, -86.67, 33.94, -118.40).closeTo(2887.26,0.001)},
+   Void,True,__LINE__);
+
+fcn haversine(Lat1, Long1, Lat2, Long2){
+   const R = 6372.8; 	// In kilometers;
+   Diff_Lat  := (Lat2  - Lat1) .toRad();
+   Diff_Long := (Long2 - Long1).toRad();
+   NLat      := Lat1.toRad();
+   NLong     := Lat2.toRad();
+   A 	     := (Diff_Lat/2) .sin().pow(2) + 
+                (Diff_Long/2).sin().pow(2) * 
+		NLat.cos() * NLong.cos();
+   C 	     := 2.0 * A.sqrt().asin();
+   R*C;
+}
+}
+
+
+{	////////////////////////////// Horner's rule for polynomial evaluation
+fcn horner(coeffs,x)
+   { coeffs.reverse().reduce('wrap(a,coeff){ a*x + coeff },0.0) }
+tester.testRun(horner.fp(T(-19,7,-4,6), 3),Void,128.0,__LINE__);
+}
+
+
+{	///////////////////////////////////// Longest increasing subsequence
+fcn longestSequence(ns){ // based on Patience sorting
+   piles:=L();
+   backPtr:='wrap(np){ return(np-1,if(np) piles[np-1].len()-1 else -1) }; // maybe (-1,-1)
+   foreach n in (ns){ newPile:=True;   // create list of sorted lists
+      foreach e,p in (piles.enumerate()){
+	 if(n<p[-1][0]){
+	    p.del(1,-1)  // only need the first and last elements
+	    .append(T(n,backPtr(e))); newPile=False; 
+	    break; 
+	 }
+      }
+      if(newPile) piles.append(L(T(n,backPtr(piles.len()))));
+   }
+   reg r=L(),p=-1,n=0; 
+   do{ n,p=piles[p][n]; r.write(n); p,n=p; }while(p!=-1);
+   r.reverse()
+}
+
+tester.testRun(T(T(1),T(3,2,6,4,5,1),T(4,65,2,-31,0,99,83,782,1),
+	       T(0,8,4,12,2,10,6,14,1,9,5,13,3,11,7,15),"foobar")
+	       .apply.fp(longestSequence),Void,
+   T(T(1),T(2,4,5),T(-31,0,83,782),T(0,1,3,9,11,15),T("f","o","o","r")),True,__LINE__);
+}
+
+
+{    /////////////////////////////////////////////////// Look-and-say sequence
+//Treating the task as a string manipulation problem.
+//{{trans|Scala}}
+
+fcn lookAndSay(seed){ // int String --> int String
+   len,c:=[1..seed.len()-1].reduce(fcn([(len,c)]lc,index,s,sb){
+      if(c!=s[index]) { sb.write(len,c); lc.clear(1,s[index]) }
+      else lc.clear(len+1,c);
+   },L(1,seed[0]), seed,sb:=Sink(String));
+   sb.write(len,c);
+   sb.close();
+}
+//(0).reduce(10,fcn(seed,_){ lookAndSay(seed).println() },"1");
+
+tester.testRun((0).reduce.fp(10,lookAndSay,"1"),Void,
+   "11131221133112132113212221",__LINE__);
+//tester.testRun(Walker.tweakie(lookAndSay,"1").pump.fp(10,Void), Void,
+//   "11131221133112132113212221",__LINE__);
+}
+
+
+class LU{	///////////////////////////////////////////// LU decomposition
+fcn make_array(n,m,v){ (m).pump(List.createLong(m).write,v)*n }
+fcn eye(n){ // Creates a nxn identity matrix.
+   I:=make_array(n,n,0.0);
+   foreach j in (n){ I[j][j]=1.0 }
+   I
+}
+ 
+// Creates the pivoting matrix for A.
+fcn pivotize(A){
+   n:=A.len();	// rows
+   P:=eye(n);
+   foreach i in (n){
+      max,row:=A[i][i],i;
+      foreach j in ([i..n-1]){
+         if(A[j][i]>max) max,row=A[j][i],j;
+      }
+      if(i!=row) P.swap(i,row);
+   }
+   // Return P.
+   P
+}
+ 
+// Decomposes a square matrix A by PA=LU and returns L, U and P.
+fcn lu(A){
+   n:=A.len();
+   L:=eye(n);
+   U:=make_array(n,n,0.0);
+   P:=pivotize(A);
+   A=matMult(P,A);
+
+   foreach j in (n){
+      foreach i in (j+1){
+         U[i][j]=A[i][j] - (i).reduce('wrap(s,k){ s + U[k][j]*L[i][k] },0.0);
+      }
+      foreach i in ([j..n-1]){
+         L[i][j]=( A[i][j] - 
+		   (j).reduce('wrap(s,k){ s + U[k][j]*L[i][k] },0.0) ) /
+		 U[j][j];
+      }
+   }
+   // Return L, U and P.
+   return(L,U,P);
+}
+
+fcn matMult(a,b){
+   n,m,p:=a[0].len(),a.len(),b[0].len();
+   ans:=make_array(n,m,0.0);
+   foreach i,j,k in (m,p,n){ ans[i][j]+=a[i][k]*b[k][j]; }
+   ans
+}
+
+//fcn printM(m){ m.pump(Console.println,rowFmt) }
+//fcn rowFmt(row){ ("%9.5f "*row.len()).fmt(row.xplode()) }
+}
+{
+g:=L(L(1.0,3.0,5.0),L(2.0,4.0,7.0),L(1.0,1.0,0.0));
+tester.testRun(
+   cmpLists.fp(LU.lu.fp(g),
+   T(1,0,0,  0.5,1,0,  0.5,-1,1, 
+     2,4,7,  0,1,1.5,  0,0,-2,
+     0,1,0,  1,0,0,    0,0,1)),  Void,27,__LINE__);
+}
+
+
+	/////////////////////////////////////////// Magic squares of odd order
+class MagicSquareOdd{
+fcn rmod(n,m){ n=n%m; if (n<0) n+=m; n } // Ruby: -5%3-->1
+fcn odd_magic_square(n){ //-->list of n*n numbers, row order
+   if (n.isEven or n <= 0) throw(Exception.ValueError("Need odd positive number"));
+   [[(i,j); n; n; '{ n*((i+j+1+n/2):rmod(_,n)) + ((i+2*j-5):rmod(_,n)) + 1 }]]
+}
+
+#if 0
+T(3, 5, 9).pump(Void,fcn(n){
+   "\nSize %d, magic sum %d".fmt(n,(n*n+1)/2*n).println();
+   fmt := "%%%dd".fmt((n*n).toString().len() + 1) * n;
+   odd_magic_square(n).pump(Console.println,T(Void.Read,n-1),fmt.fmt);
+});
+#endif
+}
+tester.testRun(fcn{ n:=3;
+//   fmt := "%%%dd".fmt((n*n).toString().len() + 1) * n;
+   fmt := "%%%dd".fmt((n*n).numDigits + 1) * n;  //!!!zero, well, no prob since n is odd
+   MagicSquareOdd.odd_magic_square(n).pump(List,T(Void.Read,n-1),fmt.fmt);
+},Void,T(" 8 1 6"," 3 5 7"," 4 9 2"),__LINE__);
+
+
+{    //////////////////////////////////////////////////////// Man or boy test
+fcn A(k, x1, x2, x3, x4, x5){ // -->1,0,-2,0,1,0,1,-1,-10,-30,-67,-138	
+   B:=CB(k, x1, x2, x3, x4, x5);
+   if(k <= 0) x4()+x5() else B.B();
+}
+class CB{ var k, x1, x2, x3, x4, x5; 
+   fcn init{ k, x1, x2, x3, x4, x5 = vm.arglist; }
+   fcn B{
+      k= k - 1;
+      A(k, B, x1, x2, x3, x4);
+   }
+}
+tester.testRun(A.fp(9, 1, -1, -1, 1, 0),Void,-30,__LINE__);
+}
+
+
+{    ////////////////////////////////////////////////////////////// Map range
+fcn mapRange([(a1,a2)], [(b1,b2)], s) //a1a2 is T(a1,a2)
+   { b1 + ((s - a1) * (b2 - b1) / (a2 - a1)) }
+
+r1:=T(0.0, 10.0); r2:=T(-1.0, 0.0);
+x:=List();
+foreach s in ([0.0 .. 10]){
+   "%2d maps to %5.2f".fmt(s,mapRange(r1,r2, s)) : x.append(_);
+}
+tester.testRun('wrap(){x[-1]},Void,"10 maps to  0.00",__LINE__);
+}
+
+
+{    ////////////////////////////////////////////////// Matrix multiplication
+fcn matMult(a,b){
+   n,m,p:=a[0].len(),a.len(),b[0].len();
+   ans:=(0).pump(m,List().write, (0).pump(p,List,0).copy); // matrix of zeros
+   foreach i,j,k in (m,p,n){ ans[i][j]+=a[i][k]*b[k][j]; }
+   ans
+}
+
+a:=L( L(1,2,), L(3,4,), L(5,6,), L(7,8) );
+b:=L( L(1,2,3,), L(4,5,6) );
+//printM(matMult(a,b));
+
+tester.testRun(matMult.fp(a,b),Void,
+   L(L(9,12,15), L(19,26,33), L(29,40,51), L(39,54,69)), __LINE__);
+}
+
+
+{    ////////////////////////////////////////////////// Matrix transposition
+fcn transpose(M){ 
+//   if(not M) T else
+//   if(not List.isType(M[0])) M.pump(List,List.create); else // vector
+   if(M.len()==1) M[0].pump(List,List.create); // 1 row --> n columns
+   else M[0].zip(M.xplode(1));
+}
+tester.testRun(transpose.fp(T(T(1,2,3),T(4,5,6))),Void,L(L(1,4),L(2,5),L(3,6)),__LINE__);
+tester.testRun(transpose.fp(L(L(1,"a"),L(2,"b"),L(3,"c"))),Void,L(L(1,2,3),L("a","b","c")),__LINE__);
+tester.testRun(transpose.fp(L(L(1,2,3))),Void,L(L(1),L(2),L(3)),__LINE__);
+tester.testRun(transpose.fp(L(L(1),L(2),L(3))),Void,L(L(1,2,3)),__LINE__);
+tester.testRun(transpose.fp(L(L(1))),Void,L(L(1)),__LINE__);
+}
+
+
+{    ///////////////////////////////////////////////////// Middle three digits
+fcn middle(ns){
+   ns.apply("toString").apply('-("-"))
+   .apply(fcn(n){ nl:=n.len(); 
+      if(nl<3 or nl.isEven) return(False);
+      n[(nl-3)/2,3] : "%03d".fmt(_)
+   })
+}
+tester.testRun(middle.fp(T(123,12345,1234567,987654321,10001,-10001,
+       -123,-100,100,-12345,1, 2, -1, -10, 2002, -2002, 0)),Void,
+       T("123","234","345","654","000","000","123","100","100","234",
+         False,False,False,False,False,False,False),__LINE__);
+}
+
+
+{    //////////////////////////////////////////////////////// Modular inverse
+fcn gcdExt(a,b){
+   if(b==0) return(1,0,a);
+   q,r:=a.divr(b); s,t,g:=gcdExt(b,r); return(t,s-q*t,g);
+}
+fcn modInv(a,m){i,_,g:=gcdExt(a,m); if(g==1) {if(i<0)i+m} else Void}
+tester.testRun(modInv.fp(2,4),Void,Void,__LINE__);
+tester.testRun(modInv.fp(42,2017),Void,1969,__LINE__);
+}
+
+
+    ////////////////////////////////////////////////// Modular exponentiation
+if(BN){
+a:=BN("2988348162058574136915891421498819466320163312926952423791023078876139");
+b:=BN("2351399303373464486466122544523690094744975233415544072992656881240319");
+m:=BN(10).pow(40);
+tester.testRun(a.powm.fp(b,m),Void,
+    BN("1527229998585248450016808958343740453059"),__LINE__);
+}
+
+
+{    //////////////////////////////////////////////// Move-to-front algorithm
+encode:=fcn(text){ //-->List
+   st:=["a".."z"].pump(Data);	//"abcd..z" as byte array
+   text.reduce(fcn(st,c,sink){
+      n:=st.index(c); sink.write(n); st.del(n).insert(0,c); },st,sink:=L());
+   sink;
+};
+//Strings are immutable so we create a bit bucket (which is mutable) to
+//hold the symbol table which can then be modified in place.
+
+texts:=T("broood","bananaaa","hiphophiphop");
+tester.testRun(texts.apply.fp(encode),Void, T(L(1,17,15,0,0,5), 
+   T(1,1,13,1,1,1,0,0),T(7,8,15,2,15,2,2,3,2,2,3,2)),__LINE__);
+
+decode:=fcn(list){
+   st:=["a".."z"].pump(String);		//"abcd..z"
+   sink:=Sink(String);
+   list.reduce('wrap(st,n){ c:=st[n]; sink.write(c); c+st.del(n); },st);
+   sink.close();
+};
+tester.testRun(texts.zipWith.fp('==,texts.apply(encode).apply(decode)),Void, 
+   T(True,True,True), __LINE__);
+#<<<#
+Here, we create a new symbol table each round as we would have to
+convert the byte we got from the bit bucket to string (so it is a wash
+garbage wise).
+
+texts:=T("broood","bananaaa","hiphophiphop");
+out:=texts.apply(encode);
+texts.zipWith(fcn(t,e){ println(t,"-->",e) },out);
+ 
+out.apply(decode).println();
+texts.zipWith('==,out.apply(decode)).println();
+#<<<#
+}
+
+
+{    //////////////////////////////////////////////////////// Multifactorial
+fcn mfact(n,m){ [n..1,-m].reduce('*,1) }
+tester.testRun(fcn{[1..5].apply(mfact.fp(7))},Void,T(5040,105,28,21,14),__LINE__);
+}
+
+
+class MR{    /////////////////// Multiple regression & Polynomial regression
+// Solve a linear system AX=B where A is symmetric and positive definite, so it can be Cholesky decomposed.
+fcn linsys(A,B){
+   n,m:=A.len(),B[1].len();  // A.rows,B.cols
+   y:=n.pump(List.createLong(n).write,0.0); // writable vector of n zeros
+   X:=make_array(n,m,0.0);
+   L:=cholesky(A); // A=LL'
+
+   foreach col in (m){
+      foreach k in (n){ // Forward substitution: y = L\B
+         y[k]=( B[k][col] - k.reduce('wrap(s,j){ s + L[k][j]*y[j] },0.0) )
+	      /L[k][k];
+      }
+      foreach k in ([n-1..0,-1]){   // Back substitution. x=L'\y
+         X[k][col]=
+	  ( y[k] - (k+1).reduce(n-k-1,'wrap(s,j){ s + L[j][k]*X[j][col] },0.0) )
+	  /L[k][k];
+      }
+   }
+   X   
+}
+
+// Solve a linear least squares problem. Ax=b, with A being mxn, with m>n.
+// Solves the linear system A'Ax=A'b.
+fcn lsqr(A,b){
+   at:=transpose(A);
+   linsys(matMult(at,A), matMult(at,b));
+}
+// Least square fit of a polynomial of order n the x-y-curve.
+fcn polyfit(x,y,n){
+   n+=1;
+   m:=x[0].len();  // columns
+   A:=make_array(m,n,0.0);
+   foreach i,j in (m,n){ A[i][j]=x[0][i].pow(j); }
+   lsqr(A, transpose(y));
+}
+fcn make_array(n,m,v){ (m).pump(List.createLong(m).write,v)*n }
+fcn matMult(a,b){
+   n,m,p:=a[0].len(),a.len(),b[0].len();
+   ans:=make_array(m,p,0.0);
+   foreach i,j,k in (m,p,n){ ans[i][j]+=a[i][k]*b[k][j]; }
+   ans
+}
+fcn transpose(M){ 
+   if(M.len()==1) M[0].pump(List,List.create); // 1 row --> n columns
+   else M[0].zip(M.xplode(1));
+}
+}
+{
+tester.testRun( // Polynomial regression
+cmpLists.fp(MR.polyfit.fp(T(T(0.0,1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0,10.0)), 
+           T(T(1.0,6.0,17.0,34.0,57.0,86.0,121.0,162.0,209.0,262.0,321.0)), 2),
+      T(1,2,3)),Void,3,__LINE__);
+   
+  // Multiple regression example
+height:=T(T(1.47, 1.50, 1.52, 1.55, 1.57, 1.60, 1.63,
+        1.65, 1.68, 1.70, 1.73, 1.75, 1.78, 1.80, 1.83));
+weight:=T(T(52.21, 53.12, 54.48, 55.84, 57.20, 58.57, 59.93,
+        61.29, 63.11, 64.47, 66.28, 68.10, 69.92, 72.19, 74.46));
+tester.testRun(
+   cmpLists.fp(MR.polyfit.fp(height,weight,2), T(128.813,-143.162,61.9603)),
+   Void,3,__LINE__);
+}
+
+
+{    //////////////////////////////////////////////////// Mutual recursion
+fcn f(n){ if(n==0)return(1); n-m(f(n-1,m),f) }
+fcn m(n){ if(n==0)return(0); n-f(m(n-1,f),m) }
+tester.testRun([0..19].apply.fp(f),Void,
+    T(1,1,2,2,3,3,4,5,5,6,6,7,8,8,9,9,10,11,11,12),__LINE__);
+tester.testRun([0..19].apply.fp(m),Void,
+    T(0,0,1,2,2,3,4,4,5,6,6,7,7,8,9,9,10,11,11,12),__LINE__);
+}
+
+
+{class Narcissistic{    ////////////////////////// Narcissistic decimal number
+fcn isNarcissistic(n){
+   ns,m := n.split(), ns.len() - 1;
+   ns.reduce('wrap(s,d){ z:=d; do(m){z*=d} s+z },0) == n
+}
+#<<<#
+Pre computing the first 15 powers of 0..9 for use as a look up table
+speeds things up quite a bit but performance is pretty underwhelming.
+#<<<#
+var [const] powers=(10).pump(List,'wrap(n){
+      (1).pump(15,List,'wrap(p){ n.toFloat().pow(p).toInt() }) });
+fcn isNarcissistic2(n){
+   m:=(n.numDigits - 1);
+   n.split().reduce('wrap(s,d){ s + powers[d][m] },0) == n
+}
+#<<<#
+Now stick a filter on a infinite lazy sequence (ie iterator) to create
+an infinite sequence of narcissistic numbers (iterator.filter(n,f) --> n
+results of f(i).toBool()==True).
+
+ns:=[0..].filter.fp1(isNarcissistic);
+ns(15).println();
+ns(5).println();
+ns(5).println();
+#<<<#
+}
+
+tester.testRun(T(153,548834,4210818,9800817,9926315).apply.fp(Narcissistic.isNarcissistic),
+   Void,T(True,True,True,True,True),__LINE__);
+
+tester.testRun([0..].filter.fp1(Narcissistic.isNarcissistic).fp(5),Void,T(0,1,2,3,4),__LINE__);
+
+tester.testRun(T(153,548834,4210818,9800817,9926315).apply.fp(Narcissistic.isNarcissistic2),
+   Void,T(True,True,True,True,True),__LINE__);
+
+tester.testRun([0..].filter.fp1(Narcissistic.isNarcissistic2).fp(5),Void,T(0,1,2,3,4),__LINE__);
+}
+
+
+{    ////////////////////////////////////////////// Non-continuous subsequences
+fcn non_continuous_subsequences(ary){
+   pwerSet(ary).filter(fcn(list){(not isContinuous(list)) })
+}
+fcn isContinuous(ary){
+   if(ary.len()<2) return(True);
+   foreach n in (ary.len()-1){ if(1+ary[n]!=ary[n+1]) return(False); }
+   return(True);
+}
+tester.testRun(non_continuous_subsequences.fp(T(1,2,3,4)),Void,
+   T(T(1,3),T(1,4),T(2,4),T(1,2,4),T(1,3,4)),__LINE__);
+
+fcn brokenSubsequences(str){
+   pwerSet(str.split("")).apply("concat")
+   .filter('wrap(substr){ (not str.holds(substr)) })
+}
+tester.testRun(brokenSubsequences.fp("1234"),Void,
+   T("13","14","24","124","134"),__LINE__);
+}
+
+
+    ////////////////////////// Numerical integration/Gauss-Legendre Quadrature
+class Legendre {
+fcn legendrePair(n,x){ //-->(float,float)
+   if(n==1) return(x,1.0);
+   m1,m2:=legendrePair(n-1,x);
+   u:=1.0 - 1.0/n;
+   return( (u + 1)*x*m1 - u*m2, m1);
+}
+fcn legendre(n,x){ //-->float
+   if(n==0) return(0.0);
+   legendrePair(n,x)[0]
+}
+fcn legendrePrime(n,x){ //-->float
+   if(n==0) return(0.0);
+   if(n==1) return(1.0);
+   m0,m1:=legendrePair(n,x);
+   (m1 - m0*x)*n/(1.0 - x*x);
+}
+fcn approximateLegendreRoot(n,k){ # Approximation due to Francesco Tricomi
+   t:=(4.0*k - 1)/(4.0*n + 2);
+   (1.0 - (n - 1)/(8*n*n*n))*((0.0).pi*t).cos();
+}
+fcn newtonRaphson(f,fPrime,r,eps=2.0e-16){
+   while(not (dr:=-f(r)/fPrime(r)).closeTo(0.0,eps)){ r+=dr }
+   r;
+}
+fcn legendreRoot(n,k){
+   newtonRaphson(legendre.fp(n),legendrePrime.fp(n),
+                 approximateLegendreRoot(n,k));
+}
+fcn weight(n,r){
+   lp:=legendrePrime(n,r);
+   2.0/((1.0 - r*r)*lp*lp)
+}
+fcn nodes(n){ //-->( (r,weight), (r,w), ...) length n
+   sink:=n.isOdd and L(T(0.0,weight(n,0))) or List;
+   (1).pump(n/2,sink,'wrap(m){
+      r:=legendreRoot(n,m);
+      w:=weight(n,r);
+      return( Void.Write,T(r,w),T(-r,w) )
+   })
+}
+fcn quadrature(n,f,a,b,nds=Void){
+    if(not nds) nds=nodes(n);
+    scale:='wrap(x){ (x*(b - a) + a + b) / 2 };
+    nds.reduce('wrap(p,[(r,w)]){ p + w*f(scale(r)) },0.0) * (b - a)/2
+}
+}
+tester.testRun(
+   Legendre.quadrature(5, fcn(x){ x.exp() }, -3, 3).closeTo.fp(20.0356,0.0001),
+   Void,True,__LINE__);
+ 
+
+{    //////////////////////////////////////////////////////// Odd word problem
+var [const] delim=",:;/?!@#$%^&*()_+", stop=".";
+fcn oddly(inStream,sink){
+   inStream=inStream.walker(3);  // character iterator: string, file, etc
+   doWord:=fcn(inStream,sink,rev,f){  // print next word forewards or reverse
+      c:=inStream.next();
+      if(not rev) sink.write(c);
+      if(not (c==stop or delim.holds(c)))
+	 return(self.fcn(inStream,sink,rev,'{ sink.write(c); f(); }));
+      if(rev){ f(); sink.write(c); }
+      return(c!=stop);
+   };
+   tf:=Walker.cycle(False,True);  // every other word printed backwords
+   while(doWord(inStream,sink, tf.next(), Void)) {} sink
+}
+tester.testRun(oddly("what,is,the;meaning,of:life.",Sink(String)).close,Void,
+   "what,si,the;gninaem,of:efil.",__LINE__);
+tester.testRun(oddly("we,are;not,in,kansas;any,more.",Sink(String)).close,Void,
+   "we,era;not,ni,kansas;yna,more.",__LINE__);
+}
+
+
+{    /////////////////////////////////////////////// Order disjoint list items
+fcn disOrder(sm,sn){
+   M:=sm.split(" ");
+   N:=sn.split(" "); nc:=Walker.cycle(Utils.Helpers.listUnique(N));
+   dn:=Dictionary(); N.pump(Void,'wrap(w){ dn[w] = dn.find(w,0) + 1; });
+   M.pump(String,'wrap(w){ 
+      if (Void==(n:=dn.find(w))) return(w); // not replaced
+      if (n) { dn[w]=n-1; nc.next(); } // swaps left--
+      else   { nc.next(); w }	       // exhausted
+   },String.fp(" "))[1,*]	// remove leading blank
+}
+sets:=T(T("the cat sat on the mat","mat cat"),
+        T("the cat sat on the mat","cat mat"),
+        T("A B C A B C A B C","C A C A"),
+        T("A B C A B D A B E","E A D A"),
+        T("A B","B"), T("A B","B A"), T("A B B A","B A") );
+
+tester.testRun(sets.pump.fp(List,fcn(s){disOrder(s.xplode())}), Void,
+   T("the mat sat on the cat", "the cat sat on the mat",
+     "C B A C B A A B C", "E B C A B D A B A", "A B", "B A", "B A B A"), __LINE__);
+}
+
+
+{    ///////////////////////////////////////////////////// Ordered Partitions
+fcn partitions(args){
+   args=vm.arglist;
+   s:=(1).pump(args.sum(0),List);  // (1,2,3,...)
+   fcn(s,args,p){
+      if(not args) return(T(T));
+      res:=List();
+      foreach c in (Utils.Helpers.pickNFrom(args[0],s)){
+	 s0:=s.copy().removeEach(c);
+	 foreach r in (self.fcn(s0,args[1,*])){ res.append(T(c).extend(r)) }
+      }
+      res
+   }(s,args)
+}
+tester.testRun(partitions.fp(2,0,2),Void,
+   T( T(T(1,2),T(),T(3,4)), T(T(1,3),T(),T(2,4)), T(T(1,4),T(),T(2,3)),
+      T(T(2,3),T(),T(1,4)), T(T(2,4),T(),T(1,3)), T(T(3,4),T(),T(1,2)) ),
+      __LINE__);
+}
+
+
+{    ///////////////////////////////////////////////////////////// Paraffins
+if(BN){
+const nMax=10, nBranches=4;
+ 
+var rooted  =(nMax+1).pump(List.createLong(nMax+1).write,BN.fp(0)),
+    unrooted=(nMax+1).pump(List.createLong(nMax+1).write,BN.fp(0));
+rooted[0]=BN(1); rooted[1]=BN(1); unrooted[0]=BN(1); unrooted[1]=BN(1);
+ 
+fcn tree(br,n,l,inSum,cnt){
+   var c=(nBranches).pump(List().write,0);  // happens only once
+
+   sum := inSum;
+   foreach b in ([br + 1 .. nBranches]){
+      sum += n;
+      if (sum > nMax or (l * 2 >= sum and b >= nBranches)) return();
+      if (b == br + 1) c[br] = rooted[n] * cnt; // -->BigInt
+      else{
+	 c[br].mul(rooted[n] + b - br - 1);
+	 c[br].div(b - br);
+      }
+      if (l * 2 < sum) unrooted[sum].add(c[br]);
+      if (b < nBranches) rooted[sum].add(c[br]);
+      foreach m in ([n-1 .. 1,-1]) { tree(b, m, l, sum, c[br]); }
+   }
+}
+ 
+fcn bicenter(s){
+   if (s.isEven) unrooted[s].add(rooted[s / 2] * (rooted[s / 2] + 1) / 2);
+}
+ 
+r:=List();
+foreach n in ([1 .. nMax]){
+   tree(0, n, n, 1, BN(1));
+   bicenter(n);
+   r.append(unrooted[n]);
+}
+tester.testRun(r.apply.fp("toInt"),Void,T(1,1,1,2,3,5,9,18,35,75),__LINE__);
+}}
+
+
+
+
+{    //////////////////////////////////////// Parsing/Shunting-yard algorithm
+//{{trans|Go}}
+var input="3 + 4 * 2 / ( 1 - 5 ) ^ 2 ^ 3";
+
+var opa=Dictionary("^",T(4,True),  "*",T(3,False),    // op:(prec,rAssoc)
+	    "/",T(3,False), "+",T(2,False), "-",T(2,False),
+);
+ 
+//"infix:  ".println(input);
+//"postfix:".println(parseInfix(input));
+
+fcn parseInfix(e){
+   stack:=List(); // holds operators and left parenthesis
+   rpn:="";
+   foreach tok in (e.split(" ")){
+      switch(tok){
+         case("("){ stack.append(tok) } // push "(" to stack
+	 case(")"){
+            while(True){ // pop item ("(" or operator) from stack
+               op:=stack.pop();
+	       if(op=="(") break;  // discard "("
+	       rpn+=" " + op;      // add operator to result
+	    }
+	 }
+         else{  // default
+	    o1:=opa.find(tok);  // op or Void
+	    if(o1){ // token is an operator
+	       while(stack){
+                  // consider top item on stack
+		  op:=stack[-1]; o2:=opa.find(op);
+		  if(not o2 or o1[0]>o2[0] or
+                     (o1[0]==o2[0] and o1[1])) break;
+		  // top item is an operator that needs to come off
+		  stack.pop();
+		  rpn+=" " + op;              // add it to result
+	       }
+	       // push operator (the new one) to stack
+	       stack.append(tok);
+	    }else // token is an operand
+	       rpn+=(rpn and " " or "") + tok; // add operand to result
+	 }
+      } // switch
+//      display(tok,rpn,stack);
+   } // foreach
+   // drain stack to result
+   rpn + stack.reverse().concat(" ");
+}
+fcn display(tok,rpn,stack){
+   "Token|".println(tok);
+   "Stack|".println(stack.concat());
+   "Queue|".println(rpn);
+   println();
+}
+ 
+tester.testRun(parseInfix.fp("3 + 4 * 2 / ( 1 - 5 ) ^ 2 ^ 3"),Void,
+   "3 4 2 * 1 5 - 2 3^ ^ / +",__LINE__);
+}
+
+
+{    ///////////////////////////////////////////////////////// Perfect numbers
+fcn isPerfectNumber1(n)
+   { n == [1..n-1].filter('wrap(i){ n % i == 0 }).sum(); }
+tester.testRun(isPerfectNumber1.fp(496),Void,True,__LINE__);
+}
+
+
+{    /////////////////////////////////////////////// Permutations/Derangements
+fcn subFact(n){
+   if(n==0) return(1);
+   if(n==1) return(0);
+   (n-1)*(self.fcn(n-1) + self.fcn(n-2));
+}
+tester.testRun(subFact.fp(20),Void,895014631192902121,__LINE__);
+
+fcn derangements(n){
+   // All deranged permutations of the integers 0..n-1 inclusive
+   enum:=[0..n-1].pump(List);
+   Utils.Helpers.permuteW(enum).filter('wrap(perm){
+      perm.zipWith('==,enum).sum(0) == 0
+   });
+}
+tester.testRun(derangements.fp(3),Void,L(L(2,0,1),L(1,2,0)),__LINE__);
+
+fcn derangements2(n){ //-->Walker
+   enum:=[0..n-1].pump(List);
+   Utils.Helpers.permuteW(enum).tweak('wrap(perm){
+      if(perm.zipWith('==,enum).sum(0)) Void.Skip
+      else perm
+   });
+}
+tester.testRun(derangements2(3).walk,Void,L(L(2,0,1),L(1,2,0)),__LINE__);
+
+fcn derangers(n){  // just count # of derangements
+   enum:=[0..n-1].pump(List);
+   Utils.Helpers.permuteW(enum).reduce('wrap(sum,perm){
+      sum + (perm.zipWith('==,enum).sum(0) == 0)
+   },0);
+}
+tester.testRun(derangers.fp(4),Void,9,__LINE__);
+
+fcn derangers2(n){  // just count # of derangements
+   derangements(n).reduce('+.fpM("10-",1),0);  // ignore perm --> '+(1,sum)...
+}
+tester.testRun(derangers2.fp(4),Void,9,__LINE__);
+}
+
+
+{    /////////////////////////////////////////////// Permutations by swapping
+tester.testRun(Utils.Helpers.permute.fp(T(1,2,3)),Void,
+   T(T(1,2,3),T(1,3,2),T(3,1,2),T(3,2,1),T(2,3,1),T(2,1,3)),__LINE__);
+}
+
+
+{    ////////////////////////////////////////////////////////////////////// Pi
+if(BN){
+fcn calcPiDigits{
+   reg [const]
+      one=BN(1), two=BN(2), three=BN(3), four=BN(4), seven=BN(7), ten=BN(10);
+   reg q=BN(1), r=BN(0), t=BN(1), k=BN(1), n=BN(3), l=BN(3);
+   first:=True; N:=0;
+sink:=Sink(String);
+   while(True){
+      if((N+=1) == 300){ GarbageMan.collect(); N=0; return(sink.close()); }
+      if(four*q + r - t < n*t){
+         n.print(); if(first){ print("."); first=False; }
+sink.write(n);
+	 nr:=(r - n*t).mul(ten);	// 10 * (r - n * t);
+	 n=(three*q).add(r).mul(ten)	// ((10*(3*q + r))/t) - 10*n;
+	   .div(t).sub(ten*n);
+	 q.mul(ten);			// q *= 10;
+	 r=nr;
+      }else{
+	 nr:=(two*q).add(r).mul(l);	// (2*q + r)*l;
+	 nn:=(q*seven).mul(k).add(two)	// (q*(7*k + 2) + r*l)/(t*l);
+	     .add(r*l).div(t*l);
+	 q.mul(k);   t.mul(l);		// q*=k; t*=l;
+	 l.add(two); k.add(one);	// l+=2; k++;
+	 n=nn; r=nr;
+      }
+   }
+}
+tester.testRun(calcPiDigits,Void,"3141592653589793238462643383279502884197169399375105820974944592307816",__LINE__);
+}}
+
+
+{    ///////////////////////////////////////////////////////// Playfair cipher
+fcn genKeyTable(key,deadChr){ // deadChr=="Q" or "J"
+   deadChr=deadChr.toUpper();
+   key=key.toUpper().unique() - " " - deadChr;
+   return(key + (["A".."Z"].pump(String) - deadChr - key), deadChr);
+}
+
+fcn playfair(text,keytable){  // text is a-z only
+   keyTable,deadChr:=keytable;
+   text=text.toUpper();
+   text-=text - keyTable;	// remove unencodable characters
+   if(deadChr=="Q") text-=deadChr; else text=text.replace("J","I");
+
+#if 1
+   text=text.pump(String,T(Void.Read,1,False),
+			 fcn(a,b=""){ if(a==b) a+"X"+b else a+b });
+   if(text.len().isOdd) text+="Z";
+#endif
+
+   row:='wrap(c){ keyTable.index(c)/5 };
+   col:='wrap(c){ keyTable.index(c)%5 };
+   ltrRight:='wrap(c){ keyTable[(keyTable.index(c) + 1)%25] };
+   ltrBelow:='wrap(c){ keyTable[(keyTable.index(c) + 5)%25] };
+   ltrAt:='wrap(r,c) { keyTable[r*5 + c] };
+#if 1
+   text.pump(String, Void.Read,  //-->digraph
+      'wrap(a,b){
+	 if((ra:=row(a))==(rb:=row(b))) return(ltrRight(a) + ltrRight(b));
+	 if((ca:=col(a))==(cb:=col(b))) return(ltrBelow(a) + ltrBelow(b));
+	 return(ltrAt(ra,cb) + ltrAt(rb,ca));
+      })
+   .pump(String,Void.Read,"".create.fp(" ")).strip(); // insert blanks
+#else
+   sink:=Sink(String);
+   foreach a in (text){
+      b:=__aWalker._next() and __aWalker.value or "X";
+      if(a==b){ 
+         if(b=="X"){ // "XX" is pathological
+	    if(not __aWalker.atEnd) __aWalker.push(b);
+	    b="Z";
+	 }
+	 else { __aWalker.push(b); b="X"; }
+      }
+      sink.write(
+         if((ra:=row(a))==(rb:=row(b)))      ltrRight(a)  + ltrRight(b);
+         else if((ca:=col(a))==(cb:=col(b))) ltrBelow(a)  + ltrBelow(b);
+	 else				     ltrAt(ra,cb) + ltrAt(rb,ca);
+      );
+   }
+   sink.close()
+   .pump(String,Void.Read,"".create.fp(" ")).strip(); // insert blanks
+#endif
+}
+
+fcn decodePF(text,keyTable){
+   keyTable,_=keyTable;
+   text-=" ";
+   row:='wrap(c){ keyTable.index(c)/5 };
+   col:='wrap(c){ keyTable.index(c)%5 };
+   ltrLeft:='wrap(c){ keyTable[(keyTable.index(c) - 1)%25] };
+   ltrUp:='wrap(c){ n:=keyTable.index(c) - 5; if(n<0)n+=25; keyTable[n%25] };
+   ltrAt:='wrap(r,c){ keyTable[r*5 + c] };
+   text.pump(String,Void.Read,  //-->digraph
+      'wrap(a,b){
+	 if((ra:=row(a))==(rb:=row(b))) return(ltrLeft(a) + ltrLeft(b));
+	 if((ca:=col(a))==(cb:=col(b))) return(ltrUp(a)   + ltrUp(b));
+	 return(ltrAt(ra,cb) + ltrAt(rb,ca));
+      })
+   .pump(String,Void.Read,"".create.fp(" ")).strip(); // insert blanks
+}
+
+msg:="Hide the gold in the tree stump!!!";
+
+keyTable:=genKeyTable("playfair example","j");
+tester.testRun(playfair.fp(msg,keyTable),Void,"BM OD ZB XD NA BE KU DM UI XM MO UV IF",__LINE__);
+tester.testRun(playfair.fp("x",keyTable),Void,"MW",__LINE__);
+tester.testRun(playfair.fp("xx",keyTable),Void,"MM MW",__LINE__);
+tester.testRun(playfair.fp("xxx",keyTable),Void,"MM MM",__LINE__);
+
+e:=playfair(msg,keyTable);
+tester.testRun(decodePF.fp(e,keyTable),Void,"HI DE TH EG OL DI NT HE TR EX ES TU MP",__LINE__);
+tester.testRun(decodePF.fp("MW",keyTable),Void,"XZ",__LINE__);
+tester.testRun(decodePF.fp("MM MW",keyTable),Void,"XX XZ",__LINE__);
+tester.testRun(decodePF.fp("MM MM",keyTable),Void,"XX XX",__LINE__);
+}
+
+
+{    ////////////////////////////////////////////////////////////// Power set
+fcn pwerSet(list){
+  (0).pump(list.len(),List, Utils.Helpers.pickNFrom.fp1(list),
+     T(Void.Write,Void.Write) ) .append(list)
+}
+tester.testRun(pwerSet.fp(T),Void,T(T),__LINE__);
+tester.testRun(pwerSet.fp(T(1)),Void,T(T,T(1)),__LINE__);
+tester.testRun(pwerSet.fp(T(1,2)),Void,T(T,T(1),T(2),T(1,2)),__LINE__);
+tester.testRun(pwerSet.fp(T(1,2,3)),Void,
+    T(T,T(1),T(2),T(3),T(1,2),T(1,3),T(2,3),T(1,2,3)),__LINE__);
+}
+
+
+{    ////////////////////////////////////////////////////////// Price fraction
+class PriceFraction{
+fcn convert(price){ // float --> float
+             //   <    -->, increments of 0.05 but tables are easier to update
+   var vert=T( T(0.06, 0.10), T(0.11, 0.18), T(0.16, 0.26),
+	       T(0.21, 0.32), T(0.26, 0.38), T(0.31, 0.44),
+	       T(0.36, 0.50), T(0.41, 0.54), T(0.46, 0.58),
+	       T(0.51, 0.62), T(0.56, 0.66), T(0.61, 0.70),
+	       T(0.66, 0.74), T(0.71, 0.78), T(0.76, 0.82),
+	       T(0.81, 0.86), T(0.86, 0.90), T(0.91, 0.94),
+	       T(0.96, 0.98), T(1.01, 1.00), );
+   vert.filter1('wrap([(a,_)]){ price<a })[1] 
+}
+
+fcn convert2(price){  // shifting the fractional part to the integer portion
+   var vert=T(0.10, 0.18, 0.26, 0.32, 0.38, 0.44, 0.50, 0.54, 0.58, 0.62, 
+              0.66, 0.70, 0.74, 0.78, 0.82, 0.86, 0.90, 0.94, 0.98, 1.00);
+    vert[(price*100-1)/005];
+}
+}
+ps:=T(0.7388727, 0.8593103, 0.826687, 0.3444635, 0.0491907);
+r:=L(0.82,0.9,0.9,0.5,0.1);
+tester.testRun(ps.apply.fp(PriceFraction.convert), Void,r,__LINE__);
+tester.testRun(ps.apply.fp(PriceFraction.convert2),Void,r,__LINE__);
+}
+
+
+	/////////////////////////////////////////////////// Priority queue
+class PriorityQueue{
+class PQ{
+   fcn init(numLevels=10){  // 0..numLevels, bigger # == lower priorty
+      var [const] queue=(1).pump(numLevels+1,List.createLong(numLevels).write,L().copy);
+   }
+   fcn add(item,priorty){ queue[priorty].append(item); }
+   fcn peek{ if(q:=queue.filter1()) return(q[-1]);   Void }// -->Void if empty
+   fcn pop { if(q:=queue.filter1()) return(q.pop()); Void }// -->Void if empty
+   var [private] state=L();
+   fcn [private] next{
+      qi,ii:=state;
+      foreach n in ([qi..queue.len()-1]){
+         q:=queue[n];
+	 if(ii>=q.len()) ii=0;
+	 else{ state.clear().append(n,ii+1); return(q[ii]) }
+      }
+      Void.Stop
+   }
+   fcn walker{ state.clear().append(0,0); Walker(next) }
+   fcn toString{ "PQ(%d) items".fmt(queue.reduce(fcn(sum,q){ sum+q.len() },0)) }
+}
+
+var pq=PQ();
+foreach x in 
+      (T("Clear drains",3, "Feed cat",4, "Make tea",5, "Solve RC tasks",1, "Tax return",2,
+         "Clean room",10,"Wash cat",10)){
+   pq.add(x,__xWalker.next())
+}
+#if 0
+pq.println();
+println("Number 1 thing to do: ",pq.peek());
+println("Top 2 things to do: ",pq.walker().walk(2));
+println("Do this next year: ",pq.walker().walk()[-1]);
+println("ToDo list:");
+foreach item in (pq){ item.println() }
+pq.println();
+#endif
+}
+tester.testRun(PriorityQueue.pq.walker().walk.fp(2),Void,T("Solve RC tasks","Tax return"),__LINE__);
+
+
+{	//////////////////////////////////////////// Proper divisors
+//The simple version:
+//fcn properDivs(n){ [1.. (n + 1)/2 + 1].filter('wrap(x){ n%x==0 and n!=x }) }
+
+// This version is MUCH faster (the output isn't ordered however):
+fcn properDivs(n){ 
+   if(n==1) return(T);
+   ( pd:=[1..(n).toFloat().sqrt()].filter('wrap(x){ n%x==0 }) )
+   .pump(pd,'wrap(pd){ if(pd!=1 and (y:=n/pd)!=pd ) y else Void.Skip })
+}
+
+
+[1..10].apply(properDivs).println();
+   test:=
+[1..20_001].apply('wrap(n){ T(properDivs(n).len(),n) })
+   .reduce(fcn([(a,_)]ab, [(c,_)]cd){ a>c and ab or cd },T(0,0))
+   .println();
+
+
+
+tester.testRun(test.noop,Void,"L(79,18480)",__LINE__);
+
+tester.testRun([1..10].apply.fp(properDivs),Void,
+   L(L(),L(1),L(1),L(1,2),L(1),L(1,2,3),L(1),L(1,2,4),L(1,3),L(1,2,5)),__LINE__);
+}
+
+
+{	//////////////////////////////////////////// Quickselect algorithm
+fcn qselect(list,nth){	// in place quick select
+   fcn(list,left,right,nth){
+      if (left==right) return(list[left]);
+      pivotIndex:=(left+right)/2; // or median of first,middle,last
+
+      	// partition
+      pivot:=list[pivotIndex];
+      list.swap(pivotIndex,right);	// move pivot to end
+      pivotIndex := left;
+      i:=left; do(right-left){	// foreach i in ([left..right-1])
+	 if (list[i] < pivot){
+	    list.swap(i,pivotIndex);
+	    pivotIndex += 1;
+	 }
+	 i += 1;
+      }
+      list.swap(pivotIndex,right);	// move pivot to final place
+
+      if (nth==pivotIndex) return(list[nth]);
+      if (nth<pivotIndex)  return(self.fcn(list,left,pivotIndex-1,nth));
+      return(self.fcn(list,pivotIndex+1,right,nth));
+   }(list.copy(),0,list.len()-1,nth);
+}
+
+list:=T(10, 9, 8, 7, 6, 1, 2, 3, 4, 5);
+tester.testRun(qselect.fp(list,3),Void,4,__LINE__);
+tester.testRun(qselect.fp(list,8),Void,9,__LINE__);
+}
+
+
+{    //////////////////////////////////////////////////////////////// Quine
+s1:=0'|a:="a:=;q:=(34).toChar();print(a[0,3]+q+a+q+a[3,*]);";q:=(34).toChar();print(a[0,3]+q+a+q+a[3,*]);|;
+s2:=0'|s:="s:=%c%s%c;print(s.fmt(34,s,34));";print(s.fmt(34,s,34));|;
+s3:=0'~reg c=0'|"|,s="reg c=0'|%c|,s=%c%s%c;s.fmt(c,c,s,c).print();";s.fmt(c,c,s,c).print();~;
+
+fcn testQuine(quine)
+   { Compiler.Compiler.compileText(quine).__constructor(); out:=vm.regX; }
+tester.testRun(testQuine.fp(s1),Void,s1,__LINE__);
+tester.testRun(testQuine.fp(s2),Void,s2,__LINE__);
+tester.testRun(testQuine.fp(s3),Void,s3,__LINE__);
+}
+
+
+{    //////////////////////////////////////////////////////// Range expansion
+fcn range(ns){
+   fcn(w){
+      if(w.atEnd) return(Void.Stop);
+      a:=b:=w.next(); n:=0;
+      while(b+1 == (c:=w.peekN(n))){ n+=1; b=c }
+      if(n>1){ do(n){ w.next() }; return("%d-%d".fmt(a,b)); }
+      a
+   } :
+   (0).pump(*,List,_.fp(ns.walker().tweak(Void,Void))).concat(",");
+}
+
+ns:=T(-6,-3,-2,-1,0,1,3,4,5,7,8,9,10,11,14,15,17,18,19,20);
+tester.testRun(range.fp(ns),Void,"-6,-3-1,3-5,7-11,14,15,17-20",__LINE__);
+
+fcn rangex(s){
+   fcn(s,re){
+      if (re.search(s)){
+	 a,b:=re.matched[1,*].apply("toInt");
+	 [a..b].walk();
+      }
+      else s;
+   } :
+   s.split(",").pump(List, _.fp1(RegExp(0'|(.*\d+)-(.*\d+)|)))
+      .flatten().concat(",");
+}
+
+ns="-6,-3-1,3-5,7-11,14,15,17-20";
+tester.testRun(rangex.fp(ns),Void,
+    "-6,-3,-2,-1,0,1,3,4,5,7,8,9,10,11,14,15,17,18,19,20",__LINE__);
+
+ns="-6,-3--1,3-5,7-11,14,15,17-20";
+tester.testRun(rangex.fp(ns),Void,
+    "-6,-3,-2,-1,3,4,5,7,8,9,10,11,14,15,17,18,19,20",__LINE__);
+}
+
+
+{ /////////////////////////////////////////////////// Reduced row echelon form
+fcn toReducedRowEchelonForm(m){ // m is modified, the rows are not
+   lead,rowCount,columnCount := 0,m.len(),m[1].len();
+   foreach r in (rowCount){
+      if(columnCount<=lead) break;
+      i:=r;
+      while(m[i][lead]==0){
+	 i+=1;
+	 if(rowCount==i){
+	    i=r; lead+=1;
+	    if(columnCount==lead) break;
+	 }
+      }//while
+      m.swap(i,r); //Swap rows i and r
+      if(n:=m[r][lead]) m[r]=m[r].apply('/(n)); //divide row r by M[r,lead]
+      foreach i in (rowCount){
+         if(i!=r) // Subtract M[i, lead] multiplied by row r from row i
+	    m[i]=m[i].zipWith('-,m[r].apply('*(m[i][lead])))
+      }//foreach
+      lead+=1;
+   }//foreach
+   m
+}
+ 
+m:=List( T( 1, 2, -1, -4,),  // T is read only list
+         T( 2, 3, -1, -11,),
+	 T(-2, 0, -3,  22,));
+#if 0
+printM(m);
+println("-->");
+printM(toReducedRowEchelonForm(m));
+
+fcn printM(m){ m.pump(Console.println,rowFmt) }
+fcn rowFmt(row){ ("%4d "*row.len()).fmt(row.xplode()) }
+#endif
+tester.testRun(toReducedRowEchelonForm.fp(m),Void,
+   T(T(1,0,0,-8),T(0,1,0,1),T(0,0,1,-2)),__LINE__);
+}
+
+
+{	////////////////////////////////////////////////// Roots of a function
+class RoaF{
+fcn findRoots(f,start,stop,step,eps){
+   [start..stop,step].filter('wrap(x){ f(x).closeTo(0.0,eps) })
+}
+
+fcn secant(f,xA,xB){
+   reg e=1.0e-12;
+
+   fA:=f(xA); if(fA.closeTo(0.0,e)) return(xA);
+
+   do(50){
+      fB:=f(xB);
+      d:=(xB - xA) / (fB - fA) * fB;
+      if(d.closeTo(0,e)) break;
+      xA = xB; fA = fB; xB -= d;
+   }
+   if(f(xB).closeTo(0.0,e)) xB
+   else "Function is not converging near (%7.4f,%7.4f).".fmt(xA,xB);
+}    
+
+fcn f(x){ x*x*x - 3.0*x*x + 2.0*x }
+}
+
+tester.testRun(
+   fcn{ RoaF.findRoots(RoaF.f, -1.0, 3.0, 0.0001, 0.00000001).len() }, 
+   Void,3,__LINE__);
+
+step:=0.1;
+xs:=RoaF.findRoots(RoaF.f, -1.032, 3.0, step, 0.1);
+xs=xs.apply('wrap(x){ RoaF.secant(RoaF.f,x-step,x+step) });
+tester.testRun(xs.len(), Void,4,__LINE__);
+}
+
+
+{ ////////////////////////////////////////////////// Run-length encoding
+#<<<#
+A byte stream to byte stream codec, the streams hard coded for ease.
+Character '\1' is used as a sentinel and there are limits on the run
+length to avoid byte overflow.
+#<<<#
+const MAX_LEN=250, MIN_LEN=3;
+fcn compress(text){ //-->Data (byte stream)
+   sink:=Data(); cnt:=Ref(0);
+   write:='wrap(c,n){ // helper function
+      while(n>MAX_LEN){ 
+         sink.write(1,MAX_LEN,c); 
+	 n-=MAX_LEN;
+      }
+      if(n>MIN_LEN){ sink.write(1,n,c); }
+      else { do(n) { sink.write(c); } }
+   };
+   text.reduce('wrap(a,b){
+      if(a==b) cnt.inc();
+      else{ write(a,cnt.value); cnt.set(1); }
+      b
+   },text[0]) : write(_,cnt.value);
+   sink;
+}
+
+fcn inflate(data){  //-->String
+   data.howza(3).pump(String,
+      fcn(c){ // if c==1, read n,c2 and expand, else write c
+         if(c=="\x01") return(Void.Read,2) else return(Void.Write,c) },
+      fcn(_,n,c){ c*n.toAsc() })
+}
+
+text:="WWWWWWWWWWWWBWWWWWWWWWWWWBBBWWWWWWWWWWWWWWWWWWWWWWWWBWWWWWWWWWWWWWW";
+tester.testRun('wrap(){(compress(text) : inflate(_)) == text},Void,True,__LINE__);
+}
+
+
+class SameFringe{ //////////////////////////////////////////////// Same Fringe
+var G=Utils.Generator;
+//Tree: (node,left,right) or (leaf) or (node,left) ...
+aTree := T(1, T(2, T(4, T(7)), T(5)), T(3, T(6, T(8), T(9))));
+bTree := aTree;
+//println("aTree and bTree ",sameFringe(aTree,bTree) and "have" or "don't have",
+//          " the same leaves.");
+cTree := T(1, T(2, T(4, T(7)), T(5)), T(3, T(6, T(8))));
+dTree := T(1, T(2, T(4, T(7)), T(5)), T(3, T(6, T(8), T(9))));
+//println("cTree and dTree ",sameFringe(cTree,dTree) and "have"or"don't have",
+//          " the same leaves.");
+var test=fcn(a,b, c,d)
+   { return(sameFringe(a,b),sameFringe(c,d)) }.fp(aTree,bTree,cTree,dTree);
+
+fcn sameFringe(a,b){ same(G(genLeaves,a),G(genLeaves,b)) }
+ 
+fcn same(g1,g2){ //(Generator,Generator)
+   foreach n1,n2 in (g1.zip(g2)){ //-->(int,int) ...
+      if(n1 != n2) return(); // == return(Void)
+   }
+   return(not (g2._next() or g2._next())); //-->False if g1 or g2 has leaves
+}
+ 
+fcn genLeaves(tree){
+   switch(tree.len()){ // (), (leaf), (node,left, [right])
+      case(1){ vm.yield(tree[0]) } // leaf: int
+      case(2){ genLeaves(tree[1]); }
+      else   { genLeaves(tree[1]); genLeaves(tree[2]); }
+   }
+}
+}
+tester.testRun(SameFringe.test,Void,T(True,False),__LINE__);
+
+
+{	//////////////////////////////////////////////////////////// SEDOLs
+fcn checksum(text){   ( text.len()!=6 or (text..matches("*[AEIOUaeioua-z]*")) ) and 
+      throw(Exception.ValueError("Invalid SEDOL text: "+text));
+
+   text + (10 - text.pump(List,'wrap(c){
+                    if("0"<=c<="9") c.toAsc()-0x30;
+		    else c.toAsc()-55;
+	          }).zipWith('*,T(1,3,1,7,3,9)).sum() % 10) % 10;
+}
+tester.testRun(
+   T("710889","B0YBKJ","406566","B0YBLH","228276","B0YBKL","557910",
+     "B0YBKR","585284","B0YBKT","B00030")..apply.fp(checksum),Void,
+   T("7108899","B0YBKJ7","4065663","B0YBLH2","2282765","B0YBKL9",
+     "5579107","B0YBKR5","5852842","B0YBKT7","B000300"),__LINE__);
+}
+
+
+    /////////////////////////////////////////////// Self-referential sequence
+class SRSeq{
+N:=0d1_000_001;
+
+fcn lookAndJustSaying(seed){ // numeric String --> numeric String
+   "9876543210".pump(String,'wrap(n){
+      (s:=seed.inCommon(n)) and String(s.len(),n) or ""
+   });
+}
+fcn sequence(seed){ // numeric string --> sequence until it repeats
+   seq:=L();
+   while(not seq.holds(seed)){ seq.append(seed); seed=lookAndJustSaying(seed); }
+   seq
+}
+fcn decending(str) //--> True if digits are in descending (or equal) order
+   { (not str.walker().zipWith('<,str[1,*]).filter1()) }
+
+var szs=List.createLong(25); max:=0;
+//foreach seed in (N){ 
+foreach seed in ([9000..9999]){ 
+   z:=seed.toString(); 
+   if(decending(z)){ // 321 generates same sequence as 312,132,123,213
+      len:=sequence(z).len();
+      if(len>max) szs.clear();
+      if(len>=max){ szs.append(seed.toString()); max=len; }
+   }
+}
+}
+{
+// List permutations of longest seeds
+// ("9900"-->(((9,0,0,9),...))-->((9,0,0,9),...)-->("9009"...)
+//        -->remove numbers w/leading zeros-->remove dups
+zs:=SRSeq.szs.apply(Utils.Helpers.permute).flatten().apply("concat")
+   .filter(fcn(s){ s[0]!="0" }) : Utils.Helpers.listUnique(_);
+//println(max," iterations for ",zs.concat(", "));
+//zs.pump(Console.println,sequence,T("concat",", "));
+tester.testRun(zs.noop,Void,T("9900", "9090", "9009"),__LINE__);
+}
+
+
+{    ////////////////////////////////////////////////////////////// Semiprime
+fcn semiprime(n){
+   reg f=0;
+   p:=2; while(f < 2 and p*p <= n){
+      while(0 == n % p){ n/=p; f+=1; }
+      p+=1;
+   }
+   return(f + (n > 1) == 2);
+}
+tester.testRun([1675 .. 1681].filter.fp(semiprime),Void,L(1678,1679,1681),__LINE__);
+}
+
+
+	//////////////////////////////////////////////// Sieve of Eratosthenes
+fcn sieve(limit){
+   if (limit<2) return(T);
+   composite:=Data(limit+1).fill(1);  // bucket of bytes set to 1 (prime)
+   (2).pump(limit.toFloat().sqrt()+1, Void,  // Void==no results, just loop
+       composite.get, Void.Filter,	// if prime, zero multiples
+      'wrap(n){ [n*n..limit,n].pump(Void,composite.set.fp1(0)) }); //composite[n*p]=0
+   (2).filter(limit-1,composite.get); // bytes still 1 are prime
+}
+sieve(53).println();
+#<<<#
+The pump method is just a loop, passing results from action to action
+and collecting the results (ie a minimal state machine). Pumping to Void
+means don't collect. The Void.Filter action means if result.toBool() is
+False, skip else get the source input (pre any action) and pass that to
+the next action.
+Here, the first filter checks the table if src is prime, if so, the
+third action take the prime and does some side effects.
+#<<<#
+
+tester.testRun(sieve.fp(53),Void,T(2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53),__LINE__);
+
+
+
+
+class NoConnectionPuzzle{   //////////////////// Solve the no connection puzzle
+//{{trans|D}}
+const PegA=0, PegB=1, PegC=2, PegD=3, PegE=4, PegF=5, PegG=6, PegH=7;
+connections:=T( 
+   T(PegA, PegC), T(PegA, PegD), T(PegA, PegE),
+   T(PegB, PegD), T(PegB, PegE), T(PegB, PegF),
+   T(PegC, PegD), T(PegD, PegE), T(PegE, PegF),
+   T(PegG, PegC), T(PegG, PegD), T(PegG, PegE),
+   T(PegH, PegD), T(PegH, PegE), T(PegH, PegF) );
+CZ:=connections.len();
+#<<<   // Use "raw" string in a "here doc" so \ isn't a quote char
+board:=
+0'$        A   B
+       /|\ /|\
+      / | X | \
+     /  |/ \|  \
+    C - D - E - F
+     \  |\ /|  /
+      \ | X | /
+       \|/ \|/
+        G   H$;
+#<<<	// end "here doc"
+
+perm:=T(PegA,PegB,PegC,PegD,PegE,PegF,PegG,PegH); // Peg[8]
+foreach p in (Utils.Helpers.permuteW(perm)){ // permutation iterator
+   if(connections.filter1('wrap([(a,b)]){ (p[a] - p[b]).abs()<=1 })) continue;
+//   board.translate("ABCDEFGH",p.apply('+(1)).concat()).println(); 
+returnClass(board.translate("ABCDEFGH",p.apply('+(1)).concat()));
+   break;  // comment out to see all 16 solutions
+}
+// The filter1 method stops on the first True, so it acts like a conditional or.
+}
+tester.testRun(NoConnectionPuzzle.__constructor,Void,
+#<<<
+0'$        5   6
+       /|\ /|\
+      / | X | \
+     /  |/ \|  \
+    7 - 1 - 8 - 2
+     \  |\ /|  /
+      \ | X | /
+       \|/ \|/
+        3   4$,
+#<<<
+__LINE__);
+
+
+class BeadSort{	/////////////////////////////// Sorting algorithms/Bead sort
+fcn columns(m){ // m is list of lists of zeros/beads, # beads is n, eg (0,0,0)==3
+   m
+   .apply("len")   // (0,0,0)-->3
+   .reduce("max")  // largest bead stack
+   .walker()       // [0..max]
+   .apply('wrap(i){ m.filter('wrap(s){ s.len() > i }).len().pump(List,0) });
+}
+ 
+fcn beadSort(data){
+   data.apply("pump",List,0):columns(_):columns(_).apply("len");
+}
+}
+tester.testRun(BeadSort.beadSort.fp(T(5,3,1,7,4,1,1)),Void,T(7,5,4,3,1,1,1),__LINE__);
+
+
+{	///////////////////////////////////// Sorting algorithms/Counting sort
+fcn countingSort(array, min, max){  // modifies array
+   count:=(max - min + 1).pump(List().write,0); // array of (max - min + 1) zeros
+   foreach number in (array){
+      count[number - min] += 1;
+   }
+   z:=-1;
+   foreach i in ([min .. max]){
+      do(count[i - min]){ array[z += 1] = i }
+   }
+   array
+}
+array:=List(4, 65, 2, -31, 0, 99, 2, 83, 182, 1);
+tester.testRun(countingSort.fp(array,(0).min(array), (0).max(array)),Void,
+   T(-31,0,1,2,2,4,65,83,99,182),__LINE__);
+}
+
+
+{	////////////////////////////////////////// Sorting algorithms/Heapsort
+fcn heapSort(a){  // in place
+   n:=a.len();
+   foreach start in ([(n-2)/2 .. 0,-1]){ siftDown(a, start, n-1) }
+   foreach end in ([n-1 .. 1,-1]){
+      a.swap(0, end);
+      siftDown(a, 0, end-1);
+   }
+   a
+}
+fcn siftDown(a, start, end){
+   while((child := start*2 + 1) <= end){
+      if(child < end and a[child]<a[child+1]) child+=1;
+      if(a[start] >= a[child]) return();
+      a.swap(start, child);
+      start = child;
+   }
+}
+
+tester.testRun(heapSort.fp(L(170,45,75,-90,-802,24,2,66)),Void,
+   T(-802,-90,2,24,45,66,75,170),__LINE__);
+tester.testRun(heapSort.fp("this is a test".split("")),Void,
+   T(" "," "," ","a","e","h","i","i","s","s","s","t","t","t"),__LINE__);
+}
+
+
+{	//////////////////////////////////// Sorting algorithms/Insertion sort
+fcn insertionSort(list){
+   sink:=List();
+   foreach x in (list){
+      if(False==(n:=sink.filter1n('>(x)))) sink.append(x); // x>all items in sink
+      else sink.insert(n,x);
+   }
+   sink.close();
+}
+tester.testRun(insertionSort.fp(T(4,65,2,-31,0,99,2,83,782,1)),Void,
+    T(-31,0,1,2,2,4,65,83,99,782),__LINE__);
+tester.testRun(insertionSort.fp("big fjords vex quick waltz nymph".split()), Void,
+    T("big","fjords","nymph","quick","vex","waltz"),__LINE__);
+}
+
+
+	//////////////////////////////////////// Sorting algorithms/Merge sort
+class MergeSort{
+fcn _merge(left,right){
+   if(not left)  return(right);
+   if(not right) return(left);
+//   l:=left[0]; r:=right[0];
+   l,r:=left[0],right[0];
+   if (l<=r) return(L(l).extend(self.fcn(left[1,*],right)));
+   else      return(L(r).extend(self.fcn(left,right[1,*])));
+}
+
+fcn merge_sort(L){
+   if (L.len()<2) return(L);
+   n:=L.len()/2;
+   return(_merge(self.fcn(L[0,n]), self.fcn(L[n,*])));
+}
+fcn mergeSort(L){
+   if (L.len()<2) return(L.copy());
+   n:=L.len()/2;
+   self.fcn(L[0,n]).merge(self.fcn(L[n,*]));
+}
+}
+tester.testRun(MergeSort.merge_sort.fp(T(1,3,5,7,9,8,6,4,2)),Void,T(1,2,3,4,5,6,7,8,9),__LINE__);
+tester.testRun(fcn{MergeSort.merge_sort("big fjords vex quick waltz nymph").concat()},
+   Void,"     abcdefghiijklmnopqrstuvwxyz",__LINE__);
+tester.testRun(MergeSort.mergeSort.fp(T(1,3,5,7,9,8,6,4,2)),Void,T(1,2,3,4,5,6,7,8,9),__LINE__);
+tester.testRun(fcn{ MergeSort
+   .mergeSort("big fjords vex quick waltz nymph".split("")).concat() },
+   Void,"     abcdefghiijklmnopqrstuvwxyz",__LINE__);
+
+
+{	///////////////////////////////////// Sorting algorithms/Patience sort
+fcn patienceSort(ns){
+   piles:=L();
+   foreach n in (ns){ newPile:=True;   // create list of sorted lists
+      foreach p in (piles){
+	 if(n>=p[-1]) { p.append(n); newPile=False; break; }
+      }
+      if(newPile)piles.append(L(n));
+   }
+   // merge sort the piles
+   r:=Sink(List); while(piles){
+      mins:=piles.apply("get",0).enumerate();
+      min :=mins.reduce(fcn(a,b){ (a[1]<b[1]) and a or b },mins[0])[0];
+      r.write(piles[min].pop(0));
+      if(not piles[min]) piles.del(min);
+   }
+   r.close();
+}
+
+tester.testRun(T(T(0,8,4,12,2,10,6,14,1,9,5,13,3,11,7,15),"foobar")
+	       .apply.fp(patienceSort),Void,
+   T(T(0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15), T("a","b","f","o","o","r")),__LINE__);
+}
+
+
+{	//////////////////////////////////////// Sorting algorithms/Radix sort
+//In place int sort, fairly light on garbage creation.
+fcn radixSort(ns){ // ints only, inplace, ns is mutable
+   b:=(0).pump(20,List,List().copy);  // 20 [empty] buckets: -10..10
+   z:=ns.reduce(fcn(a,b){ a.abs().max(b.abs()) },0); // |max or min of input|
+   m:=1;
+   while(z){
+      ns.apply2('wrap(n){ b[(n/m)%10 +10].append(n) }); // sort on right digit
+      ns.clear(); b.pump(ns.extend);		// slam buckets over src
+      b.apply("clear");			     // reset buckets
+      m*=10; z/=10;			// move sort digit left
+   }
+   ns
+}
+//radixSort(L(170, 45, 75, 90, 802, 2, 24, 66)).println();
+//radixSort(L(170, 45, 75, -90, -802, 24, 2, 66)).println();
+
+ns:=L(170, 45, 75, 90, 802, 2, 24, 66);
+tester.testRun(radixSort.fp(ns),Void,ns.sort(),__LINE__);
+
+ns=L(170, 45, 75, -90, -802, 24, 2, 66);
+tester.testRun(radixSort.fp(ns),Void,ns.sort(),__LINE__);
+}
+
+
+	 ///////////////////////////////////// Sorting algorithms/Strand sort
+fcn strandSort(A){ //--> new list, A is cleared, should add A=A.copy();
+   sublist:=List.createLong(A.len()); results:=List.createLong(A.len());
+   while(A){
+      sublist.clear(A.pop(0));
+      foreach i in (A.len() - 1){
+	 if(A[i]>sublist[-1]) sublist.append(A.pop(i));
+      }
+      results.merge(sublist);
+   }
+   results
+}
+tester.testRun(strandSort.fp(L(3,1,5,4,2)),Void,T(1,2,3,4,5),__LINE__);
+tester.testRun(strandSort.fp("azbfe".split("")),Void,T("a","b","e","f","z"),__LINE__);
+
+
+{ /////////////////////////////////////////////////////// Sort disjoint sublist
+values :=T(7, 6, 5, 4, 3, 2, 1, 0);
+indices:=T(6, 1, 7);
+
+tester.testRun(
+   'wrap(){ indices.apply(values.get).sort() // a.get(0) == a[0]
+         .zip(indices.sort()) //-->(v,i) == L(L(0,1),L(1,6),L(6,7))
+         .reduce(fcn(newList,[(v,i)]){ newList[i]=v; newList },values.copy()) },
+   Void,T(7,0,5,4,3,2,1,6),__LINE__);
+
+values :=L(7, 6, 5, 4, 3, 2, 1, 0);
+tester.testRun(
+   'wrap(){ indices.apply(values.get).sort() // a.get(0) == a[0]
+     .zip(indices.sort()) //-->(v,i) == L(L(0,1),L(1,6),L(6,7))
+     .apply2(fcn([(v,i)],list){ list[i]=v },values); values },
+   Void,T(7,0,5,4,3,2,1,6),__LINE__);
+}
+
+    ////////////////////////////////////////////////////// Spiral matrix
+fcn spiralMatrix(n){
+   sm:=(0).pump(n,List,(0).pump(n,List,False).copy); //L(L(False,False..), L(F,F,..) ...)
+   drc:=Walker.cycle(T(0,1,0), T(1,0,1), T(0,-1,0), T(-1,0,1)); // deltas
+   len:=n; r:=0; c:=-1; z:=-1; while(len>0){ //or do(2*n-1){
+      dr,dc,dl:=drc.next();
+      do(len-=dl){ sm[r+=dr][c+=dc]=(z+=1); }
+   }
+   sm
+}
+
+#if 0
+foreach n in (T(5,-1,0,1,2)){
+   spiralMatrix(n).pump(Console.println,fcn(r){ r.apply("%4d".fmt).concat() });
+   println("---");
+}
+#endif
+tester.testRun(spiralMatrix.fp(5),Void,
+   T(T( 0, 1, 2, 3, 4),
+     T(15,16,17,18, 5),
+     T(14,23,24,19, 6),
+     T(13,22,21,20, 7),
+     T(12,11,10, 9, 8)),__LINE__);
+
+
+class StateNamePuzzle{    ////////////////////////////////// State name puzzle
+//{{trans|Python}}
+#<<<  // here doc
+states:=("Alabama, Alaska, Arizona, Arkansas,
+   California, Colorado, Connecticut, Delaware, Florida,
+   Georgia, Hawaii, Idaho, Illinois, Indiana, Iowa, Kansas,
+   Kentucky, Louisiana, Maine, Maryland, Massachusetts,
+   Michigan, Minnesota, Mississippi, Missouri, Montana,
+   Nebraska, Nevada, New Hampshire, New Jersey, New Mexico,
+   New York, North Carolina, North Dakota, Ohio, Oklahoma,
+   Oregon, Pennsylvania, Rhode Island, South Carolina,
+   South Dakota, Tennessee, Texas, Utah, Vermont, Virginia,
+   Washington, West Virginia, Wisconsin, Wyoming"
+   /* Uncomment the next line for the fake states. */
+   # ",New Kory, Wen Kory, York New, Kory New, New Kory"
+#<<<
+).split(",").apply("strip");
+ 
+smap:=Dictionary();
+Utils.Helpers.pickNFrom(2,states).apply2('wrap(ss){ // 1225 combinations
+   key:=(ss.concat()).toLower().sort() - " ";
+   smap[key]=smap.find(key,List()).append(ss.concat(" + "));
+});
+
+#if 0
+foreach pairs in (smap.values){ // 1224 keys
+//    pairs=Utils.Helpers.listUnique(pairs);  // eliminate dups
+    if(pairs.len()>1)
+        println(pairs.concat(" = ")) }
+#else
+sink:=Sink(String);
+foreach pairs in (smap.values){ // 1224 keys
+//    pairs=Utils.Helpers.listUnique(pairs);  // eliminate dups
+    if(pairs.len()>1) sink.write(pairs.concat(" = ")) 
+}
+returnClass(sink.close());
+#endif
+}
+tester.testRun(StateNamePuzzle,Void,
+   "North Carolina + South Dakota = North Dakota + South Carolina",__LINE__);
+
+
+class SB{  ////////////////////////////////////////// Stern-Brocot sequence
+fcn SB  // Stern-Brocot sequence factory --> Walker
+   { Walker(fcn(sb,n){ a,b:=sb; sb.append(a+b,b); sb.del(0); a }.fp(L(1,1))) }
+#if 0
+SB().walk(15).println();
+
+[1..10].zipWith('wrap(n){ [1..].zip(SB())
+   .filter(1,fcn(n,sb){ n==sb[1] }.fp(n)) })
+   .walk().println();
+[1..].zip(SB()).filter1(fcn(sb){ 100==sb[1] }).println();
+
+sb:=SB(); do(500){ if(sb.next().gcd(sb.next()) != 1) println("Opps") }
+#endif
+fcn test1{ SB().walk(6) }
+fcn test2{ [1..5].zipWith('wrap(n){ [1..].zip(SB())
+   .filter(1,fcn(n,sb){ n==sb[1] }.fp(n)) })
+   .walk()
+}
+}
+tester.testRun(SB.test1,Void,T(1,1,2,1,3,2),__LINE__);
+tester.testRun(SB.test2,Void,L(L(L(1,1)),L(L(3,2)),L(L(5,3)),L(L(9,4)),L(L(11,5))),__LINE__);
+
+
+{	////////////////////////////////////////////// Subtractive generator
+fcn rand_sub(x){
+   var ring=L(),m=(1e9).toInt();
+   mod:='wrap(n){ if(n<0) n+m else n };
+   if(not ring){
+      seed:=L( (if(vm.numArgs) x else m-1), 1);
+      foreach n in ([2 .. 54]){ seed.append((seed[n-2]-seed[n-1]):mod(_)) }
+      foreach n in (55){ ring.append(seed[(34*(n+1))%55]) }
+      do(220-ring.len()){ self.fcn() } // 165
+   }
+   ring.append((ring.pop(0)-ring[-24]):mod(_));
+   return(ring[-1]);
+}
+tester.testRun((0).pump.fp(4,List,rand_sub.fp(292929)),Void,
+   T(467478574,512932792,539453717,20349702),__LINE__);
+}
+
+
+    ///////////////////////////////////////////// Sum and product of an array
+class SPA{
+fcn arraySum(vals){vals.reduce('+,0)}
+fcn arrayProduct(vals){vals.reduce('*,1)}
+}
+tester.testRun(SPA.arraySum.fp(T(1,2,3,4)),Void,10,__LINE__);
+tester.testRun(SPA.arrayProduct.fp(T(1,2,3,4)),Void,24,__LINE__);
+
+
+{    //////////////////////////////////////////////////// Symmetric difference
+fcn setCommon(list1,list2){ list1.filter(list2.holds); }
+fcn sdiff(list1,list2)
+   { list1.extend(list2).copy().removeEach(setCommon(list1,list2)) }
+
+a:=T("John","Bob","Mary","Serena");
+b:=T("Jim","Mary","John","Bob");
+tester.testRun(sdiff.fp(a,b),Void,T("Serena","Jim"),__LINE__);
+
+a:=T("John", "Serena", "Bob", "Mary", "Serena");
+b:=T("Jim", "Mary", "John", "Jim", "Bob");
+tester.testRun('wrap(){sdiff(a,b):Utils.Helpers.listUnique(_)},Void,T("Serena","Jim"),__LINE__);
+}
+
+
+	///////////////////////////////////// Thiele's interpolation formula
+class Thiele{
+const TN=32, TN2=(TN * (TN - 1) / 2), STEP=0.05;
+
+fcn rho(xs,ys,rs, i,n){
+   if (n < 0) return(0.0);
+   if (not n) return(ys[i]);
+ 
+   idx := (TN - 1 - n) * (TN - n) / 2 + i;
+   if (Void==rs[idx])
+      rs[idx] = (xs[i] - xs[i + n])
+		/ (rho(xs, ys, rs, i, n - 1) - rho(xs, ys, rs, i + 1, n - 1))
+		+ rho(xs, ys, rs, i + 1, n - 2);
+   return(rs[idx]);
+}
+ 
+fcn thiele(xs,ys,rs, xin, n){
+   if (n > TN - 1) return(1.0);
+   rho(xs, ys, rs, 0, n) - rho(xs, ys, rs, 0, n - 2)
+      + (xin - xs[n]) / thiele(xs, ys, rs, xin, n + 1);
+}
+
+///////////
+ 
+reg t_sin=L(), t_cos=L(), t_tan=L(),
+    r_sin=L(), r_cos=L(), r_tan=L(),  xval=L();
+               
+var 
+   i_sin = thiele.fpM("11101",t_sin, xval, r_sin, 0),
+   i_cos = thiele.fpM("11101",t_cos, xval, r_cos, 0),
+   i_tan = thiele.fpM("11101",t_tan, xval, r_tan, 0);
+ 
+foreach i in (TN){
+   xval.append(x:=STEP*i);
+   t_sin.append(x.sin());
+   t_cos.append(x.cos());
+   t_tan.append(t_sin[i] / t_cos[i]);
+}
+
+foreach i in (TN2){ r_sin+Void; r_cos+Void; r_tan+Void; }
+}
+ 
+tester.testRun(fcn{(6.0*Thiele.i_sin(0.5)).closeTo((0.0).pi,1.0e-15)},Void,True,__LINE__);
+tester.testRun(fcn{(3.0*Thiele.i_cos(0.5)).closeTo((0.0).pi,1.0e-15)},Void,True,__LINE__);
+tester.testRun(fcn{(4.0*Thiele.i_tan(1.0)).closeTo((0.0).pi,1.0e-14)},Void,True,__LINE__);
+
+
+	////////////////////////////////////// Tokenize a string with escaping
+class TokenizeString{
+fcn tokenize(str,sep,esc){
+   sink:=Sink(String);
+   foreach c in (str){
+      switch(c){
+         case(esc){ sink.write(__cWalker.next()); }  // error if ^EoS
+	 case(sep){ sink.write("\xff"); }
+	 else     { sink.write(c) }
+      }
+   }
+   sink.close().split("\xff");
+}
+
+fcn tokenize2(str,sep,esc){
+   sink:=Sink(String);
+   foreach c in (str){
+      sink.write( (c==esc and __cWalker.next()) or (c==sep and "\xff") or c );
+   }
+   sink.close().split("\xff");
+}
+}
+
+s:="one^|uno||three^^^^|four^^^|^cuatro|";
+r:=T("one|uno","","three^^","four^|cuatro","");
+tester.testRun(TokenizeString.tokenize.fp( s, "|","^"),Void,r,__LINE__);
+tester.testRun(TokenizeString.tokenize2.fp(s, "|","^"),Void,r,__LINE__);
+
+
+{    //////////////////////////////////////////////////////// Topological sort
+//{{trans|Wikipedia}}
+fcn topoSort(data){ // data is L( L(root,L(leaves)),...)
+   allDs:=data.pump(List,fcn(rds){ T(Void.Write,Void.Write,rds[1]) }).copy();
+   roots:=Dictionary(data); // dictionary of root:leaves
+   L:=List();
+   S:=data.pump(List,'wrap([(r,_)]){ if(allDs.holds(r)) Void.Skip else r }).copy();
+   while(S){        //while S is non-empty do
+      (n:=S.pop()) : L.append(_); //remove a node n from S, add n to tail of L
+      foreach m in (ds:=roots.find(n,List)){ //node m with an edge e from n to m 
+	 allDs.del(allDs.index(m)); 
+	 if (Void==allDs.find(m)) S.append(m); //m has no other incoming edges
+      } roots.del(n);  // remove edge e from the graph
+   }
+   if(roots) throw(Exception.ValueError("Cycle: "+roots.keys));
+   L
+}
+
+data:=T(
+   "des_system_lib",   "std synopsys std_cell_lib des_system_lib dw02 dw01 ramlib ieee",
+   "dw01",             "ieee dw01 dware gtech", // dw04",
+   "dw02",             "ieee dw02 dware",
+   "dw03",             "std synopsys dware dw03 dw02 dw01 ieee gtech",
+   "dw04",             "dw04 ieee dw01 dware gtech",
+   "dw05",             "dw05 ieee dware",
+   "dw06",             "dw06 ieee dware",
+   "dw07",             "ieee dware",
+   "dware",            "ieee dware",
+   "gtech",            "ieee gtech",
+   "ramlib",           "std ieee",
+   "std_cell_lib",     "ieee std_cell_lib",
+   "synopsys",         "",
+);
+data=data.pump(List,T(Void.Read,1),fcn(r,ds){
+   T( r, ds.replace(r,"").strip().split().copy() )
+});
+
+tester.testRun(topoSort.fp(data),Void,
+   L("dw07","dw06","dw05","dw04","dw03","des_system_lib","ramlib","std","dw01",
+     "gtech","dw02","dware","std_cell_lib","ieee","synopsys"),__LINE__);
+}
+
+
+{	///////////////////////////////////////////////////////////// Topswops
+//{{trans|D}}
+//Slow version
+fcn topswops(n){
+   flip:=fcn(xa){
+      if (not xa[0]) return(0);
+      xa.reverse(0,xa[0] + 1);  // inplace, ~4x faster than making new lists
+      return(1 + self.fcn(xa));
+   };
+   (0).pump(n,List):Utils.Helpers.permute(_).pump(List,"copy",flip).reduce("max");
+}
+//foreach n in ([1 .. 10]){ println(n, ": ", topswops(n)) }
+tester.testRun(topswops.fp(6),Void,10,__LINE__);
+}
+
+
+	////////////////////////////////////////////// Van der Corput sequence
+class VDC{
+fcn vdc(n,base=2){
+   vdc:=0.0; denom:=1;
+   while(n){ reg remainder;
+      denom*=base;
+      n,remainder=n.divr(base);
+      vdc+=(remainder.toFloat() / denom);
+   }
+   vdc
+}
+fcn vdcR(n,base=2){
+   str:=n.toString(base).reverse();
+   str.toInt(base).toFloat()/(base.toFloat().pow(str.len()))
+}
+}
+tester.testRun(fcn{[0..6].apply(VDC.vdc)},Void,
+   T(0.0,0.5,0.25,0.75,0.125,0.625,0.375),__LINE__);
+
+tester.testRun(fcn{[0..6].apply(VDC.vdcR)},Void,
+   T(0.0,0.5,0.25,0.75,0.125,0.625,0.375),__LINE__);
+
+{    ///////////////////////////////////////////////////////// Vampire number
+fcn fangs(N){ //-->if Vampire number: (N,(a,b,c,...)), where a*x==N
+   var [const] tens=[0 .. 18].pump(List,(10.0).pow,"toInt");
+
+   (half:=N.numDigits) : if (_.isOdd) return(T);;
+   half/=2; digits:=N.toString().sort();
+   lo:=tens[half-1].max((N+tens[half])/(tens[half]));
+   hi:=(N/lo).min(N.toFloat().sqrt());
+   fs:=[lo .. hi].filter('wrap(n){
+//      N%n==0 and (n%10!=0 or (N/n)%10!=0) and  // fastest, barely
+      N%n==0 and (n%10 + (N/n)%10 > 0) and
+//      N%n==0 and (n[0] + (N/n)[0] > 0) and
+      (n.toString()+(N/n).toString()).sort()==digits
+   });
+   fs and T(N,fs) or T;
+}
+#<<<#
+fcn vampiric(fangs,n=Void){
+   if(not fangs) return(n,"Not a Vampire number");
+   v:=fangs[0]; T(v,fangs[1].apply('wrap(n){T(n,v/n)})) }
+ 
+T(16758243290880, 24959017348650, 14593825548650)
+.pump(Console.println,fcn(n){"%d: %s".fmt(vampiric(fangs(n),n).xplode())});
+ 
+(0).walker(*).tweak(fangs).filter(26)
+.pump(Console.println,vampiric);
+#<<<#
+
+tester.testRun(T(1260,126027,16758243290880, 14593825548650)
+   .pump.fp(List,fangs),Void,
+   T(
+     T(1260,T(21)),T(126027,T(201)),
+     T(16758243290880,T(1982736,2123856,2751840,2817360)),
+     T()),  __LINE__);
+}
+
+
+{	////////VigenÃ¨re cipher//////Vigenère cipher///////// Vigenere cipher
+//{{trans|C}}
+fcn encipher(src,key,is_encode){
+   upperCase:=["A".."Z"].pump(String);
+   src=src.toUpper().inCommon(upperCase);  // only uppercase
+   key=key.toUpper().inCommon(upperCase).pump(List,"toAsc");
+
+   const _A="A".toAsc();
+   klen:=Walker.cycle(key.len());  // 0,1,2,3,..,keyLen-1,0,1,2,3, ...
+   src.pump(String,'wrap(c){ i:=klen.next(); c=c.toAsc();
+      (_A + ( if(is_encode) c - _A + key[i] - _A;
+      	     else           c - key[i] + 26 ) % 26).toChar()
+   });
+}
+str := "Beware the Jabberwock, my son! The jaws that bite, "
+                    "the claws that catch!";
+key := "Vigenere Cipher";
+tester.testRun(encipher.fp(str, key, True),Void,
+    "WMCEEIKLGRPIFVMEUGXQPWQVIOIAVEYXUEKFKBTALVXTGAFXYEVKPAGY",__LINE__);
+tester.testRun(
+   encipher.fp("WMCEEIKLGRPIFVMEUGXQPWQVIOIAVEYXUEKFKBTALVXTGAFXYEVKPAGY", key, False),
+   Void,"BEWARETHEJABBERWOCKMYSONTHEJAWSTHATBITETHECLAWSTHATCATCH",  __LINE__)
+}
+
+
+    /////////////////////////////////////////////////// World Cup group stage
+class WorldCup{
+combos :=Utils.Helpers.pickNFrom(2,T(0,1,2,3)); // ( (0,1),(0,2) ... )
+scoring:=T(0,1,3);
+var
+histo  =(0).pump(4,List().write,(0).pump(10,List().write,0).copy); //[4][10] of zeros
+
+foreach r0,r1,r2,r3,r4,r5 in ([0..2],[0..2],[0..2],[0..2],[0..2],[0..2]){
+   s:=L(0,0,0,0);
+   foreach i,r in (T(r0,r1,r2,r3,r4,r5).enumerate()){
+      g:=combos[i];
+      s[g[0]]+=scoring[r];
+      s[g[1]]+=scoring[2 - r];
+   }
+   foreach h,v in (histo.zip(s.sort())){ h[v]+=1; }
+} 
+//foreach h in (histo.reverse()){ println(h.apply("%3d ".fmt).concat()) }
+}
+tester.testRun(WorldCup.histo.get.fp(-1),Void,
+   T(0,0,0,1,14,148,152,306,0,108),__LINE__);
+
+
+	/////////////////////////////////////////////////////////// XML/Input
+class XMLInput{ 
+var student=RegExp(0'|.*<Student\s*.+Name\s*=\s*"([^"]+)"|);
+var unicode=RegExp(0'|.*(&#x[0-9a-fA-F]+;)|);
+var xml=Data(0,0,
+#<<<
+0'|<Students>
+ <Student Name="April" Gender="F" DateOfBirth="1989-01-02" />
+  <Student Name="Dave" Gender="M"  DateOfBirth="1992-07-08">
+    <Pet Type="dog" Name="Rover" />
+  <Student DateOfBirth="1993-09-10" Gender="F" Name="&#x00C9;mily" />
+|);
+#<<<
+
+fcn xmlInput{
+students:=xml.pump(List,'wrap(line){
+   if(student.search(line)){
+      s:=student.matched[1];    // ( (match start,len),group text )
+      while(unicode.search(s)){ // convert "&#x00C9;" to 0xc9 to UTF-8
+	 c:=unicode.matched[1];
+	 uc:=c[3,-1].toInt(16).toString(-8);
+      	 s=s.replace(c,uc);
+      }
+      s
+   }
+   else Void.Skip; // line doesn't contain <Student ... Name ...
+});
+}}
+tester.testRun(XMLInput.xmlInput,Void,T("April","Dave","\Uc9;mily"),__LINE__);
+
+
+{	///////////////////////////////////// Zeckendorf number representation
+    // return powers (0|1) of fib sequence (1,2,3,5,8...) that sum to n
+fcn zeckendorf(n){ //-->String of 1s & 0s, no consecutive 1's
+   if(n<=0) return("0");
+   fibs:=fcn(ab){ ab.append(ab.sum()).pop(0) }.fp(L(1,2));
+   (0).pump(*,List,fibs,'wrap(fib){ if(fib>n)Void.Stop else fib })
+   .reverse()
+   .pump(String,fcn(fib,rn){
+      if(fib>rn.value)"0" else { rn.set(rn.value-fib); "1" } }.fp1(Ref(n)))
+}
+tester.testRun([0..20].apply.fp(zeckendorf),Void,
+  T("0","1","10","100","101","1000","1001","1010","10000","10001","10010",
+    "10100","10101","100000","100001","100010","100100","100101","101000",
+    "101001","101010"), __LINE__);
+}
+
+
+class ZigZag{    ////////////////////////////////////////////// Zig-zag matrix
+fcn zz(n){
+   grid := (0).pump(n,List, (0).pump(n,List).copy).copy();
+   ri := Ref(0);
+   foreach d in ([1..n*2]){
+      x:=(0).max(d - n); y:=(n - 1).min(d - 1);
+      (0).pump(d.min(n*2 - d),Void,'wrap(it){
+         grid[if(d%2)y-it else x+it][if(d%2)x+it else y-it] = ri.inc();
+      });
+   }
+   grid.pump(String,'wrap(r){("%3s"*n+"\n").fmt(r.xplode())});
+}
+
+//r:="  0  1  5  6 14\n  2  4  7 13 15\n  3  8 12 16 21\n  9 11 17 20 22\n 10 18 19 23 24\n";
+//tester.testRun(zz.fp(5),Void,r,__LINE__);
+
+fcn ceg(m){
+   s :=(0).pump(m*m,List).copy();  // copy to make writable
+#if 0
+   rn:=Ref(0);
+   [[(i,j); [0..m*2-1]; '{[(0).max(i-m+1) .. i.min(m-1)]};
+         '{ s[ if(i.isOdd) j*(m-1)+i else (i-j)*m+j ] = rn.inc(); }]];
+#else
+   rn:=Ref(0);
+   foreach i,j in ([0..m*2-1],[(0).max(i-m+1) .. i.min(m-1)])
+      { s[ if(i.isOdd) j*(m-1)+i else (i-j)*m+j ] = rn.inc(); }
+#endif
+   s.pump(String,T(Void.Read,m-1), ("%3s"*m+"\n").fmt);
+}
+//tester.testRun(ceg.fp(5),Void,r,__LINE__);
+
+fcn ceg2(m){
+   rn := Ref(0);
+   [[(i,j); [0..m*2-1]; '{[(0).max(i-m+1) .. i.min(m-1)]};
+         '{ T( if(i.isOdd) j*(m-1)+i else (i-j)*m+j;, rn.inc() ) }]]
+   .sort(fcn([(a,_)], [(b,_)]){ a<b }).apply("get",1)
+   .pump(String,T(Void.Read,m-1), ("%3s"*m+"\n").fmt);
+}
+//tester.testRun(ceg2.fp(5),Void,r,__LINE__);
+}
+r:="  0  1  5  6 14\n  2  4  7 13 15\n  3  8 12 16 21\n  9 11 17 20 22\n 10 18 19 23 24\n";
+tester.testRun(ZigZag.zz.fp(5),Void,r,__LINE__);
+tester.testRun(ZigZag.ceg.fp(5),Void,r,__LINE__);
+tester.testRun(ZigZag.ceg2.fp(5),Void,r,__LINE__);
+
+tester.stats();
+returnClass(tester);
+

@@ -1,0 +1,1375 @@
+//-*-c-*-
+// Test solutions posted to Rosetta Code
+// http://rosettacode.org/wiki/Category:Zkl
+
+tester := TheVault.Test.UnitTester.UnitTester(__FILE__);
+
+const{ Import("Time.Date",1); }	// when testing zklIgnoreWad
+const{ try{ Import.lib("zklBigNum"); } catch{} }  // load links
+try{ var [const] BN=Import.lib("zklBigNum") } catch{}
+
+
+{		////////////////////////////////// 4-rings or 4-squares puzzle
+    // unique: No repeated numbers in solution
+fcn fourSquaresPuzzle(lo=1,hi=7,unique=True){  //-->list of solutions
+   _assert_(0<=lo and hi<36);
+   notUnic:=fcn(a,b,c,etc){ abc:=vm.arglist; // use base 36, any repeated character?
+      abc.apply("toString",36).concat().unique().len()!=abc.len()
+   };
+   s:=List();		// solutions
+   foreach a,b,c in ([lo..hi],[lo..hi],[lo..hi]){ // chunk to reduce unique
+      if(unique and notUnic(a,b,c)) continue;     // solution space. Slow VM
+      foreach d,e in ([lo..hi],[lo..hi]){	  // -->for d { for e {} }
+         if(unique and notUnic(a,b,c,d,e)) continue;
+	 foreach f,g in ([lo..hi],[lo..hi]){
+	    if(unique and notUnic(a,b,c,d,e,f,g)) continue;
+	    sqr1,sqr2,sqr3,sqr4 := a+b,b+c+d,d+e+f,f+g;
+	    if((sqr1==sqr2==sqr3) and sqr1==sqr4) s.append(T(a,b,c,d,e,f,g));
+	 }
+      }
+   }
+   s
+}
+
+fcn show(solutions,msg){
+   if(not solutions){ println("No solutions for",msg); return(); }
+
+   println(solutions.len(),msg," solutions found:");
+   w:=(1).max(solutions.pump(List,(0).max,"numDigits")); // max width of any number found
+   fmt:=" " + "%%%ds ".fmt(w)*7;  // eg " %1s %1s %1s %1s %1s %1s %1s"
+   println(fmt.fmt(["a".."g"].walk().xplode()));
+   println("-"*((w+1)*7 + 1));	  // calculate the width of horizontal bar
+   foreach s in (solutions){ println(fmt.fmt(s.xplode())) }
+}
+#<<<#
+fourSquaresPuzzle() : show(_," unique (1-7)");      println();
+fourSquaresPuzzle(3,9) : show(_," unique (3-9)");   println();
+fourSquaresPuzzle(5,12) : show(_," unique (5-12)"); println();
+println(fourSquaresPuzzle(0,9,False).len(),	// 10^7 possibilities
+   " non-unique (0-9) solutions found.");
+#<<<#
+
+tester.testRun(fcn{ fourSquaresPuzzle().len()     },Void,8,__LINE__);
+tester.testRun(fcn{ fourSquaresPuzzle(3, 9).len() },Void,4,__LINE__);
+tester.testRun(fcn{ fourSquaresPuzzle(5,12).len() },Void,4,__LINE__);
+}
+
+
+{ 		////////////////////////////////////////////////// 100 doors
+//Pure brute force.
+doors:=List.createLong(100,False);	// list of 100 Falses
+foreach n,m in (100,[n..99,n+1]){ doors[m]=(not doors[m]); } //foreach{ foreach{} }
+//doors.filterNs().apply('+(1)).println();
+
+//The filterNs method returns the index of each item that passes the filter.
+
+tester.testRun('wrap{ doors.filterNs().apply('+(1)) },
+   Void,L(1,4,9,16,25,36,49,64,81,100),__LINE__);
+}
+
+{ 		//////////////////////// Angle difference between two bearings
+//{{trans|Perl 6}}
+fcn bearingAngleDiff(b1,b2){  // -->Float, b1,b2 can be int or float
+  ( (b:=(0.0 + b2 - b1 + 720)%360) > 180 ) and b - 360 or b;
+}
+#<<<#
+T( 20,45, -45,45, -85,90, -95,90, -45,125, -45,145 )
+.pump(Console.println,Void.Read,
+      fcn(b1,b2){ "%.1f\UB0; + %.1f\UB0; --> %.1f\UB0;"
+                  .fmt(b1,b2,bearingAngleDiff(b1,b2)) });
+#<<<#
+tester.testRun(bearingAngleDiff.fp(20,45),Void,25.0,__LINE__);
+tester.testRun(bearingAngleDiff.fp(-45,45),Void,90.0,__LINE__);
+tester.testRun(bearingAngleDiff.fp(-85,90),Void,175.0,__LINE__);
+tester.testRun(bearingAngleDiff.fp(-95,90),Void,-175.0,__LINE__);
+tester.testRun(bearingAngleDiff.fp(-45,125),Void,170.0,__LINE__);
+tester.testRun(bearingAngleDiff.fp(-45,145),Void,-170.0,__LINE__);
+}
+
+
+{ 	 //////////////// Apply a digitial filter (direct form II transposed)
+fcn direct_form_II_transposed_filter(b,a,signal){
+   out:=List.createLong(signal.len(),0.0);  // vector of zeros
+   foreach i in (signal.len()){
+      tmp:=0.0;
+      foreach j in (b.len()){ if(i-j >=0) tmp += b[j]*signal[i-j] }
+      foreach j in (a.len()){ if(i-j >=0) tmp -= a[j]*out[i-j]    }
+      out[i] = tmp/a[0];
+   }
+   out
+}
+
+signal:=T(-0.917843918645, 0.141984778794, 1.20536903482,  0.190286794412,
+	  -0.662370894973,-1.00700480494, -0.404707073677, 0.800482325044,
+	   0.743500089861, 1.01090520172,  0.741527555207, 0.277841675195,
+	   0.400833448236,-0.2085993586,  -0.172842103641,-0.134316096293,
+	   0.0259303398477,0.490105989562, 0.549391221511, 0.9047198589 );
+a:=T(1.0, -2.77555756e-16, 3.33333333e-01, -1.85037171e-17 );
+b:=T(0.16666667, 0.5, 0.5, 0.16666667 );
+result:=direct_form_II_transposed_filter(b,a,signal);
+//println(result);
+
+tester.testRun('wrap{ result[0].closeTo(-0.152974,0.000001) },
+   Void,True,__LINE__);
+tester.testRun('wrap{ result[-1].closeTo(0.651771,0.000001) },
+   Void,True,__LINE__);
+tester.testRun('wrap{ result[6].closeTo(-1.08924,0.000001) },
+   Void,True,__LINE__);
+}
+
+
+{		///////////////////////////////////////// Babbage problem
+// The magic number is 269696, so, starting about its square root, 
+// find the first integer that, when squared, its last six digits are the magic number.
+// The last digits are found with modulo, represented here by the % symbol
+const N=269696; //[500..].filter1(fcn(n){ n*n%0d1_000_000 == N })
+tester.testRun('wrap{ [500..].filter1(fcn(n){ n*n%0d1_000_000 == N }) },
+   Void,25264,__LINE__);
+}
+
+
+{		////////////////////////////////// Averages/Pythagorean means
+ns:=T(1,2,3,4,5,6,7,8,9,10);
+#<<<#
+ns.sum(0.0)/ns.len();					   // Arithmetic mean
+ns.reduce('*,1.0).pow(1.0/ns.len());			   // Geometric mean
+ns.len().toFloat() / ns.reduce(fcn(p,n){ p + 1.0/n },0.0); // Harmonic mean
+#<<<#
+
+tester.testRun('wrap{ (ns.sum(0.0)/ns.len()).closeTo(5.5,0.0001) },Void,True,__LINE__);
+tester.testRun('wrap{ ns.reduce('*,1.0).pow(1.0/ns.len()).closeTo(4.52873,0.0001) },
+   Void,True,__LINE__);
+tester.testRun('wrap{ ( ns.len().toFloat() / ns.reduce(fcn(p,n){ p + 1.0/n },0.0) )
+    .closeTo(3.41417,0.0001) }, Void,True,__LINE__);
+}
+
+
+{		///////////////////////////////////////// Caesar cipher
+fcn caesarCodec(str,n,encode=True){
+   var [const] letters=["a".."z"].chain(["A".."Z"]).pump(String);  // static
+   if(not encode) n=26 - n;
+   m,sz := n + 26, 26 - n;
+   String(letters[n,sz],letters[0,n],letters[m,sz],letters[26,n])
+   :str.translate(letters,_)
+}
+text:="The five boxing wizards jump quickly";
+N:=3;
+code:=caesarCodec(text,N);
+#<<<#
+println("text = ",text);
+println("encoded(%d) = %s".fmt(N,code));
+println("decoded = ",caesarCodec(code,N,False));
+#<<<#
+
+tester.testRun(code.noop,Void,"Wkh ilyh eralqj zlcdugv mxps txlfnob",__LINE__);
+tester.testRun(caesarCodec.fp(code,N,False),Void,text,__LINE__);
+}
+
+
+{			/////////////// ////////////////////////// CUSIP
+fcn cusipCheckDigit(cusip){
+   var [const] vs=[0..9].chain(["A".."Z"],T("*","@","#")).pump(String);
+   try{
+      sum:=Walker.cycle(1,2).zipWith(fcn(n,c){ v:=vs.index(c)*n; v/10 + v%10 },
+           cusip[0,8]).reduce('+);
+      ((10 - sum%10)%10 == cusip[8].toInt()) and cusip.len()==9
+   }catch{ False }
+}
+#<<<#
+foreach cusip in (T("037833100", "17275R102",
+		    "38259P508", "594918104", "68389X106", "68389X105")){
+   println(cusip,": ",cusipCheckDigit(cusip));      
+}
+#<<<#
+
+tester.testRun(T("037833100", "17275R102","38259P508", "594918104", "68389X106", "68389X105")
+   .apply.fp(cusipCheckDigit),Void,T(True,True,True,True,False,True),__LINE__);
+}
+
+
+{class TwoTri{  ////////////////////////// Determine if two triangles overlap
+//{{trans|C++}}
+
+// A triangle is three pairs of points: ( (x,y), (x,y), (x,y) )
+
+fcn det2D(triangle){
+   p1,p2,p3 := triangle;
+   p1[0]*(p2[1] - p3[1]) + p2[0]*(p3[1] - p1[1]) + p3[0]*(p1[1] - p2[1]);
+}
+fcn checkTriWinding(triangle,allowReversed){ //-->triangle, maybe new
+   detTri:=det2D(triangle);
+   if(detTri<0.0){
+      if(allowReversed){ p1,p2,p3 := triangle; return(p1,p3,p2); }  // reverse
+      else throw(Exception.AssertionError(
+		  "triangle has wrong winding direction"));
+   }
+   triangle	// no change
+}
+fcn triTri2D(triangle1,triangle2, eps=0.0, allowReversed=False, onBoundary=True){
+   // Trangles must be expressed anti-clockwise
+   triangle1=checkTriWinding(triangle1, allowReversed);
+   triangle2=checkTriWinding(triangle2, allowReversed);
+ 
+   chkEdge:=
+      if(onBoundary) // Points on the boundary are considered as colliding
+	 fcn(triangle,eps){ det2D(triangle)<eps }
+      else           // Points on the boundary are not considered as colliding
+	 fcn(triangle,eps){ det2D(triangle)<=eps };; // first ; terminates if
+
+   t1,t2 := triangle1,triangle2;	// change names to protect the typist
+   do(2){				// check triangle1 and then triangle2
+      foreach i in (3){	//For edge E of trangle 1,
+	 j:=(i+1)%3;	// 1,2,0
+	 // Check all points of trangle 2 lay on the external side 
+	 // of the edge E. If they do, the triangles do not collide.
+	 if(chkEdge(T(t1[i],t1[j],t2[0]), eps) and
+	    chkEdge(T(t1[i],t1[j],t2[1]), eps) and
+	    chkEdge(T(t1[i],t1[j],t2[2]), eps)) return(False);  // no collision
+      }
+      t2,t1 = triangle1,triangle2; // flip and re-test
+   }
+
+   True   // The triangles collide
+}
+
+fcn toTri(ax,ay,bx,by,cx,cy){ //-->( (ax,ay),(bx,by),(cx,cy) )
+   vm.arglist.apply("toFloat").pump(List,Void.Read)
+}
+var triangles=T(	// pairs of triangles
+   T(toTri(0,0, 5,0, 0,  5), toTri(  0,0,  5,   0,  0,6)),
+   T(toTri(0,0, 0,5, 5,  0), toTri(  0,0,  0,   5 , 5,0)),
+   T(toTri(0,0, 5,0, 0,  5), toTri(-10,0, -5,   0, -1,6)),
+   T(toTri(0,0, 5,0, 2.5,5), toTri(  0,4,  2.5,-1,  5,4)),
+   T(toTri(0,0, 1,1, 0,  2), toTri(  2,1,  3,   0,  3,2)),
+   T(toTri(0,0, 1,1, 0,  2), toTri(  2,1,  3,  -2,  3,4))
+);
+
+#<<<#
+  // Expect: overlap, overlap (reversed), no overlap, overlap, no overlap, no overlap
+foreach t1,t2 in (triangles){
+   reg r, reversed=False;
+   try{ r=triTri2D(t1,t2) }
+   catch(AssertionError){ r=triTri2D(t1,t2,0.0,True); reversed=True; }
+   print(t1,"\n",t2," ");
+   println(r and "overlap" or "no overlap", reversed and " (reversed)" or "");
+   println();
+}
+
+c1,c2 := toTri(0,0, 1,0, 0,1), toTri(1,0, 2,0, 1,1);
+println("Corner case (barely touching): ",triTri2D(c1,c2,0.0,False,True));  // True
+println("Corner case (barely touching): ",triTri2D(c1,c2,0.0,False,False)); // False
+#<<<#
+}
+
+tester.testRun(fcn{
+      TwoTri.triangles.pump(List,fcn([(t1,t2)]){
+	 try{ TwoTri.triTri2D(t1,t2) }
+	 catch(AssertionError){ TwoTri.triTri2D(t1,t2,0.0,True); }
+      })
+   },Void,T(True,True,False,True,False,False),__LINE__);
+}
+
+
+{	/////////////////////////////////////////////// Extract file extension
+#<<<#
+The File object has a method splitFileName that does just that,
+returning a list of the parts.  The method knows about the OS it was
+compiled on (Unix, Windows).
+#<<<#
+fcn extractFileExtension(name){
+   var [const] valid=Walker.chain(".",["a".."z"],["A".."Z"],["0".."9")).pump(String);
+   ext:=File.splitFileName(name)[-1];
+   if(ext - valid) ext="";
+   ext
+}
+#<<<#
+//Note: on Unix, .desktop is a hidden file, not an extension.
+foreach nm in (T("http://example.com/download.tar.gz","CharacterModel.3DS",
+		  ".desktop","document",
+		  "document.txt_backup","/etc/pam.d/login")){
+   println("%35s : %s".fmt(nm,extractFileExtension(nm)));
+}
+#<<<#
+tester.testRun(extractFileExtension.fp("http://example.com/download.tar.gz"),
+   Void,".gz",__LINE__);
+tester.testRun(extractFileExtension.fp("CharacterModel.3DS"),Void,".3DS",__LINE__);
+tester.testRun(extractFileExtension.fp(".desktop"),Void,"",__LINE__);
+tester.testRun(extractFileExtension.fp("document"),Void,"",__LINE__);
+tester.testRun(extractFileExtension.fp("document.txt_backup"),Void,"",__LINE__);
+tester.testRun(extractFileExtension.fp("/etc/pam.d/login"),Void,"",__LINE__);
+}
+
+
+{	///////////////////////////////// File extension is in extensions list
+fcn hasExtension(fnm){
+   var [const] extensions=T(".zip",".rar",".7z",".gz",".archive",".a##");
+   nm,ext:=File.splitFileName(fnm)[-2,*].apply("toLower");
+   if(extensions.holds(ext)) True;
+   else if(ext==".bz2" and ".tar"==File.splitFileName(nm)[-1]) True;
+   else False
+}
+nms:=T("MyData.a##","MyData.tar.Gz","MyData.gzip","MyData.7z.backup",
+       "MyData...","MyData",
+       "MyData_v1.0.tAr.bz2","MyData_v1.0.bz2");
+//foreach nm in (nms){ println("%20s : %s".fmt(nm,hasExtension(nm))); }
+
+tester.testRun(nms.pump.fp(String,hasExtension),Void,
+   "TrueTrueFalseFalseFalseFalseTrueFalse",__LINE__);
+}
+
+
+{  ////////////////////////////// Find the intersection of a line with a plane
+//{{trans|Perl 6}}{{trans|Python}}
+class Line { fcn init(pxyz, ray_xyz)   { var pt=pxyz, ray=ray_xyz;       } }
+class Plane{ fcn init(pxyz, normal_xyz){ var pt=pxyz, normal=normal_xyz; } }
+
+fcn dotP(a,b){ a.zipWith('*,b).sum(0.0); }  # dot product --> x
+fcn linePlaneIntersection(line,plane){
+   cos:=dotP(plane.normal,line.ray); # cosine between normal & ray
+   _assert_((not cos.closeTo(0,1e-6)),
+      "Vectors are orthoganol; no intersection or line within plane");
+   w:=line.pt.zipWith('-,plane.pt); # difference between P0 and V0
+   si:=-dotP(plane.normal,w)/cos;   # line segment where it intersets the plane
+      # point where line intersects the plane:
+   //w.zipWith('+,line.ray.apply('*,si)).zipWith('+,plane.pt);  // or
+   w.zipWith('wrap(w,r,pt){ w + r*si + pt },line.ray,plane.pt);
+}
+#<<<#
+println("Intersection at point: ", linePlaneIntersection(
+   Line( T(0.0, 0.0, 10.0), T(0.0, -1.0, -1.0) ),
+   Plane(T(0.0, 0.0,  5.0), T(0.0,  0.0,  1.0) ))
+);
+#<<<#
+tester.testRun(linePlaneIntersection.fp(
+   Line( T(0.0, 0.0, 10.0), T(0.0, -1.0, -1.0) ),
+   Plane(T(0.0, 0.0,  5.0), T(0.0,  0.0,  1.0) )), Void,T(0.0, -5.0, 5.0),__LINE__);
+}
+
+
+{  ////////////////////////////////////// Find the intersection of two lines
+//{{trans|C++}}
+fcn lineIntersect(ax,ay, bx,by,   cx,cy, dx,dy){	// --> (x,y)
+   detAB,detCD := det(ax,ay, bx,by), det(cx,cy, dx,dy);
+   abDx,cdDx := ax - bx, cx - dx;	// delta x
+   abDy,cdDy := ay - by, cy - dy;	// delta y
+
+   xnom,ynom := det(detAB,abDx, detCD,cdDx), det(detAB,abDy, detCD,cdDy);
+   denom     := det(abDx,abDy, cdDx,cdDy);
+   if(denom.closeTo(0.0, 0.0001))
+      throw(Exception.MathError("lineIntersect: Parallel lines"));
+
+   return(xnom/denom, ynom/denom);
+}
+fcn det(a,b,c,d){ a*d - b*c }	// determinant
+
+//lineIntersect(4.0,0.0, 6.0,10.0,  0.0,3.0, 10.0,7.0).println();
+//lineIntersect(4.0,0.0, 6.0, 0.0,  0.0,3.0, 10.0,7.0).println();
+//lineIntersect(4.0,0.0, 6.0,10.0,  0.0,3.0, 10.0,3.0).println();
+
+tester.testRun(fcn{ 
+   x,y := lineIntersect(4.0,0.0, 6.0,10.0,  0.0,3.0, 10.0,7.0);
+   (x.closeTo(5, 0.00001) and y.closeTo(5, 0.00001) )
+},Void,True,__LINE__);
+}
+
+
+{	/////////////////////////////////////////////// Forward difference
+//{{trans|Scheme}}
+fcn forwardDiff(lst){
+   if(lst.len()<2)
+      return(T);
+      return(T(lst[1]-lst[0]).extend(forwardDiff(lst[1,*])))
+}
+fcn nthForwardDiff(n,xs){
+   if(n==0)
+      return(xs);
+      return(nthForwardDiff(n-1,forwardDiff(xs))) // tail recursion
+}
+//nthForwardDiff(9,T(90, 47, 58, 29, 22, 32, 55, 5, 55, 73)).println();
+
+tester.testRun(nthForwardDiff.fp(9,T(90, 47, 58, 29, 22, 32, 55, 5, 55, 73)),
+   Void,L(-2921),__LINE__);
+}
+
+
+{	/////////////////////////////////////////////// Harshad or Niven series
+fcn harshad(n){ 0==n%(n.split().sum(0)) }
+
+#<<<#
+[1..].tweak(fcn(n){ if(not harshad(n)) return(Void.Skip); n })
+   .walk(20).println();
+[1..].filter(20,harshad).println();
+[1001..].filter1(harshad).println();
+#<<<#
+
+#<<<#
+Walkers are zkl iterators.  [a..b] is a Walker from a to b.  Walkers can
+be tweaked to transform the sequence they are walking.  In this case,
+ignore non Harshad numbers.  Then tell the walker to get 20 items from
+that [modified] sequence.
+
+In this case, filters are the better solution.
+#<<<#
+
+tester.testRun(
+   [1..].tweak(fcn(n){ if(not harshad(n)) return(Void.Skip); n }).walk.fp(20),
+   Void,L(1,2,3,4,5,6,7,8,9,10,12,18,20,21,24,27,30,36,40,42),__LINE__);
+tester.testRun([1..].filter.fp(20,harshad),Void,
+   L(1,2,3,4,5,6,7,8,9,10,12,18,20,21,24,27,30,36,40,42),__LINE__);
+tester.testRun([1001..].filter1.fp(harshad),Void,1002,__LINE__);
+}
+
+
+{	//////////////////////////////////////////////// Hash from two arrays
+keys:=T("a","b","c","d"); vals:=T(1,2,3,4);
+d:=keys.zip(vals).toDictionary();
+//d.println();
+//d["b"].println()
+
+tester.testRun(d.get.fp("b"),Void,2,__LINE__);
+}
+
+
+{ class HOF{  ////////////////////////////////////// Higher-order functions
+//Everything is a first class object so
+fcn f(g){ g() } fcn g{ "Hello World!".println() }
+//or
+//fcn f(g){ g() }
+//fcn(g){ g() }(fcn{ "Hello World!".println() } )
+}
+tester.testRun(HOF.f.fp(HOF.g),Void,"Hello World!",__LINE__);
+tester.testRun(fcn(g){ g() }.fp(HOF.g),Void,"Hello World!",__LINE__);
+tester.testRun(fcn{ fcn(g){ g() }(fcn{ "Hello World!".println() }) },
+   Void,"Hello World!",__LINE__);
+}
+
+
+{class IQPuzzle{  //////////////////////////////////////////////// I.Q. Puzzle
+//{{trans|D}}
+//{{trans|Ruby}}
+var N=T(0,1,1,1,1,1,1,1,1,1,1,1,1,1,1);
+var G=T( T(0,1, 3), T(0,2, 5), T(1,3, 6), T( 1, 4, 8), T( 2, 4, 7), T( 2, 5, 9),
+	 T(3,4, 5), T(3,6,10), T(3,7,12), T( 4, 7,11), T( 4, 8,13), T( 5, 8,12),
+	 T(5,9,14), T(6,7, 8), T(7,8, 9), T(10,11,12), T(11,12,13), T(12,13,14));
+ 
+fcn b2s(n){
+   var fmt=[1..5].pump(String,fcn(i){ String(" "*(5 - i),"%d "*i,"\n") });
+   fmt.fmt(n.xplode())
+}
+ 
+fcn solve(n,i,g){  // --> False|String
+   if (i==N.len() - 1) return("\nSolved");
+   if (n[g[1]]==0)     return(False);
+
+   reg s;
+   if (n[g[0]]==0){
+      if(n[g[2]]==0) return(False);
+      s="\n%d to %d\n".fmt(g[2],g[0]);
+   } else {
+      if(n[g[2]]==1) return(False);
+      s="\n%d to %d\n".fmt(g[0],g[2]);
+   }
+ 
+   a:=n.copy();
+   foreach gi in (g){ a[gi]=1 - a[gi]; }
+   reg l;  // auto sets to Void
+   foreach gi in (G){ if(l=solve(a,i + 1,gi)) break; }
+   l and String(s,b2s(a),l)
+}
+
+#<<<#
+b2s(N).print();
+
+reg l;
+foreach g in (G){ if(l=solve(N,1,g)) break; }
+println(l and l or "No solution found.");
+#<<<#
+
+fcn utest{
+   reg l;
+   foreach g in (G){ if(l=solve(N,1,g)) break; }
+   l[-6,*]
+}
+}
+tester.testRun(IQPuzzle.utest,Void,"Solved",__LINE__);
+}
+
+
+{  //////////////////////////////////////// Largest int from concatenated ints
+fcn bigCI(ns){
+   ns.apply("toString").sort(fcn(a,b){ (a+b)>(b+a) }).concat();
+}
+//bigCI(T(1, 34, 3, 98, 9, 76, 45, 4)).println();
+//bigCI(T(54, 546, 548, 60)).println();
+
+tester.testRun(bigCI.fp(T(1, 34, 3, 98, 9, 76, 45, 4)),Void,"998764543431",__LINE__);
+tester.testRun(bigCI.fp(T(54, 546, 548, 60)),Void,"6054854654",__LINE__);
+}
+
+
+{  //////////////////////////////////////////////// Last Friday of each month
+//Gregorian calendar
+var [const] D=Time.Date;
+fcn lastDay(y,d){
+   [1..12].pump(List,'wrap(m){  // 12 months, closure for y & d
+      [D.daysInMonth(y,m)..1,-1].pump(Void,'wrap(_d){  // work backwards
+         D.weekDay(y,m,_d) :
+         if (_==d) return(Void.Stop,D.toYMDString(y,m,_d))
+      })
+   })
+}
+//lastDay(2012,D.Friday).concat("\n").println();
+#<<<#
+For each month in year y, count back from the last day in the month
+until a Friday is found and print that date.  A pump is a loop over a
+sequence and Void.Stop stops the pump with a value.  The first parameter
+to a pump is the sink.  All the imperative loop constructs are available
+but I didn't feel like using them.  A wrap is a function closure over
+unknown values in the function, necessary because functions are not
+lexically scoped.
+#<<<#
+
+tester.testRun(lastDay.fp(2012,D.Friday),Void,
+   T("2012-01-27","2012-02-24","2012-03-30","2012-04-27","2012-05-25",
+     "2012-06-29","2012-07-27","2012-08-31","2012-09-28","2012-10-26",
+     "2012-11-30","2012-12-28"), __LINE__);
+}
+
+
+{  //////////////////////////////////////////////////// Least common multiple
+fcn lcm(m,n){ (m*n).abs()/m.gcd(n) }  // gcd is a number method
+#<<<#
+lcm(12,18).println();
+lcm(-6,14).println();
+lcm(35,0).println();
+#<<<#
+
+tester.testRun(lcm.fp(12,18),Void,36,__LINE__);
+tester.testRun(lcm.fp(-6,14),Void,42,__LINE__);
+tester.testRun(lcm.fp(35,0),Void,0,__LINE__);
+}
+
+
+{  //////////////////////////////////////////////////// Loops/N plus one half
+#<<<#
+foreach n in ([1..10]){ print(n); if(n!=10) print(",") }
+Or, using a state machine:
+[1..10].pump(Console.print, Void.Drop, T(Void.Write,",",Void.Drop));
+where pump is (sink, action, action ...). The first Drop writes the
+first object from the source (1) to the sink and drops out (and that
+iteration of the loop is done).  For the rest of the loop, Write
+collects things to write to the sink:  a comma and the number, eg ",2".
+Or:
+[1..10].pump(Console.print, Void.Drop, fcn(n){ String(",",n) });
+#<<<#
+
+tester.testRun(fcn{
+      out:=Sink(String);
+      foreach n in ([1..10]){ out.write(n); if(n!=10) out.write(",") }
+      out.close()
+   },Void,"1,2,3,4,5,6,7,8,9,10",__LINE__);
+tester.testRun(
+   fcn{ [1..10].pump(String, Void.Drop, T(Void.Write,",",Void.Drop)); },
+   Void,"1,2,3,4,5,6,7,8,9,10",__LINE__);
+tester.testRun(
+   fcn{ [1..10].pump(String, Void.Drop, fcn(n){ String(",",n) }); },
+   Void,"1,2,3,4,5,6,7,8,9,10",__LINE__);
+}
+
+
+{  //////////////////////////////////////////////////////// Averages/Mean angle
+fcn meanA(a1,a2,etc){ 
+   as:=vm.arglist.pump(List,"toFloat","toRad");
+   n:=as.len();
+   (as.apply("sin").sum(0.0)/n)
+   .atan2(as.apply("cos").sum(0.0)/n)
+   .toDeg()
+}
+#<<<#
+zkl: meanA(350,10)
+-1.61481e-15
+zkl: meanA(90,180,270,360)
+-90
+meanA(10,20,30)
+20
+#<<<#
+
+tester.testRun(fcn{ meanA(350,10).closeTo(-1.61481e-15,0.00001) },Void,True,__LINE__);
+tester.testRun(fcn{ meanA(90,180,270,360).closeTo(-90,0.00001) },Void,True,__LINE__);
+tester.testRun(fcn{ meanA(10,20,30).closeTo(20,0.00001) },Void,True,__LINE__);
+}
+
+
+{  ///////////////////////////////////////////////// Averages/Root mean square
+fcn rms(z){ ( z.reduce(fcn(p,n){ p + n*n },0.0) /z.len() ).sqrt() }
+// The order in the reduce function is important as it coerces n*n to float.
+#<<<#
+zkl: rms([1..10].walk())  //-->rms(T(1,2,3,4,5,6,7,8,9,10))
+6.20484
+#<<<#
+
+tester.testRun(fcn{ rms([1..10].walk()).closeTo(6.20484,0.00001) },Void,True,__LINE__);
+}
+
+
+{  ///////////////////////////////////////////////// Averages/Root mean square
+fcn SMA(P){
+   fcn(n,ns,P){
+      sz:=ns.append(n.toFloat()).len();
+      if(P>sz) return(0.0);
+      if(P<sz) ns.del(0);
+      ns.sum(0.0)/P;
+   }.fp1(List.createLong(P+1),P)  // pre-allocate a list of length P+1
+}
+#<<<#
+fp1 creates a partial application fixing the (in this case) the 
+second and third parameters
+T(1,2,3,4,5,5,4,3,2,1).apply(SMA(3)).println();
+T(1,2,3,4,5,5,4,3,2,1).apply(SMA(5)).println();
+#<<<#
+
+tester.testRun(
+   fcn{ T(1,2,3,4,5,5,4,3,2,1).apply(SMA(3))
+        .zipWith(fcn(a,b){ a.closeTo(b,0.0001) },
+	    L(0,0,2,3,4,4.66667,4.66667,4,3,2))
+	.sum(0)
+     },Void,10,__LINE__);
+tester.testRun(
+   fcn{ T(1,2,3,4,5,5,4,3,2,1).apply(SMA(5))
+        .zipWith(fcn(a,b){ a.closeTo(b,0.0001) },
+	    L(0,0,0,0,3,3.8,4.2,4.2,3.8,3))
+	.sum(0)
+     },Void,10,__LINE__);
+}
+
+
+{  //////////////////////////////////////////////////////// Casting out nines
+//{{trans|D}}
+fcn castOut(base=10, start=1, end=999999){
+   base-=1;
+   ran:=(0).filter(base,'wrap(n){ n%base == (n*n)%base });
+   result:=Sink(List); 
+   foreach a,b in ([start/base ..],ran){  // foreach{ foreach {} }
+      k := base*a + b;
+      if (k < start) continue;
+      if (k > end) return(result.close());
+      result.write(k);
+   }
+   // doesn't get here
+}
+#<<<#
+castOut(16, 1, 255).toString(*).println("\n-----");
+castOut(10, 1,  99).toString(*).println("\n-----");
+castOut(17, 1, 288).toString(*).println();
+#<<<#
+
+tester.testRun(castOut.fp(10, 1,  99),Void,
+   L(1,9,10,18,19,27,28,36,37,45,46,54,55,63,64,72,73,81,82,90,91,99),__LINE__);
+tester.testRun(castOut.fp(17, 1, 288),Void,
+   L(1,16,17,32,33,48,49,64,65,80,81,96,97,112,113,128,
+     129,144,145,160,161,176,177,192,193,208,209,224,225,240,
+     241,256,257,272,273,288),__LINE__);
+}
+
+
+{  /////////////////////////////////////////////////// Catalan numbers
+if(BN){
+//{{libheader|GMP}} GNU Multiple Precision Arithmetic Library
+// Uses GMP to calculate big factorials.
+//var [const]  BN=Import.lib("zklBigNum");
+fcn catalan(n){
+   BN(2*n).factorial() / BN(n+1).factorial() / BN(n).factorial();
+}
+ 
+foreach n in (16){
+   println("%2d --> %,d".fmt(n, catalan(n)));
+}
+println("%2d --> %,d".fmt(100, catalan(100)));
+
+tester.testRun(catalan.fp(12),Void,BN(208012),__LINE__);
+tester.testRun(fcn{ catalan(100).toString() },Void,
+   "896519947090131496687170070074100632420837521538745909320",__LINE__);
+}
+
+#<<<#
+And an iterative solution at works up to the limit of 64 bit ints
+(n=33).  Would be 35 but need to avoid factional intermediate results.
+#<<<#
+fcn catalan2(n){ (1).reduce(n,fcn(p,n){ 2*(2*n-1)*p/(n+1) },1) }
+//catalan2(12).println();
+tester.testRun(catalan2.fp(12),Void,208012,__LINE__);
+}
+
+
+{  /////////////////////////////////////////////////// Chebyshev coefficients
+//{{trans|C}}{{trans|Perl}}
+var [const] PI=(1.0).pi;
+fcn chebft(a,b,n,func){
+   bma,bpa,fac := 0.5*(b - a), 0.5*(b + a), 2.0/n;
+   f:=n.pump(List,'wrap(k){ (PI*(0.5 + k)/n).cos():func(_*bma + bpa) });
+   n.pump(List,'wrap(j){
+      fac*n.reduce('wrap(sum,k){ sum + f[k]*(PI*j*(0.5 + k)/n).cos() },0.0);
+   })
+}
+//chebft(0.0, 1.0, 10, fcn(x){ x.cos() })
+//.enumerate().concat("\n").println();
+
+tester.testRun(
+   fcn{
+      chebft(0.0, 1.0, 10, fcn(x){ x.cos() })
+      .zipWith(fcn(a,b){ a.closeTo(b,1e-10) },
+        L(1.647169475390314e+00, -2.322993716151718e-01, 
+	  -5.371511462204768e-02, 2.458235266981790e-03,
+	  2.821190574340049e-04, -7.722229156348348e-06,
+	  -5.898556456829241e-07, 1.152142772298248e-08,
+	  6.596302060124515e-10, -1.002190552767956e-11))
+	.sum(0)
+   },Void,10,__LINE__);
+}
+
+
+{  ////////////////////////// Create a two-dimensional array at runtime
+#<<<#
+zkl doesn't have a native array type but lists of lists can do the same
+thing.  It is garbage collected so things are cleaned up implicitly.
+
+This code creates a 2d row major zero filled array.
+
+Since the array is row major, sub-scripting works as expected: [row][col].
+
+rows:=ask("Rows: ").toInt();
+cols:=ask("columns: ").toInt();
+array:=rows.pump(List.createLong(rows),List.createLong(cols,0).copy);
+array[1][2]=123;
+array.println();
+array[1][2].println();
+#<<<#
+
+tester.testRun(
+   fcn{
+      rows:=3;
+      cols:=4;
+      array:=rows.pump(List.createLong(rows),List.createLong(cols,0).copy);
+      array[1][2]=123;
+      array[1][2]
+   },Void,123,__LINE__);
+}
+
+
+{  /////////////////////////////////////// Determine if a string is numeric
+fcn isNum(text){
+   try{ text.toInt(); True }
+   catch{ try{ text.toFloat(); True }
+          catch{ False }
+   }
+}
+#<<<#
+isNum("123.4");  //-->True
+isNum("123");    //-->True
+isNum("-123.4"); //-->True
+isNum("123.4x"); //-->False
+isNum("hoho");   //-->False
+isNum(123.4);    //-->True
+isNum(123);      //-->True
+#<<<#
+
+tester.testRun(isNum.fp("123.4"),Void,True,__LINE__);
+tester.testRun(isNum.fp("123"),Void,True,__LINE__);
+tester.testRun(isNum.fp("-123.4"),Void,True,__LINE__);
+tester.testRun(isNum.fp("123.4x"),Void,False,__LINE__);
+tester.testRun(isNum.fp("hoho"),Void,False,__LINE__);
+tester.testRun(isNum.fp("123.4"),Void,True,__LINE__);
+tester.testRun(isNum.fp("123"),Void,True,__LINE__);
+}
+
+
+{  ///////////////////////////////////////////////////// Function composition
+#<<<#
+Utils.Helpers.fcomp('+(1),'*(2))(5) //-->11
+Which is implemented with a closure (.fp1), which fixes the second paramter
+fcn fcomp(f,g,h,etc){
+   { fcn(x,hgf){ T(x).pump(Void,hgf.xplode()) }.fp1(vm.arglist.reverse()); }
+#<<<#
+
+tester.testRun(Utils.Helpers.fcomp('+(1),'*(2)).fp(5),Void,11,__LINE__);
+}
+
+
+{  //////////////////////////////////////////////////////// Monads/List monad
+#<<<#
+While I'm unsure of the utility of Monads in a dynamic type-less
+language, it can be done.
+{{trans|Ruby}}
+Here we create a class to do Monad like things.  Unlike Ruby, we can't
+augment the baked in List/Array object so this more verbose.  Also
+unlike Ruby, we can directly compose as we are applying the composition
+to each element (vs the list-as-object).
+#<<<#
+class MList{
+   fcn init(xs){ var list=vm.arglist }
+   fcn bind(f) { list=list.apply(f); self }
+   fcn toString{ list.toString() }
+}
+inc:=Op("+",1);  // '+(1)
+str:="toString";
+//MList(3,4,5).bind(inc).bind(str).println(" == (4,5,6)");
+ 
+doub:=Op("*",2);
+//MList(3,4,5).bind(inc).bind(doub).println(" == (8,10,12)");
+ 
+comp:=Utils.Helpers.fcomp;  // comp(f,g) == f.g == f(g(x))
+//MList(3,4,5).bind(comp(doub,inc)).println(" == (8,10,12)");
+
+tester.testRun('wrap{ MList(3,4,5).bind(inc).bind(str).list  },
+   Void,L("4","5","6"),__LINE__);
+tester.testRun('wrap{ MList(3,4,5).bind(inc).bind(doub).list },
+   Void,L(8,10,12),__LINE__);
+tester.testRun('wrap{ MList(3,4,5).bind(comp(doub,inc)).list },
+   Void,L(8,10,12),__LINE__);
+}
+
+
+{class Maybe{  //////////////////////////////////////////// Monads/Maybe monad
+#<<<#
+While I'm unsure of the utility of Monads in a dynamic type-less
+language, it can be done.
+
+From the [[wp:Monad_(functional_programming)#The_Maybe_monad|Wikipedia]]
+
+Here we use the Void object as Nothing and define some functions.  Since
+zkl is type-less, we can consider Maybe as a native type and don't need
+to define it.
+#<<<#
+fcn bind(a,type,b){ if(type.isType(a)) b else Void }
+fcn just(x){ if(Deferred.isType(x)) x() else x }  // force lazy evaluation
+fcn rtn(x) { just(x) }
+
+#<<<#
+Since zkl is eager, add needs to gyrate a bit by creating a lazy result
+and evaluating that after the binds have done their bizness.
+#<<<#
+fcn add(mx,my){
+   bind(mx,Int,
+      bind(my,Int,
+        '+.fp(mx,my))) : rtn(_)  // create a lazy mx+my to avoid eager eval
+}
+//add(1,2).println();    // two ints
+//add(1,2.0).println();  // int and float
+//add(self,2).println(); // class and int
+}//class
+
+tester.testRun(Maybe.add.fp(1,2),Void,3,__LINE__);
+tester.testRun(Maybe.add.fp(1,2.0),Void,Void,__LINE__);
+tester.testRun(Maybe.add.fp(self,2),Void,Void,__LINE__);
+}
+
+{  //////////////////////////////////////////////////////// Monads/Writer monad
+//{{trans|EchoLisp}}
+class Writer{
+   fcn init(x){ var X=x, logText=Data(Void,"  init \U2192; ",x.toString()) }
+   fcn unit(text)  { logText.append(text); self }
+   fcn lift(f,name){ unit("\n  %s \U2192; %s".fmt(name,X=f(X))) }
+   fcn bind(f,name){ lift.fp(f,name) }
+   fcn toString{ "Result = %s\n%s".fmt(X,logText.text) }
+ 
+   fcn root{ lift(fcn(x){ x.sqrt() },"root") }
+   fcn half{ lift('/(2),"half") }
+   fcn inc { lift('+(1),"inc") }
+}
+//Writer(5.0).root().inc().half().println();
+tester.testRun('wrap{ Writer(5.0).root().inc().half().println(); },Void,
+#<<<
+"Result = 1.61803
+  init \u2192 5
+  root \u2192 2.23607
+  inc \u2192 3.23607
+  half \u2192 1.61803",__LINE__);
+#<<<
+ 
+w:=Writer(5.0);
+//Utils.Helpers.fcomp(w.half,w.inc,w.root)(w).println();  // half(inc(root(w)))
+tester.testRun('wrap{ Utils.Helpers.fcomp(w.half,w.inc,w.root)(w).println() },
+   Void,
+#<<<
+"Result = 1.61803
+  init \u2192 5
+  root \u2192 2.23607
+  inc \u2192 3.23607
+  half \u2192 1.61803",__LINE__);
+#<<<
+
+#<<<#
+Use bind to add functions to an existing Writer:
+w:=Writer(5.0); 
+root,inc,half := w.bind(fcn(x){ x.sqrt() },"root"), w.bind('+(1),"+ 1"), w.bind('/(2),"/ 2");
+root(); inc(); half(); w.println();
+#<<<#
+tester.testRun(fcn{ 
+      w:=Writer(5.0); 
+      root,inc,half := w.bind(fcn(x){ x.sqrt() },"root"), 
+                      w.bind('+(1),"+ 1"), w.bind('/(2),"/ 2");
+      root(); inc(); half(); w.println();
+   },Void,
+#<<<
+"Result = 1.61803
+  init \u2192 5
+  root \u2192 2.23607
+  + 1 \u2192 3.23607
+  / 2 \u2192 1.61803",__LINE__);
+#<<<
+}
+
+
+{	//////////////////////////////////////////// Negative base numbers
+fcn toNBase(n,radix){
+   var [const] cs=[0..9].chain(["a".."z"]).pump(String);  //"0123456789abcd..z"
+   _assert_(-37 < radix < -1,"invalid radix");
+   digits:=List();
+   while(n){ reg r;
+      n,r=n.divr(radix);	// C compiler semantics
+      if(r<0){ n+=1; r-=radix; }
+      digits.append(r);
+   }
+   digits.reverse().pump(String,cs.get);
+}
+
+fcn toInt(str,radix){  // the toInt(radix) method radix is 2..36
+   str.reduce('wrap(s,d,rdx){ s*radix + d.toInt(rdx); },0,radix.abs());
+}
+ 
+ns:=T( T(10,-2), T(146,-3), T(15,-10), T(107,-16), T(41371458,-36), T(44661,-36) );
+#<<<#
+results:=ns.pump(List,Void.Xplode,toNBase);
+foreach nb,r in (ns.zip(results)){
+   _,b:=nb;
+   println("%10d.base(%3d) = \"%s\" --> %d".fmt(nb.xplode(),r,toInt(r,b)));
+}
+#<<<#
+tester.testRun(ns.pump.fp(List,Void.Xplode,toNBase), Void,
+   L("11110","21102","195","1ab","perl6","zkl"),__LINE__);
+tester.testRun(toInt.fp("zkl",-36), Void,44661,__LINE__);
+tester.testRun(toInt.fp("21102",-3), Void,146,__LINE__);
+}
+
+
+{	////////////////////////////////////////////// Pernicious numbers
+primes:=T(2,3,5,7,11,13,17,19,23,29,31,37,41);
+#<<<#
+N:=0; foreach n in ([2..]){
+   if(n.num1s : primes.holds(_)){
+      print(n," ");
+      if((N+=1)==25) break;
+   }
+}
+foreach n in ([0d888888877..888888888]){
+   if (n.num1s : primes.holds(_)) "%,d; ".fmt(n).print();
+}
+Int.num1s returns the number of 1 bits. eg (3).num1s-->2
+#<<<#
+tester.testRun('wrap{
+      out:=List();
+      foreach n in ([0d888888877..888888888]){
+	 if (n.num1s : primes.holds(_)) out.write(n);
+      }
+      out
+   },Void,T(888888877, 888888878, 888888880, 888888883, 888888885, 888888886),
+   __LINE__);
+
+//Or in a more functional style:
+primes:=T(2,3,5,7,11,13,17,19,23,29,31,37,41);
+p:='wrap(n){ primes.holds(n.num1s) };
+
+#<<<#
+[1..].filter(25,p).toString(*).println();
+[0d888888877..888888888].filter(p).println();
+'wrap is syntactic sugar for a closure - it creates a function that
+wraps local data (variable primes in this case). We assign that function to p.
+#<<<#
+tester.testRun('wrap{ [1..].filter(25,p) },Void,
+   L(3,5,6,7,9,10,11,12,13,14,17,18,19,20,21,22,24,25,26,28,31,33,34,35,36),
+   __LINE__);
+tester.testRun('wrap{ [0d888888877..888888888].filter(p) },Void,
+   T(888888877, 888888878, 888888880, 888888883, 888888885, 888888886),
+   __LINE__);
+}
+
+
+{	//////////////////////////////////////////////////// Phrase reversals
+#<<<#
+zkl: var str="rosetta code phrase reversal"
+rosetta code phrase reversal
+ 
+zkl: str.reverse() #1
+lasrever esarhp edoc attesor
+ 
+zkl: str.split().apply("reverse").concat(" ") #2 string to list to string
+attesor edoc esarhp lasrever
+ 
+zkl: str.split().reverse().concat(" ") #3
+reversal phrase code rosetta
+#<<<#
+
+str:="rosetta code phrase reversal";
+tester.testRun(str.reverse,Void,"lasrever esarhp edoc attesor",__LINE__);
+tester.testRun('wrap{ str.split().apply("reverse").concat(" ") },Void,
+   "attesor edoc esarhp lasrever",__LINE__);
+tester.testRun('wrap{ str.split().reverse().concat(" ") },Void,
+   "reversal phrase code rosetta",__LINE__);
+}
+
+
+{	////////////////////////////////////////////// Population count
+#<<<#
+//Ints have the 1s count as a property.
+n:=1; do(30){ print(n.num1s,","); n*=3 } println();
+ 
+println("evil: ",[0..].filter(30,fcn(n){ n.num1s.isEven }).concat(","));
+
+// now, as an iterator aka lazy:
+println("odious: ",(0).walker(*).tweak(   // 0,1,2,3,4... iterator
+   fcn(n){ if(n.num1s.isEven) Void.Skip else n }).walk(30).concat(","));
+#<<<#
+
+tester.testRun(fcn{ [0..].filter(30,fcn(n){ n.num1s.isEven }).concat(",") },
+   Void,"0,3,5,6,9,10,12,15,17,18,20,23,24,27,29,30,33,34,36,39,40,43,45,46,48,51,53,54,57,58",
+   __LINE__);
+tester.testRun(fcn{ (0).walker(*).tweak(   // 0,1,2,3,4... iterator
+   fcn(n){ if(n.num1s.isEven) Void.Skip else n }).walk(30).concat(","); },
+   Void,"1,2,4,7,8,11,13,14,16,19,21,22,25,26,28,31,32,35,37,38,41,42,44,47,49,50,52,55,56,59",
+   __LINE__);
+}
+
+
+{	////////////////////////////////////////////// Pythagorean triples
+//{{trans|D}}
+fcn tri(lim, a=3, b=4, c=5){
+    p:=a + b + c;
+    if(p>lim) return(0,0);
+    T(1,lim/p).zipWith('+,
+       tri(lim,  a - 2*b + 2*c,  2*a - b + 2*c,  2*a - 2*b + 3*c),
+       tri(lim,  a + 2*b + 2*c,  2*a + b + 2*c,  2*a + 2*b + 3*c),
+       tri(lim, -a + 2*b + 2*c, -2*a + b + 2*c, -2*a + 2*b + 3*c)
+    );
+}
+//n:=10; do(10){ println("%,d: %s".fmt(n,tri(n).reverse())); n*=10; }
+// stack overflow after 10,000,000
+tester.testRun(tri.fp(0),Void,T(0,0),__LINE__);
+tester.testRun(tri.fp(100),Void,T(7,17),__LINE__);
+tester.testRun(tri.fp(10000),Void,T(703,4858),__LINE__);
+}
+
+
+{	////////////////////////// Ramer-Douglas-Peucker line simplification
+//{{trans|Perl 6}}
+fcn perpendicularDistance(start,end, point){  // all are tuples: (x,y) -->|d|
+   dx,dy   := end  .zipWith('-,start);	// deltas
+   dpx,dpy := point.zipWith('-,start);
+   mag     := (dx*dx + dy*dy).sqrt();
+   if(mag>0.0){ dx/=mag; dy/=mag; }
+   p,dsx,dsy := dx*dpx + dy*dpy, p*dx, p*dy;
+   ((dpx - dsx).pow(2) + (dpy - dsy).pow(2)).sqrt()
+}
+
+fcn RamerDouglasPeucker(points,epsilon=1.0){  // list of tuples --> same
+   if(points.len()==2) return(points);  // but we'll do one point
+   d:=points.pump(List,  // first result/element is always zero
+      fcn(p, s,e){ perpendicularDistance(s,e,p) }.fp1(points[0],points[-1]));
+   index,dmax := (0.0).minMaxNs(d)[1], d[index]; // minMaxNs-->index of min & max
+   if(dmax>epsilon){
+       return(RamerDouglasPeucker(points[0,index],epsilon)[0,-1].extend(
+              RamerDouglasPeucker(points[index,*],epsilon)))
+   } else return(points[0],points[-1]);
+}
+
+#<<<#
+RamerDouglasPeucker(
+   T( T(0.0, 0.0), T(1.0, 0.1), T(2.0, -0.1), T(3.0, 5.0), T(4.0, 6.0),
+      T(5.0, 7.0), T(6.0, 8.1), T(7.0,  9.0), T(8.0, 9.0), T(9.0, 9.0) ))
+.println();
+#<<<#
+tester.testRun(fcn{ ps:=RamerDouglasPeucker(
+   T( T(0.0, 0.0), T(1.0, 0.1), T(2.0, -0.1), T(3.0, 5.0), T(4.0, 6.0),
+      T(5.0, 7.0), T(6.0, 8.1), T(7.0,  9.0), T(8.0, 9.0), T(9.0, 9.0) ));
+   ps.zipWith(fcn(a,b){ a[0].closeTo(b[0],0.00001) and a[1].closeTo(b[1],0.00001) },
+       L(L(0.0,0.0),L(2.0,-0.1),L(3.0,5.0),L(7.0,9.0),L(9.0,9.0)));
+},Void,T(True,True,True,True,True),__LINE__);
+}
+
+
+{	////////////////////////////////////////////// Sequence of non-squares
+fcn seq(n){ n + (0.5+n.toFloat().sqrt()).floor() }
+//[1..22].apply(seq).toString(*).println();
+tester.testRun(fcn{ [1..22].apply(seq) },Void,
+   L(2,3,5,6,7,8,10,11,12,13,14,15,17,18,19,20,21,22,23,24,26,27),__LINE__);
+ 
+fcn isSquare(n){ n.toFloat().sqrt().modf()[1]==0.0 }
+//isSquare(25)  //-->True
+//isSquare(26)  //-->False
+//[2..0d1_000_000].filter(fcn(n){ isSquare(seq(n)) }).println();
+tester.testRun(isSquare.fp(25),Void,True,__LINE__);
+tester.testRun(isSquare.fp(26),Void,False,__LINE__);
+tester.testRun(fcn{ [2..0d10_000].filter(fcn(n){ isSquare(seq(n)) }) },
+   Void,T,__LINE__);
+}
+
+
+{	/////////////// Split a character string based on change of character
+fcn group(str){
+   C,out := str[0],Sink(C);
+   foreach c in (str[1,*]){ out.write(if(c==C) c else String(", ",C=c)) }
+   out.close();
+}
+//group("gHHH5YY++///\\").println();
+tester.testRun(group.fp("gHHH5YY++///\\"), 
+   Void,"g, HHH, 5, YY, ++, ///, \\", __LINE__);
+}
+
+
+{	///////////////////////////////////////////////////// String prepend
+#<<<#
+s:="bar"; s="foo" + s;           s.println();
+s:="bar"; s=String("foo",s);     s.println();
+s:="bar"; s="%s%s".fmt("foo",s); s.println();
+   // a Data is a byte buffer/editor:
+s:=Data(Void,"bar").insert(0,"foo").text; s.println();
+#<<<#
+
+tester.testRun(fcn{ s:="bar"; s="foo" + s; s },Void,"foobar",__LINE__);
+tester.testRun(fcn{ s:="bar"; s=String("foo",s); s },Void,"foobar",__LINE__);
+tester.testRun(fcn{ s:="bar"; s="%s%s".fmt("foo",s); s },Void,"foobar",__LINE__);
+tester.testRun(fcn{ s:=Data(Void,"bar").insert(0,"foo").text; s },Void,"foobar",__LINE__);
+}
+
+
+{	/////////////////////////////////////////////// Strip block comments
+fcn stripper(text, a="/*", b="*/"){
+   while(xy:=text.span(a,b,True)){ x,y:=xy; text=text[0,x] + text[x+y,*] }
+   text
+}
+#<<<#
+The span method takes two tokens and matches the shortest or longest
+balanced match (if True).  It assumes there are no escape characters
+(such as \ or "").  So we just repeatedly strip out the longest balanced
+comments until there aren't any left (span returns the empty list).  If
+a comment was unbalanced, span would fail but this code doesn't check
+that and just assumes no more matches.
+#<<<#
+
+src:=
+#<<<
+"/**
+ * Some comments
+ * longer comments here that we can parse.
+ *
+ * Rahoo 
+ */
+ function subroutine() {
+  a = /* inline comment */ b + c ;
+ }
+ /*/ <-- tricky comments */
+
+ /**
+  * Another comment.
+  */
+  function something() {
+  }";
+#<<<
+
+out:=
+#<<<
+"
+ function subroutine() {
+  a =  b + c ;
+ }
+ 
+
+ 
+  function something() {
+  }";
+#<<<
+
+tester.testRun(stripper.fp(src),Void,out,__LINE__);
+}
+
+
+{	/////////////////////////////////////////////// Substring/Top and tail
+#<<<#
+"Smiles"[1,*]  //-->miles
+"Smiles"[0,-1] //-->Smile
+"Smiles"[1,-1] //-->mile
+[] format is [offset (zero based), length].  * means "to the end", a
+negative number means from the end.
+#<<<#
+}
+tester.testRun(fcn{ "Smiles"[1,*]  },Void,"miles",__LINE__);
+tester.testRun(fcn{ "Smiles"[0,-1] },Void,"Smile",__LINE__);
+tester.testRun(fcn{ "Smiles"[1,-1] },Void,"mile",__LINE__);
+
+
+{	////////////////////////////////////////// Sum digits of an integer
+fcn sum(n,b=10){ 
+   if(b==10) n.split().sum(0);  // digits to list
+   else      n.toString(b).split("").apply("toInt",b).sum(0);
+}
+
+#<<<#
+If not base 10, convert the int into a string (in the proper base, ie
+0xfe-->"fe"), blow it apart into a list of digits/characters, convert
+each character back into a int (from the base, ie ("c"/16-->12) and add
+them up.
+sum(1,10);     //--> 1
+sum(1234,10);  //--> 10
+sum(0xfe,16);  //--> 29
+sum(0xf0e,16); //--> 29
+sum(0b1101,2); //--> 3
+#<<<#
+tester.testRun(sum.fp(1),Void,1,__LINE__);
+tester.testRun(sum.fp(1234,10),Void,10,__LINE__);
+tester.testRun(sum.fp(0xfe,16),Void,29,__LINE__);
+tester.testRun(sum.fp(0xf0e,16),Void,29,__LINE__);
+tester.testRun(sum.fp(0b1101,2),Void,3,__LINE__);
+}
+
+
+{ 		/////////////////////////////////// Sum multiples of 3 and 5
+//([3..999,3].reduce('+,0) + [5..999,5].reduce('+,0) - [15..999,15].reduce('+,0))
+//.println();
+tester.testRun(fcn{
+   ([3..999,3].reduce('+,0) + [5..999,5].reduce('+,0) - [15..999,15].reduce('+,0)) },
+   Void,233168,__LINE__);
+
+//{{trans|Groovy}}
+#<<<#
+Using a formula, making sure the input will cast the result to the same
+type (ie if called with a BigNum, the result is a BigNum).
+#<<<#
+fcn sumMul(N,m){N=(N-1)/m; N*(N+1)*m/2}
+fcn sum35(N){sumMul(N,3) + sumMul(N,5) - sumMul(N,15)}
+
+//sum35(1000).println();
+tester.testRun(sum35.fp(1000), Void,233168,__LINE__);
+
+if(BN){
+//{{libheader|GMP}} GNU Multiple Precision Arithmetic Library
+//var [const] BN=Import.lib("zklBigNum");
+//sum35(BN("1"+"0"*21)).println();  // 1 with 21 zeros, BigNum-->BigNum
+tester.testRun(sum35.fp(BN.fp("1"+"0"*21)), 
+   Void,BN("233333333333333333333166666666666666666668"),__LINE__);
+}}
+
+
+{ 		/////////////////////////////////////////////// Sum of a series
+//[1.0..1000].reduce(fcn(p,n){ p+1.0/(n*n) },0.0)  //-->1.64394
+tester.testRun(fcn{ 
+   [1.0..1000].reduce(fcn(p,n){ p + 1.0/(n*n) },0.0)
+   .closeTo(1.64394,0.0001)
+},Void,True,__LINE__);
+}
+
+
+{ 		/////////////////////////////////////////////// Sum to 100
+var all =  // ( (1,12,123...-1,-12,...), (2,23,...) ...)
+   (9).pump(List,fcn(n){ split("123456789"[n,*]) })       // 45
+   .apply(fcn(ns){ ns.extend(ns.copy().apply('*(-1))) }); // 90
+fcn calcAllSums{  // calculate all 6572 sums (1715 unique)
+   fcn(n,sum,soFar,r){
+      if(n==9) return();
+      foreach b in (all[n]){
+	 if(sum+b>=0 and b.abs()%10==9) r.appendV(sum+b,"%s%+d".fmt(soFar,b));
+	 self.fcn(b.abs()%10,sum + b,"%s%+d".fmt(soFar,b),r);
+      }
+   }(0,0,"",r:=Dictionary());
+   r
+}
+    // "123" --> (1,12,123)
+fcn split(nstr){ (1).pump(nstr.len(),List,nstr.get.fp(0),"toInt") }
+
+fcn showSums(allSums,N=100,printSolutions=2){
+   slns:=allSums.find(N,T);
+   if(printSolutions)    println("%d solutions for N=%d".fmt(slns.len(),N));
+   if(printSolutions==2) println(slns.concat("\n"));
+   println();
+}
+
+allSums:=calcAllSums();
+#<<<#
+showSums(allSums);
+showSums(allSums,0,1);
+
+println("Smallest postive integer with no solution: ",
+   [1..].filter1('wrap(n){ Void==allSums.find(n) }));
+#<<<#
+
+#if 0
+eqns:=allSums.values;	// all equations
+eqns=eqns[(0).minMaxNs(eqns.apply("len"))[1]]; // largest collection of solutions
+print("Most common sum is ");
+   Compiler.Compiler.compileText("print(0%s)".fmt(eqns[0]))(); // eval the hard way
+   println(" with %d ways to calculate it.".fmt(eqns.len()));
+#endif
+
+println("5 commonest sums (sum, number of ways to calculate to it):");
+ms:=allSums.values.apply("len").sort()[-5,*];	        // 5 mostest sums
+zzz:=
+allSums.pump(List,					// get those pairs
+   'wrap([(k,v)]){ v=v.len(); ms.holds(v) and T(k.toInt(),v) or Void.Skip })
+.sort(fcn(kv1,kv2){ kv1[1]>kv2[1] })			// and sort
+;//.println();
+
+tester.testRun('wrap{ allSums[100].len() },Void,12,__LINE__);
+tester.testRun('wrap{ zzz.sort(fcn(a,b){ a[0]<b[0] })},Void,
+   L(L(1,43),L(9,46),L(15,43),L(21,43),L(27,44)),__LINE__);
+}
+
+
+{		///////////////////////////// Water collected between towers
+//{{trans|Haskell}}
+#if 0
+fcn waterCollected(walls){
+     // compile max wall heights from left to right and right to left
+     // then each pair is left/right wall of that column.
+     // Then the min of each wall pair == water height for that column
+   scanl(walls,(0).max)     // scan to right, f is max(0,a,b)
+  .zipWith((0).MAX.min,     // f is MAX.min(a,b) == min(a,b)
+           scanl(walls.reverse(),(0).max).reverse()) // right to left
+     // now subtract the wall height from the water level and add 'em up
+   .zipWith('-,walls).filter('>(0)).sum(0);
+} 
+fcn scanl(xs,f,i=0){ // aka reduce but save list of results
+   xs.reduce('wrap(s,x,a){ s=f(s,x); a.append(s); s },i,ss:=List()); 
+   ss
+} // scanl((1,5,3,7,2),max,0) --> (1,5,5,7,7)
+#else
+fcn waterCollected(walls){
+     // compile max wall heights from left to right and right to left
+     // then each pair is left/right wall of that column.
+     // Then the min of each wall pair == water height for that column
+   walls.reduce(Void.Write,List,(0).max,0)     // scan to right, f is max(0,a,b)
+  .zipWith((0).MAX.min,     // f is MAX.min(a,b) == min(a,b)
+       walls.reverse().reduce(Void.Write,List,(0).max,0).reverse() ) // right to left
+     // now subtract the wall height from the water level and add 'em up
+   .zipWith('-,walls).filter('>(0)).sum(0);
+} 
+#<<<#
+The reduce method producing multiple results (aka scanl) (vs the normal
+reduce producing one result) is a hairball:
+sequence.reduce(Void.Write,Sink, f, initial) where Void.Write is a
+sentinal and Sink is something that can be written to.
+ L(1,5,3,7,2).reduce(Void.Write,List,(0).max,0) --> (1,5,5,7,7)
+#<<<#
+#endif
+
+T( T(1, 5, 3, 7, 2), T(5, 3, 7, 2, 6, 4, 5, 9, 1, 2),
+   T(2, 6, 3, 5, 2, 8, 1, 4, 2, 2, 5, 3, 5, 7, 4, 1),
+   T(5, 5, 5, 5), T(5, 6, 7, 8), T(8, 7, 7, 6),
+   T(6, 7, 10, 7, 6) )
+//.pump(List, waterCollected).println();
+.pump(List, waterCollected) : (r:=_);
+
+tester.testRun(r.noop,Void,T(2, 14, 35, 0, 0, 0, 0),__LINE__);
+}
+
+
+
+tester.stats();
+returnClass(tester);

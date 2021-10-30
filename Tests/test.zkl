@@ -1,0 +1,382 @@
+// -*-c-*-
+
+tester := TheVault.Test.UnitTester.UnitTester(__FILE__);
+
+	// .BaseClass
+tester.testSrc("BaseClass;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("self.BaseClass();","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var R = addFcn; R=R.toString();",
+	Void,Void,"Method(RootClass#.addFcn)",__LINE__);
+tester.testSrc("var R = self.BaseClass; R=R.toString();",
+	Void,Void,"Method(RootClass#.BaseClass)",__LINE__);
+
+tester.testSrc("var R = self.BaseClass.fcns; R=R.toString();", 
+	Void,Void,"L(Fcn(__constructor))",__LINE__);
+
+tester.testSrc("var R = self.BaseClass.NullClass.BaseClass.name;",
+	Void,Void,"NullClass",__LINE__);
+tester.testSrc("var R = self.BaseClass.len().BaseClass.name;",
+	Void,Void,"Int",__LINE__);
+
+
+	// .theInitFcnIs and BaseClass
+tester.testSrc("var R = self.BaseClass(\"theInitFcnIs\");",Void,Void,0,__LINE__);
+tester.testSrc("var R = self.BaseClass.theInitFcnIs;",Void,Void,0,__LINE__);
+tester.testSrc("self.BaseClass(theInitFcnIs);",Void,"TypeError",Void,__LINE__);
+tester.testSrc("self.BaseClass(\"initFcnIs\");",Void,"NotFoundError",Void,__LINE__);
+
+tester.testSrc("var R = \"addFcn\"; R = self.BaseClass(R);"
+	"R=R.toString();", Void,Void,"Method(RootClass#.addFcn)",__LINE__);
+
+
+tester.testSrc("var R = \"","SyntaxError",Void,Void,__LINE__);
+
+	// __*
+tester.testSrc("var R = __FILE__",Void,Void,"<text>",__LINE__);
+tester.testRun(fcn{File.splitFileName((__FILE__).toLower())[2]}, Void,"test",__LINE__);
+tester.testSrc("var R = __DEBUG__",Void,Void,0,__LINE__);
+tester.testSrc("var R = __LINE__",Void,Void,"1",__LINE__);
+tester.testSrc("var R = __NAME__",Void,Void,"RootClass#",__LINE__);
+tester.testSrc("AKA(FOO); var R = __NAME__;",Void,Void,"FOO",__LINE__);
+tester.testSrc("AKA(FOO.BAR); var R = __NAME__;",Void,Void,"BAR",__LINE__);
+tester.testSrc("var R = __VAULT_PATH;",Void,Void,"",__LINE__);
+tester.testSrc("__vaultPath;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("AKA(FOO.BAR); var R = __VAULT_PATH;",Void,Void,"FOO",__LINE__);
+
+
+tester.testSrc("var R; \\","SyntaxError",Void,Void,__LINE__);	// \EoL
+tester.testSrc("var R; \"","SyntaxError",Void,Void,__LINE__);	// "EoL
+tester.testSrc("var R; \"\\","SyntaxError",Void,Void,__LINE__);	// "\EoL
+
+
+////////////////////////////////////////////// VM 
+
+tester.testSrc("var R = vm.registers.len()",Void,Void,2,__LINE__);
+tester.testSrc("reg a; var R = vm.registers.len()",Void,Void,3,__LINE__);
+tester.testSrc("reg a = 123; var R = vm.registers[2]",Void,Void,123,__LINE__);
+tester.testSrc("reg a,b; var R = vm.registers.len()",Void,Void,4,__LINE__);
+
+tester.testSrc(0'|var R = vm.Method("yield")|,Void,"AssertionError",Void,__LINE__);
+tester.testSrc(0'|var R = T(vm).apply(fcn(v){v.yield()})|,
+    Void,"AssertionError",Void,__LINE__);
+
+	// get properties of live and dead VMs
+tester.testSrc("var R = vm.registers.isType(List);",Void,Void,True,__LINE__);
+
+tester.testSrc("var R = (vm.function.id == self.fcn.id);",
+   Void,Void,True,__LINE__);
+tester.testSrc("var fiber = vm.createFiber(fcn { return(vm) });" // dead VM
+   "fiber.function", Void,"AssertionError",Void,__LINE__);
+
+tester.testSrc("var R; fcn f(a,b,c){ b=5; R=vm.arglist }(1,2,3)",
+   Void,Void,T(1,5,3),__LINE__);
+
+
+		/////////////////////////////////////// VM.argsMatch
+tester.testSrc(0'|var R; fcn{ R=vm.argsMatch(1,"",3.0)}(123,"two",6.66);|,
+    Void,Void,True,__LINE__);
+tester.testSrc(0'|var R; fcn{ R=vm.argsMatch(1,"Int")}(123,1);|,
+    Void,Void,True,__LINE__);
+tester.testSrc(0'|var R; fcn{ R=vm.argsMatch("")}("",1,Void);|,
+    Void,Void,True,__LINE__);
+tester.testSrc(0'|var R; fcn{ R=vm.argsMatch()}();|,
+    Void,Void,True,__LINE__);
+tester.testSrc(0'|var R; fcn{ R=vm.argsMatch()}("",1,Void);|,
+    Void,Void,False,__LINE__);
+
+tester.testSrc(0'|var R; fcn{ R=vm.argsMatch(class{})}(self);|,
+    Void,Void,False,__LINE__);
+tester.testSrc(0'|var R; fcn{ R=vm.argsMatch(self.NullClass)}(self);|,
+    Void,Void,True,__LINE__);
+tester.testSrc(0'|var R; fcn{ R=vm.argsMatch(self)}(self);|,Void,Void,True,__LINE__);
+
+tester.testSrc(0'|var R; fcn{ R=vm.argsMatch(self.fcn)}(fcn {});|,
+   Void,Void,False,__LINE__);
+tester.testSrc(0'|var R; fcn{ R=vm.argsMatch(self.fcn.nullFcn)}(fcn {});|,
+   Void,Void,True,__LINE__);
+tester.testSrc(0'|var R; fcn{ R=vm.argsMatch(self.fcn)}(self.fcn);|,
+   Void,Void,False,__LINE__);
+tester.testSrc(0'|var R; fcn f{ R=vm.argsMatch(self.fcn)}(f);|,Void,Void,True,__LINE__);
+
+tester.testSrc(0'|var R; fcn{ R=vm.argsMatch("String")}("");|,Void,Void,True,__LINE__);
+tester.testSrc(0'|var R; fcn{ R=vm.argsMatch("string")}("");|,Void,Void,False,__LINE__);
+tester.testSrc(0'|var R; fcn{ R=vm.argsMatch("")}("one");|,Void,Void,True,__LINE__);
+tester.testSrc(0'|var R; fcn{ R=vm.argsMatch("string")}(1);|,Void,Void,False,__LINE__);
+tester.testSrc(0'|var R; class C {}|
+    0'|fcn{ R=vm.argsMatch("C")}(C);|,Void,Void,True,__LINE__);
+
+tester.testSrc(0'|var R; fcn{ R=vm.argsMatch(0)}(123);|,Void,Void,True,__LINE__);
+tester.testSrc(0'|var R; fcn{ R=vm.argsMatch(0)}("");|,Void,Void,False,__LINE__);
+tester.testSrc(0'|var R; fcn{ R=vm.argsMatch(0)}(1.23);|,Void,Void,False,__LINE__);
+tester.testSrc(0'|var R; fcn{ R=vm.argsMatch(1)}(1.23);|,Void,Void,True,__LINE__);
+tester.testSrc(0'|var R; fcn{ R=vm.argsMatch(2)}(1.23);|,Void,Void,False,__LINE__);
+tester.testSrc(0'|var R; fcn{ R=vm.argsMatch(2)}(123);|,Void,Void,True,__LINE__);
+
+tester.testSrc(0'|var R; fcn{ R=vm.argsMatch(1.2)}(3.4);|,Void,Void,True,__LINE__);
+tester.testSrc(0'|var R; fcn{ R=vm.argsMatch(1.2)}(123);|,Void,Void,False,__LINE__);
+
+tester.testSrc(0'|var R; fcn{ R=vm.argsMatch(List)}(ROList());|,Void,Void,True,__LINE__);
+tester.testSrc(0'|var R; fcn{ R=vm.argsMatch(ROList)}(L());|,Void,Void,True,__LINE__);
+
+tester.testSrc(0'|var R; fcn{ R=vm.argsMatch(L(),2)}(L());|,Void,Void,False,__LINE__);
+tester.testSrc(0'|var R; fcn{ R=vm.argsMatch(L())}(L(),2);|,Void,Void,True,__LINE__);
+tester.testSrc(0'|var R; fcn{ R=vm.argsMatch(L(),*)}(L(),self);|,
+    Void,Void,True,__LINE__);
+tester.testSrc(0'|var R; fcn{ R=vm.argsMatch(*,1)}(self,3);|,
+    Void,Void,True,__LINE__);
+tester.testSrc(0'|var R; fcn{ R=vm.argsMatch(*,1)}(3,self);|,Void,Void,False,__LINE__);
+
+
+		//////////////////// switch [arglist], also tested in if.zkl
+tester.testSrc("var R = "
+   "fcn{switch[arglist]{case(){23} case(1,Void){11} else False}}(4)",
+   Void,Void,False,__LINE__);
+tester.testSrc(
+   "var R = fcn{switch[arglist]{case(1){11} case(List){23}}}(5)",
+   Void,Void,11,__LINE__);
+tester.testSrc(
+   "var R = fcn{switch[arglist]{case(1,Void){11} case(List){23}}}(55,Void)",
+   Void,Void,11,__LINE__);
+tester.testSrc(
+   "var R = fcn{switch[arglist]"
+   "  {case(1) [fallthrough] {} case(Void) {11} case(List){23}}}(55)",
+   Void,Void,11,__LINE__);
+tester.testSrc("var R = fcn{switch[arglist]{case(1,Void){11} case(){23}}}()",
+   Void,Void,23,__LINE__);
+tester.testSrc("var R = fcn{switch[arglist]{case(){23} case(1){11} }}(4)",
+   Void,Void,11,__LINE__);
+tester.testSrc("var R = fcn{switch[arglist]{case(*){23} case(1,Void){11} }}(4)",
+   Void,Void,23,__LINE__);
+tester.testSrc("var R = fcn{switch[arglist]{case(*){23} case(){11} }}()",
+   Void,Void,11,__LINE__);
+
+
+		/////////////////////////////////////// VM.argsAre
+tester.testSrc(0'|var R; fcn{ R=vm.argsAre(1,"",3.0)}(1,"two",3);|,
+    Void,Void,True,__LINE__);
+tester.testSrc(0'|var R; fcn{ R=vm.argsAre("")}("",1,Void);|,
+    Void,Void,True,__LINE__);
+tester.testSrc(0'|var R; fcn{ R=vm.argsAre()}();|,Void,Void,True,__LINE__);
+tester.testSrc(0'|var R; fcn{ R=vm.argsAre()}(1);|,Void,Void,False,__LINE__);
+tester.testSrc(0'|var R; fcn{ R=vm.argsAre(class{})}(self);|,
+    Void,Void,False,__LINE__);
+tester.testSrc(0'|var R; fcn{ R=vm.argsAre(self)}(self);|,Void,Void,True,__LINE__);
+tester.testSrc(0'|var R; fcn{ R=vm.argsAre(self.fcn)}(self.fcn);|,
+   Void,Void,False,__LINE__);
+tester.testSrc(0'|var R; fcn{ R=vm.argsAre("string")}("");|,Void,Void,False,__LINE__);
+tester.testSrc(0'|var R; fcn{ R=vm.argsAre("")}("text");|,Void,Void,True,__LINE__);
+tester.testSrc(0'|var R; fcn{ R=vm.argsAre("text")}("text");|,Void,Void,True,__LINE__);
+
+tester.testSrc("var R = fcn{ switch[argsAre]{ case(5,6.0,7){ True }}}(5,6,7.0)",
+   Void,Void,True,__LINE__);
+
+
+	////////////////////////////////// Object.toType()
+tester.testSrc("var R=(1).toType(1.0);",Void,Void,1.0,__LINE__);
+tester.testSrc("var R=(1.5).toType(1);",Void,Void,1,__LINE__);
+tester.testSrc("var R=(1.5).toType(True)",Void,Void,True,__LINE__);
+tester.testSrc("var R=(1.5).toType(True);",Void,Void,True,__LINE__);
+tester.testSrc("var R=(1.5); R=R.toType(True);",Void,Void,True,__LINE__);
+tester.testSrc("var R=(1.5); R=fcn f{ R.toType(False) }()",Void,Void,True,__LINE__);
+tester.testSrc("var R=(1.5); R=fcn f{ (R).toType(True) }()",Void,Void,True,__LINE__);
+tester.testSrc("var R= (1).toType(\"This is a test\");",Void,Void,"1",__LINE__);
+tester.testSrc("var R=(1.5).toType(self);",Void,"NotImplementedError",Void,__LINE__);
+tester.testSrc("var R=(1.5).toType(Time.Clock);",Void,"NotImplementedError",Void,__LINE__);
+tester.testSrc("var R=(3).toType(List);",Void,Void,L(0,1,2),__LINE__);
+tester.testSrc("var R=(3).toType(ROList);",Void,Void,L(0,1,2),__LINE__);
+tester.testSrc("var R=(3).toType(L().makeReadOnly());",Void,Void,L(0,1,2),__LINE__);
+
+
+		/////////////////////////////////////// GC
+//tester.testSrc("var R; T(1).apply2(fcn{R = vm});"		// VM
+//    "R=R.isDead;",Void,Void,True,__LINE__);
+tester.testSrc("var R = (vm == vm);",Void,Void,True,__LINE__);
+tester.testSrc("var R = T(1).filter1(fcn(v1,v2){v1 == v2},vm);", 
+    Void,Void,False,__LINE__);
+//tester.testSrc("var R; v1:=T(1).apply(fcn{vm})[0]; v2:=T(1).apply(fcn{vm})[0];"
+//    "R = (v1 == v2);",Void,Void,False,__LINE__);
+//tester.testSrc("var R; v1:=T(1).apply(fcn{vm}); R=v1[0].name;",
+//    Void,Void,"DeadVM",__LINE__);
+
+tester.testSrc("var R;"
+    "var ref = GarbageMan.WeakRef(Atomic.Bool());"	// Atomic.Bool
+    "do(5){GarbageMan.collect();if (ref.isDead) break;}"
+0'|if (not GarbageMan.verify(ref.ref)) R="garbage weak ref"; else |
+    "R = ref.isDead;", Void,Void,True,__LINE__);
+
+tester.testSrc("var R; n:=GarbageMan.gcCount;"			// String
+    0'|var ref = GarbageMan.WeakRef(String(1,2));|
+    "do(5){GarbageMan.collect();if (ref.isDead) break;}"
+0'|if (not GarbageMan.verify(ref.ref)) R="garbage weak ref"; else |
+    "R=ref.isDead; if(not R)R=GarbageMan.gcCount-n;", Void,Void,True,__LINE__);
+tester.testSrc("var R; n:=GarbageMan.gcCount;"
+    0'|var ref = GarbageMan.WeakRef(String("the","quick brown fox"));|
+    "do(5){GarbageMan.collect();if (ref.isDead) break;}"
+0'|if (not GarbageMan.verify(ref.ref)) R="garbage weak ref"; else |
+    "R=ref.isDead;if(not R)R=GarbageMan.gcCount-n;",Void,Void,True,__LINE__);
+tester.testSrc("var R; n:=GarbageMan.gcCount;"
+    0'|ref := GarbageMan.WeakRef(String("the",|
+    0'|"quick brown fox jumped over the log"));|
+    "do(5){GarbageMan.collect();if (ref.isDead) break;}"
+0'|if (not GarbageMan.verify(ref.ref)) R="garbage weak ref"; else |
+    "R = ref.isDead; if (not R) R=GarbageMan.gcCount-n;",
+     Void,Void,True,__LINE__);
+
+tester.testSrc("n:=GarbageMan.gcCount;"				// T
+    0'|ref := GarbageMan.WeakRef(T(1));Void(0);|
+    "do(5){GarbageMan.collect();if (ref.isDead) break;}"
+    "var R=ref.isDead;if(not R)R=GarbageMan.gcCount-n;",Void,Void,True,__LINE__);
+tester.testSrc(0'|var ref = GarbageMan.WeakRef(T(1,2,3,4,5,6,7,8));|
+    "do(5){GarbageMan.collect();if (ref.isDead) break;}"
+    "var R = ref.isDead;", Void,Void,True,__LINE__);
+tester.testSrc("x:=T(1,2,3); var R=GarbageMan.WeakRef(x); x=Void(0);"
+    "n:=GarbageMan.gcCount;do(5){GarbageMan.collect();if (R.isDead) break;}"
+    "R=R.isDead;if(not R)R=GarbageMan.gcCount-n;",Void,Void,True,__LINE__);
+
+tester.testSrc("n:=GarbageMan.gcCount;"				// L
+    0'|var ref = GarbageMan.WeakRef(L(1,2,3,4,5,6,7,8));|
+    "do(5){GarbageMan.collect();if (ref.isDead) break;}"
+    "var R = ref.isDead; if (not R) R=GarbageMan.gcCount-n;",
+    Void,Void,True,__LINE__);
+tester.testSrc("n:=GarbageMan.gcCount;"				// SD
+    0'|ref := GarbageMan.WeakRef(SD("one",1));|
+    "do(5){GarbageMan.collect();if (ref.isDead) break;}"
+    "var R = ref.isDead; if (not R) R=GarbageMan.gcCount-n;", 
+    Void,Void,True,__LINE__);
+tester.testSrc("n:=GarbageMan.gcCount;"				// D
+    0'|var ref = GarbageMan.WeakRef(Dictionary("one",1));|
+    "do(5){GarbageMan.collect();if (ref.isDead) break;}"
+    "var R = ref.isDead; if (not R) R=GarbageMan.gcCount-n;",
+    Void,Void,True,__LINE__);
+tester.testSrc("n:=GarbageMan.gcCount;"				// Float
+    0'|var ref = GarbageMan.WeakRef(1.23);Void(0);|
+    "do(5){GarbageMan.collect();if (ref.isDead) break;}"
+    "var R = ref.isDead; if (not R) R=GarbageMan.gcCount-n;",
+    Void,Void,True,__LINE__);
+
+tester.testSrc("ref := GarbageMan.WeakRef(L.len);"		// Method
+    "do(5){GarbageMan.collect();if (ref.isDead) break;}"
+    "var R = ref.isDead;", Void,Void,True,__LINE__);
+
+tester.testSrc("ref := GarbageMan.WeakRef(Thread.Straw());"	// Straw
+    "do(5){GarbageMan.collect();if (ref.isDead) break;}"
+    "var R = ref.isDead;", Void,Void,True,__LINE__);
+
+tester.testSrc("ref := GarbageMan.WeakRef('+);"		// 'op
+    "do(5){GarbageMan.collect();if (ref.isDead) break;}"
+    "var R = ref.isDead;", Void,Void,True,__LINE__);
+tester.testSrc("ref := GarbageMan.WeakRef('+(1)); Void(0);"
+    "do(5){GarbageMan.collect();if (ref.isDead) break;}"
+    "var R = ref.isDead;", Void,Void,True,__LINE__);
+
+tester.testSrc(0'|var ref = GarbageMan.WeakRef("123".fp(3));|	// .fp
+    "do(5){GarbageMan.collect();if (ref.isDead) break;}"
+    "var R = ref.isDead;", Void,Void,True,__LINE__);
+tester.testSrc(0'|var ref = GarbageMan.WeakRef(fcn{}.fp(3));|
+    "do(10){GarbageMan.collect();if (ref.isDead) break;}"
+    "var R = ref.isDead;", Void,Void,True,__LINE__);
+
+tester.testSrc("var ref = GarbageMan.WeakRef(Deferred(4,5));"	// Deferred
+    "do(10){GarbageMan.collect();if (ref.isDead) break;}"
+    "var R = ref.isDead;", Void,Void,True,__LINE__);
+
+tester.testSrc(0'|var ref = GarbageMan.WeakRef("1".len.defer());|  // .defer
+    "do(10){GarbageMan.collect();if (ref.isDead) break;}"
+    "var R = ref.isDead;", Void,Void,True,__LINE__);
+
+tester.testSrc(0'|ref := GarbageMan.WeakRef("1"+"2");|		// WR(WR)
+    "ref = GarbageMan.WeakRef(ref);"
+    "do(10){GarbageMan.collect();if (ref.isDead) break;}"
+    "var R = ref.isDead;", Void,Void,True,__LINE__);
+
+tester.testSrc("var R, wr = GarbageMan.WeakRef(self);"		// Class
+    "do(10) { GarbageMan.collect(); if (wr.isDead) break;} R=wr.isDead;",
+    Void,Void,False,__LINE__);
+tester.testSrc("class A{ var a; }"
+    "var ref = GarbageMan.WeakRef(A());"
+    "do(10){GarbageMan.collect();if (ref.isDead) break;}"
+    "var R = ref.isDead;", Void,Void,True,__LINE__);
+tester.testSrc("class A{ var a; } class B(A) { var b; }"
+    "var v = B(), ref = GarbageMan.WeakRef(v); v = v.A;"
+    "do(10){GarbageMan.collect();if (ref.isDead) break;}"
+    "var R = ref.isDead;", Void,Void,False,__LINE__);
+tester.testSrc("class A{ var a; } class B(A) { var b; }"
+    "var ref = GarbageMan.WeakRef(B());"
+    "do(10){GarbageMan.collect();if (ref.isDead) break;}"
+    "var R = ref.isDead;", Void,Void,True,__LINE__);
+
+#if 0	// classes live as long as this chunk of code does
+tester.testSrc("class [static] A{} class B(A) { var b; }"
+    "var v = B(), ref = GarbageMan.WeakRef(v); v = v.A;"
+    "do(15){GarbageMan.collect();if (ref.isDead) break;}"
+    "var R = ref.isDead;",Void,Void,True,__LINE__);
+
+tester.testSrc("class A { var a; class [static] B { } }"
+    "v := A(); ref := GarbageMan.WeakRef(v); v = v.B;"
+    "do(20){GarbageMan.collect();if (ref.isDead) break;}"
+    "var R = ref.isDead;", Void,Void,True,__LINE__);
+#endif
+
+    // Fcns live in the Class base, which lives as long as a Fcn does
+tester.testSrc("C:=class { var v; fcn f{v}}"		// Fcn
+    "var ref = GarbageMan.WeakRef(C().f); C=Void;"	// let classes die
+    "do(10){GarbageMan.collect();if (ref.isDead) break;}"
+    "var R = ref.isDead;", Void,Void,True,__LINE__);
+
+
+    		/////////////////////// misc
+    	// bug: opMVR at end of VM doesn't create list
+tester.testSrc("fcn f { return(1,2,3) }"
+    "var R = L(1).apply(f);",Void,Void,T(T(1,2,3)),__LINE__);
+
+
+    		//////////////////////////////////////////// reduce via pump
+fcn reduce(src,f)
+{
+   args := L();
+   src.pump(Void, 'wrap(i){ args.append(i); return(Void.Drop,i); },
+      'wrap(i){
+         args.append(i) : (r := f(_.xplode())) : args.clear(_);
+	 r
+      });
+}
+
+tester.testRun(reduce.fp(T(1,2,"3"),'+),Void, T(1,2,"3").reduce('+),__LINE__);
+tester.testRun(reduce.fp(T(1),'+),Void, T(1).reduce('+),__LINE__);
+tester.testRun(reduce.fp(T,'+),Void, T.reduce('+),__LINE__);
+
+    // string concat written using reduce
+tester.testRun(reduce.fp(Data(0,String,"Hello"," ","World"),'+),Void,
+   "Hello World",__LINE__);
+
+tester.testRun(reduce.fp(Data(0,String,"a","b","test"),String.fp1("-")),
+   Void,Data(0,String,"a","b","test").reduce(String.fp1("-")),__LINE__);
+
+
+   	///////////////////// string concat vi pump
+fcn concat(src,sepr){
+    return(src.pump(String, Void.Drop, T(Void.Write,sepr,Void.Drop)));
+}
+tester.testRun(concat.fp(T(1,12),"."),Void, "1.12",__LINE__);
+tester.testRun(concat.fp(Data(0,String,"x","y","z"),"-"),Void, "x-y-z",__LINE__);
+
+
+
+tester.testSrc(0'|var R= "abc".pump(String,|
+    0'|T(Void.Drop,Void.Void),T(Void.Write,":",Void.Drop));|,
+     Void,Void,":b:c",__LINE__);
+tester.testSrc(0'|n:=Ref(0); var R= "abc".pump(List,|
+     0'|'wrap(c){T(n.inc(),c)});|,
+     Void,Void,T(T(0,"a"),T(1,"b"),T(2,"c")),__LINE__);
+tester.testSrc(0'|n:=Ref(0); var R= "abc".pump(List,|
+     0'|'wrap(c){T(Void.Write,n.inc(),c)});|,
+     Void,Void,T(0,"a",1,"b",2,"c"),__LINE__);
+
+tester.testSrc(0'|var R= "abc".pump(List,T(Void,"hoho"));|,
+     Void,Void,T("hoho","hoho","hoho"),__LINE__);
+
+
+tester.stats();
+returnClass(tester);
+

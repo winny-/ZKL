@@ -1,0 +1,1382 @@
+// -*-c-*-
+// Test List
+
+tester := TheVault.Test.UnitTester.UnitTester(__FILE__);
+
+
+		//////////////////////////////// .createLong
+tester.testSrc("var R = List.createLong(4);",Void,Void,T,__LINE__);
+tester.testSrc("var R = List.createLong(-4);",Void,Void,List,__LINE__);
+
+tester.testSrc("var R=List.createLong(3,1);",Void,Void,L(1,1,1),__LINE__);
+tester.testSrc("var R=List.createLong(3,fcn(rn){ rn.inc() }.fp(Ref(0)),True);",
+   Void,Void,L(0,1,2),__LINE__);
+tester.testSrc(0'|var R=List.createLong(3,"hoho".len).apply("name");|,
+   Void,Void,L("Method","Method","Method"),__LINE__);
+tester.testSrc(0'|var R=List.createLong(3,"hoho".len,True);|,
+   Void,Void,L(4,4,4),__LINE__);
+tester.testSrc(0'|var R=List.createLong(2,List.copy,True).apply("id");|
+   "R=(R[0]!=R[1]);",Void,Void,True,__LINE__);
+
+
+tester.testSrc("var R = T().create(1);",Void,Void,T(1),__LINE__);
+tester.testSrc("var R = T()(1);",Void,Void,T(1),__LINE__);
+tester.testSrc("var R = T()(1).len();",Void,Void,1,__LINE__);
+tester.testSrc("var R = T()(1).foo;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R = T().foo;","SyntaxError",Void,Void,__LINE__);
+
+
+	////////////////////////////////////////////////////// .concat
+tester.testSrc("var R = L().concat();",Void,Void,"",__LINE__);
+tester.testSrc("var R = L().concat(\"|\");",Void,Void,"",__LINE__);
+tester.testSrc("var R = L(2).concat(\"|\");",Void,Void,"2",__LINE__);
+tester.testSrc("var R = L(2,3).concat(\"|\");",Void,Void,"2|3",__LINE__);
+tester.testSrc("var R = L(1,\"two\",3.4).concat();",Void,Void,"1two3.4",__LINE__);
+tester.testSrc("var R = L(2,3).concat(666);",Void,Void,"26663",__LINE__);
+tester.testSrc(0'|var R = L(1,"",2).concat("/");|,Void,Void,"1//2",__LINE__);
+tester.testSrc(0'|var R = L("",1,2).concat("/");|,Void,Void,"/1/2",__LINE__);
+tester.testSrc(0'|var R = L("",1,"",2).concat("/");|,Void,Void,"/1//2",__LINE__);
+tester.testSrc(0'|var R = T(1,2,3).concat(L);|,Void,Void,"1L()2L()3",__LINE__);
+tester.testSrc(0'|var R = T(1,2,3).concat(9);|,Void,Void,"19293",__LINE__);
+tester.testSrc(0'|var R=T(1,2,3).concat(",", "(", ")");|, Void,Void,"(1,2,3)",__LINE__);
+
+	// old core dumper
+tester.testSrc(0'|l:=L(1,2,3); x:=".foo.bar".split(".");|
+    "var R=l.insert(0,x.xplode());",Void,Void,L("","foo","bar",1,2,3),__LINE__);
+
+
+	/////////////////////////////////////////////////// .runNFilter
+tester.testSrc("var R = L(2,True).runNFilter();",Void,Void,True,__LINE__);
+tester.testSrc(0'|var R = L("123").runNFilter();|,Void,"NameError",Void,__LINE__);
+tester.testSrc(0'|var R = L("isEven").runNFilter();|,Void,Void,False,__LINE__);
+tester.testSrc(0'|var R = L("123".len).runNFilter();|,Void,Void,True,__LINE__);
+tester.testSrc(0'|var R = L("123".len).runNFilter(True,1);|,Void,Void,0,__LINE__);
+tester.testSrc(0'|var R = L("".len).runNFilter();|,Void,Void,False,__LINE__);
+tester.testSrc(0'|var R = L("".len).runNFilter(True,1);|,Void,Void,False,__LINE__);
+tester.testSrc("var R = L(0,fcn{1}).runNFilter();",Void,Void,True,__LINE__);
+tester.testSrc("var R = L(False,fcn{0}).runNFilter();",Void,Void,False,__LINE__);
+tester.testSrc("var R = L(fcn{0},fcn{1}).runNFilter();",Void,Void,True,__LINE__);
+tester.testSrc("var R = L(fcn(x){x}).runNFilter(True,2,5);",Void,Void,T(0,5),__LINE__);
+tester.testSrc("var R = L(fcn(x){(not x)}).runNFilter(False,2,5);",
+    Void,Void,T(0,False),__LINE__);
+tester.testSrc("var R = L(fcn(x){(not x)}).runNFilter(False,1,5);",
+    Void,Void,0,__LINE__);
+tester.testSrc("var R = L(fcn(x){(not x)}).runNFilter(False,Void,5);",Void,Void,True,__LINE__);
+tester.testSrc("var R = L(fcn(x){x}).runNFilter();",Void,"MissingArg",Void,__LINE__);
+tester.testSrc("var R = L(fcn(x){x}).runNFilter(True);",Void,"MissingArg",Void,__LINE__);
+
+tester.testSrc("class C { var x=123; }"
+   0'|var R = L(C.Property("x")).runNFilter();|,Void,Void,True,__LINE__);
+tester.testSrc("class C { var x=False; }"
+   0'|var R = L(C.Property("x")).runNFilter();|,Void,Void,False,__LINE__);
+
+//tester.testSrc("var R = L(1,2,3).runNFilter(fcn(x){x == 2})",Void,Void,True,__LINE__);
+//tester.testSrc("var R; L(1,2,3).runNFilter(fcn(x){if (x == 2) R = 1})",
+//   Void,Void,1,__LINE__);
+tester.testSrc("var R; L(1,2,3).runNFilter(fcn(x){if (x == 2) R = 1; x == 1})",
+   Void,Void,Void,__LINE__);
+
+tester.testSrc("var R = L(0,True).runNFilter(False);",Void,Void,True,__LINE__);
+tester.testSrc(0'|var R = L("123".len).runNFilter(False);|,Void,Void,False,__LINE__);
+tester.testSrc(0'|var R = L("123".len).runNFilter(False,1);|,Void,Void,False,__LINE__);
+tester.testSrc(0'|var R = T("".len).runNFilter(False);|,Void,Void,True,__LINE__);
+tester.testSrc(0'|var R = L("".len).runNFilter(False,1);|,Void,Void,0,__LINE__);
+tester.testSrc("var R = L(fcn{1}).runNFilter(False);",Void,Void,False,__LINE__);
+tester.testSrc("var R = T(fcn{0}).runNFilter(False);",Void,Void,True,__LINE__);
+tester.testSrc("var R = T(fcn{1},fcn{0}).runNFilter(False);",Void,Void,True,__LINE__);
+tester.testSrc("var R = L(fcn{1},fcn{0}).runNFilter(False,1);",Void,Void,1,__LINE__);
+tester.testSrc("var R = L(True,fcn{1}).runNFilter(False,1);",Void,Void,False,__LINE__);
+
+tester.testSrc("var R = L(1,fcn{1}).runNFilter(True,2);",
+    Void,Void,T(0,1),__LINE__);
+tester.testSrc("var R = L(False,fcn{0}).runNFilter(True,2);",
+    Void,Void,False,__LINE__);
+
+tester.testSrc(0'|var R = T("".walker,(1).walker).runNFilter(True,0);|,
+    Void,Void,True,__LINE__);
+
+tester.testSrc(0'|r:=-2; var R=T(0,'wrap(){r},fcn{True}).runNFilter(True,1);|,
+    Void,Void,1,__LINE__);
+tester.testSrc(
+    0'|r:=-2; var R=T('<(0),'wrap(x){x+r},fcn{True}).runNFilter(True,1, 2);|,
+    Void,Void,2,__LINE__);
+
+tester.testSrc(0'|var R=T('>(0)).runNFilter(False,0,5);|,
+    Void,Void,False,__LINE__);
+tester.testSrc(0'|var R=T('>(0)).runNFilter(False,0,-5);|,
+    Void,Void,True,__LINE__);
+
+
+		///////////////////////////////////////////////// .run
+tester.testSrc("var R = L(fcn{1},fcn{0}).run();",Void,Void,Void,__LINE__);
+tester.testSrc("var R; L(fcn{R=1}).run();",Void,Void,1,__LINE__);
+tester.testSrc("var R = T(fcn{1},fcn{0}).run(True);",Void,Void,T(1,0),__LINE__);
+tester.testSrc("var R = T(String.create,Int.create).run(True,123);",
+    Void,Void,T("123",123),__LINE__);
+tester.testSrc("var R = T(String.create,5,Int.create).run(True,123);",
+    Void,Void,T("123",5,123),__LINE__);
+
+tester.testSrc(0'|var R = T("".walker,(1).walker).run(True).toString();|,
+    Void,Void,"L(Walker,Walker)",__LINE__);
+
+tester.testSrc(0'|r:=-2; var R=T(1,'wrap(){r},fcn{True}).run(True);|,
+    Void,Void,T(1,-2,True),__LINE__);
+tester.testSrc(0'|r:=-2; var R=T(1,'wrap(x){x+r},fcn{True}).run(True,2);|,
+    Void,Void,T(1,0,True),__LINE__);
+
+tester.testSrc(0'|var R=T("toString").run(True);|,Void,Void,T(Void),__LINE__);
+
+
+		//////////////////////////////////////////// .reduce
+tester.testSrc("var R=T(15,16).reduce();",Void,"MissingArg",Void,__LINE__);
+tester.testSrc("var R=T(1,2,3,4).reduce(Void);",Void,Void,1,__LINE__);
+tester.testSrc("var R=T(1).reduce(T);",Void,Void,1,__LINE__);
+tester.testSrc("var R=T(1,2).reduce(T);",Void,Void,T(1,2),__LINE__);
+tester.testSrc("var R=T(1,2,3).reduce(T);",Void,Void,T(T(1,2),3),__LINE__);
+tester.testSrc("var R=T(1,2,3,4).reduce(T);",Void,Void,T(T(T(1,2),3),4),__LINE__);
+tester.testSrc("var R=T(1,2,3,4).reduce(fcn(x){ x });",Void,Void,1,__LINE__);
+tester.testSrc("var R=T(1,2,3,4).reduce(String);",Void,Void,"1234",__LINE__);
+
+tester.testSrc(0'|var R=T.reduce(Op("+"),0);|,Void,Void,0,__LINE__);
+tester.testSrc(0'|var R=T.reduce(Op("+"));|,Void,Void,Void,__LINE__);
+
+tester.testSrc(0'|var R=T(1,2,3).reduce("max");|,Void,Void,3,__LINE__);
+
+    	// Fcn
+tester.testSrc(
+   "var R = L(111,0,-23,5,333).reduce(fcn(x,y){ if(x>y) x else y })",
+   Void,Void,333,__LINE__);
+tester.testSrc(
+   "var R = L(111,0,-23,5,33).reduce(fcn(x,y){ if(x>y) x else y})",
+   Void,Void,111,__LINE__);
+tester.testSrc("var R=L().reduce(fcn(x,y){ if(x>y) x else y})",
+   Void,Void,Void,__LINE__);
+tester.testSrc("var R=L(1).reduce(fcn(x,y){ if(x>y) x else y })",
+   Void,Void,1,__LINE__);
+tester.testSrc("var R=L(1).reduce(fcn(x,y){ if(x>y) x else y },666)",
+   Void,Void,666,__LINE__);
+tester.testSrc("var R=L().reduce(fcn(x,y){ if(x>y) x else y },123)",
+   Void,Void,123,__LINE__);
+tester.testSrc("var R=L(1,2).reduce(fcn(x,y,z=10){ x+y+z })",
+   Void,Void,13,__LINE__);
+tester.testSrc("var R=L(fcn(x){ x * 3 }).reduce(fcn(r,f) {r+f(r)},2)",
+   Void,Void,8,__LINE__);
+tester.testSrc("var R=L(fcn(x){ x * 3 },fcn(x){ x+5 })"
+   ".reduce(fcn(r,f){ r+f(r) },2)",Void,Void,21,__LINE__);
+
+tester.testSrc("z:=4; var R=T(1,2,3).reduce('wrap(p,n){ p+n+z },0);",
+   Void,Void,18,__LINE__);
+
+tester.testSrc("var R=T(1,2,3).reduce("
+   "fcn(p,n){ if(n==2)return(Void.Stop,Void.Void); n });",Void,Void,Void,__LINE__);
+tester.testSrc("var R=(T(1,2,3).reduce("
+   "fcn(p,n){ if(n==2)return(Void.Stop,Void.Void); n }).id == Void.id);",
+   Void,Void,True,__LINE__);
+tester.testSrc("var R=T(1,2,3).reduce("
+   "fcn(p,n){ if(n==2)return(Void.Skip); n+p })",Void,Void,4,__LINE__);
+tester.testSrc("var R=T(1,2,3)"
+   ".reduce(fcn(p,n){ if(n==2)return(Void.Skip,55); n })",Void,Void,3,__LINE__);
+tester.testSrc("var R=T(1,2,3)"
+   ".reduce(fcn(p,n){ if(n==2)return(Void.Stop,55); n })",Void,Void,55,__LINE__);
+
+tester.testSrc("var R=(T(1,5,3,7,2).reduce(fcn{ Void.Stop }));",
+   Void,Void,1,__LINE__);
+tester.testSrc("var R=(T(1,5,3,7,2).reduce(fcn{ return(Void.Stop,Void.Stop) }));",
+   Void,Void,Void,__LINE__);
+tester.testSrc("var R=(T(1,5,3,7,2).reduce(fcn{ return(Void.Stop,Void.Read) }));",
+   Void,Void,Void,__LINE__);
+tester.testSrc("var R=(T(1,5,3,7,2).reduce("
+   "fcn{ return(Void.Stop,Void.Stop) }).id == Void.id);",
+   Void,Void,True,__LINE__);
+
+
+   	// Op
+tester.testSrc(0'|var R = L(1,2,3,4,5).reduce(Op("+"));|,Void,Void,15,__LINE__);
+
+   	// closure
+tester.testSrc(0'|c := Op("+").fp(1);|
+    0'|var R = L(1,2,3,4,5).reduce(c);|,Void,Void,19,__LINE__);
+tester.testSrc(0'|c := fcn(x,y,z){ x+y+z }.fpM("__1",1);|
+    0'|var R = L(1,2,3,4,5).reduce(c);|,Void,Void,19,__LINE__);
+
+	// Deferred
+tester.testSrc(0'|d := Deferred(Op,"+",1);|
+    0'|var R = L(1,2,3,4,5).reduce(d);|,Void,Void,19,__LINE__);
+
+    	// Partial (which is special cased)
+tester.testSrc(
+    0'|var R=T(1,2).reduce(fcn(a,b,c){a+b+c}.fpM("__1",1000));|,
+    Void,Void,1003,__LINE__);
+tester.testSrc(0'|var R=T("".walker.fp(1),(1).walker.fp(2))|
+    0'|.reduce(fcn(a,b){ b() }); R=R.toString();|, 
+    Void,Void,"Walker",__LINE__);
+tester.testSrc(0'|var R=T("".walker,(1).walker)|
+    0'|.reduce(fcn(a,b){ b() }); R=R.toString();|, 
+    Void,Void,"Walker",__LINE__);
+tester.testSrc(0'|var R=T(1,2).reduce("foo".walker).walk(99);|, 
+    Void,Void,T("foo"),__LINE__);
+
+tester.testSrc("var R=(T(1,5,3,7,2).reduce(Void.Stop));",Void,Void,1,__LINE__);
+tester.testSrc("var R=(T(1,5,3,7,2).reduce(Void.Drop));",Void,Void,1,__LINE__);
+
+
+    				///////////////// .reduce(Void.Write,sink,...
+tester.testSrc("var R=T(15,16).reduce(Void.Write,List);",Void,"MissingArg",Void,__LINE__);
+tester.testSrc(0'|var R=T(1,5,3,7,2).reduce(Void.Write,List,(0).max,0);|,
+    Void,Void,T(1,5,5,7,7),__LINE__);
+tester.testSrc(0'|var R=T(1,5,3,7,2).reduce(Void.Write,String,(0).max,0);|,
+    Void,Void,"15577",__LINE__);
+tester.testSrc(0'|var R=T(1,5,3,7,2).reduce((0).max,0);|,Void,Void,7,__LINE__);
+
+
+   	///////////////////////////////////////////////////// .pump
+tester.testSrc(0'|var R=T.pump(List);|,Void,Void,T,__LINE__);
+tester.testSrc(0'|var R=T(True,22).pump(List,Int.create);|,Void,Void,T(1,22),__LINE__);
+tester.testSrc(0'|var R=T(True,22).pump(List,String);|,
+   Void,Void,T("True","22"),__LINE__);
+tester.testSrc(0'|var R=T(True,22).pump(List,List);|,
+   Void,"AssertionError",Void,__LINE__);
+tester.testSrc(0'|var R=T(True,22).pump(List,ROList);|,
+   Void,Void,T(T(True),T(22)),__LINE__);
+tester.testSrc(0'|var R=T(True,22).pump(List,T(T));|,
+   Void,Void,T(T(True),T(22)),__LINE__);
+tester.testSrc(0'|var R=T(True,22).pump(String,String);|,
+   Void,Void,"True22",__LINE__);
+
+tester.testSrc(0'|var R=T(1,22).pump(List,fcn(a){a.toString()},fcn(a){a.len()});|,
+    Void,Void,T(1,2),__LINE__);
+tester.testSrc(0'|var R=T(1,22).pump(List);|,Void,Void,T(1,22),__LINE__);
+tester.testSrc(0'|var R=T().pump(List);|,Void,Void,T(),__LINE__);
+tester.testSrc(0'|var R=T(1,22).pump(Void);|,Void,Void,22,__LINE__);
+tester.testSrc(0'|var R=T().pump(Void);|,Void,Void,Void,__LINE__);
+
+tester.testSrc(0'|var R=T(1,22,333).pump(List,|
+   "fcn(a){ if (a==22)Void.Skip else a }, fcn(a){ a.toString() },"
+   "fcn(a){ a.len() });", Void,Void,T(1,3),__LINE__);
+tester.testSrc(0'|var R=T(1,22,333).pump(List,|
+   "fcn(a){ if (a==22)return(Void.Stop,Void); a }, fcn(a){ a.toString() },"
+   "fcn(a){ a.len() });", Void,Void,T(1,Void),__LINE__);
+tester.testSrc(0'|var R=T(1,22,333).pump(List,|
+   "fcn(a){ if (a==22)return(Void.Stop,666); a },fcn(a){ a.toString() },"
+   "fcn(a){ a.len() });", Void,Void,T(1,666),__LINE__);
+tester.testSrc(0'|var R=T(1,22,333).pump(List,|
+   "fcn(a){ if (a==22)return(Void.Skip,666); a }, fcn(a){ a.toString() },"
+   "fcn(a){ a.len() });", Void,Void,T(1,666,3),__LINE__);
+tester.testSrc(0'|var R=T(1,22,333).pump(List,|
+   "fcn(a){if (a==22)return(Void.Stop,Void.Void); a},"
+   "fcn(a){a.toString()},fcn(a){a.len()});",
+   Void,Void,T(1,Void),__LINE__);
+tester.testSrc(0'|var R=T(1,22,333).pump(List,|
+   "fcn(a){if (a==22)return(Void.Stop,Void.Skip); a},"
+   "fcn(a){a.toString()},fcn(a){a.len()});",
+   Void,Void,T(1,Void),__LINE__);
+tester.testSrc(0'|var R=T(1,22,333).pump(List,|
+   "fcn(a){if (a==22)return(Void.Stop,Void.Stop); a},"
+   "fcn(a){a.toString()},fcn(a){a.len()});",
+   Void,Void,T(1,Void),__LINE__);
+
+tester.testSrc(0'|var R=(1).pump(2,List,fcn(n){3})|, Void,Void,T(3,3),__LINE__);
+tester.testSrc(0'|var R=(1).pump(5,List,fcn(n){n})|, Void,Void,T(1,2,3,4,5),__LINE__);
+tester.testSrc(0'|var R=(10).pump(5,List,fcn(n){n});|,
+    Void,Void,T(10,11,12,13,14),__LINE__);
+tester.testSrc(0'|var R=(0).pump(3,List,fcn(n,z){z-n}.fp1(0));|,
+    Void,Void,T(0,-1,-2),__LINE__);
+tester.testSrc(0'|var R=(0).pump(5,List,fcn(n){4-n});|,
+    Void,Void,T(4,3,2,1,0),__LINE__);
+tester.testSrc("var R=(0).pump(10,List,fcn(n,[(a,b)]list){ if(n<2)return(1);"
+    "list.pop(0); list.append(a+b); a+b }.fp1(L(1,1)));",
+    Void,Void,T(1,1,2,3,5,8,13,21,34,55),__LINE__);
+tester.testSrc("var R=(0).pump(8,Void,fcn(list){"
+    "a,b:=list[-2,*]; list.append(a+b); }.fp(L(1,1)));",
+    Void,Void,T(1,1,2,3,5,8,13,21,34,55),__LINE__);
+tester.testSrc("var R=(0).pump(8,Void,fcn([(a,b)]ab){"
+    "ab.del(0).append(a+b); }.fp(L(1,1)));",
+    Void,Void,T(34,55),__LINE__);
+tester.testSrc("var R=(0).pump(8,Void,fcn([(a,b)]ab){"
+    "ab.del(0).append(a+b); }.fp(L(1,1)))[1];",
+    Void,Void,55,__LINE__);
+
+tester.testSrc(0'|var R=T("bar").pump(List,T(fcn(a,b){String(a,b)}.fp("foo")));|,
+    Void,Void,T("foobar"),__LINE__);
+
+tester.testSrc(0'|var R=T(fcn f{},fcn b{}).pump(List,"name",T("matches","f*"));|,
+    Void,Void,T(True,False),__LINE__);
+tester.testSrc(0'|var R=T(1).pump(Void,T);|,Void,Void,T(1),__LINE__);
+
+tester.testSrc(0'|var R=T(5,6,"foo").pump(List,"len");|,Void,Void,T(1,1,3),__LINE__);
+tester.testSrc(0'|var R=T(5,6).pump(List,"noop");|,Void,Void,T(5,6),__LINE__);
+tester.testSrc(0'|var R=T(5,6,"foo").pump(List,T("Method","noop"),"instance");|,
+   Void,Void,T(5,6,"foo"),__LINE__);
+
+tester.testSrc("var R=T(5).pump(Void,"
+   "fcn{ Void.Stop }); R=(R.id != Void.Void.id);", Void,Void,True,__LINE__);
+
+tester.testSrc("var R; R=T(1,2,3).pump(String,Void.Skip);",Void,Void,"",__LINE__);
+tester.testSrc("var R;"
+    0'|R=T("a","b","c").pump(Data,fcn(c){ if(c!="b") c else Void.Skip }).text;|,
+    Void,Void,"ac",__LINE__);
+tester.testSrc("var R;"
+    0'|R=T("a","b","c").pump(Void,fcn(c){ if (c!="b") c else Void.Skip },|
+    0'|Data().append).text;|, Void,Void,"ac",__LINE__);
+tester.testSrc(0'|var R=T("a","b","c")|
+    0'|.pump(Void,T(fcn(c){if (c!="b") c else Void.Skip}),|
+    0'|Data().append).text;|, Void,Void,"ac",__LINE__);
+tester.testSrc(0'|var R; T("a","b","c")|
+    0'|.pump(Void,T(fcn(c){if (c!="b") c else return(Void.Stop,"X")}),|
+    0'|(d:=Data()).append); R=d.text;|, Void,Void,"a",__LINE__);
+tester.testSrc(0'|var R=T("a","b","c")|
+    0'|.pump(Void,T(fcn(c){if (c!="b") c else return(Void.Stop,"X")}),|
+    0'|Data().append);|, Void,Void,"X",__LINE__);
+tester.testSrc(0'|var R=T("a","b","c")|
+    0'|.pump(List,T(fcn(c){if (c!="b") c else return(Void.Stop,"X")}),|
+    0'|Data().append); R=R.apply("text");|, Void,Void,T("a","X"),__LINE__);
+tester.testSrc(0'|var R; T("a","b","c")|
+    0'|.pump((d:=Data()).append,fcn(c){ if (c!="b") c else Void.Skip });|
+    0'|R=d.text;|, Void,Void,"ac",__LINE__);
+
+tester.testSrc(0'|var R=T(fcn f{},fcn g{})|
+    0'|.pump(List,T("Property","name"),"value");|, Void,Void,T("f","g"),__LINE__);
+
+tester.testSrc(0'|var R=T(Deferred("","HOHO"))|
+    0'|.pump(List,T("matches","[hH]*"));|, Void,Void,T(True),__LINE__);
+
+tester.testSrc("var R=T.pump(List,T.fp(Void.Write));",
+    Void,Void,T,__LINE__);
+tester.testSrc("var R=T(1,T(2)).pump(List,Void.Write.noop);",
+    Void,Void,T(1,T(2)),__LINE__);
+tester.testSrc("var R=T(1,T(2)).pump(List,Void.Void);",
+    Void,Void,T,__LINE__);
+tester.testSrc("var R=T(1,T(2)).pump(List,Void.Void.noop);",
+    Void,Void,T,__LINE__);
+tester.testSrc("var R=T(1,T(2)).pump(List,Void.Write);",
+    Void,Void,T(1,T(2)),__LINE__);
+
+tester.testSrc("var R=T(1,2,3,4).pump(List,Void.Read,Void.Write);",
+    Void,Void,T(1,2,3,4),__LINE__);
+tester.testSrc("var R=T(1,2,3,4).pump(List,Void.Read,T(Void.Write));",
+    Void,Void,T(T(1,2),T(3,4)),__LINE__);
+tester.testSrc("var R=T(1,2,3,4,5,6).pump(List,Void.Read);",
+    Void,Void,T(T(1,2),T(3,4),T(5,6)),__LINE__);
+tester.testSrc("var R=T(1,2,3,4,5).pump(List,T(Void.Read,2,False));",
+    Void,Void,T(T(1,2,3),T(4,5)),__LINE__);
+
+tester.testSrc("var R=T(1,2,3).pump(String,Void.Drop,'+(5));",
+    Void,Void,"178",__LINE__);
+tester.testSrc("var R=T(1,2,3).pump(String,T(Void.Drop,9),'+(5));",
+    Void,Void,"978",__LINE__);
+
+tester.testSrc(0'|var R=L(); T(1,2).pump(Void,T(R.append));|,
+    Void,Void,T(1,2),__LINE__);
+tester.testSrc(0'|var R=L(); T(1,2).pump(Void,T(R.append,5));|,
+    Void,Void,T(1,5,2,5),__LINE__);
+
+tester.testSrc(0'|var R=T(1,2).pump(List,Void.Write);|,
+    Void,Void,T(1,2),__LINE__);
+tester.testSrc(0'|var R=T(1,2).pump(List,T(Void.Write,5,Void.Drop));|,
+    Void,Void,T(5,1,5,2),__LINE__);
+tester.testSrc(0'|var R=T(1,2).pump(List,T(Void.Write,Void.Drop,5,Void.Drop));|,
+    Void,Void,T(1,5,1,2,5,2),__LINE__);
+
+tester.testSrc(0'|var R=T(1,2).pump(List,T(T.create));|,
+    Void,Void,T(T(1),T(2)),__LINE__);
+tester.testSrc(0'|var R=T(1,2).pump(List,T.create);|,
+    Void,Void,T(T(1),T(2)),__LINE__);
+
+tester.testSrc(0'|var R=T(1,2).pump(List().write,Void);|,Void,Void,T(1,2),__LINE__);
+tester.testSrc(0'|var R=T(1,2).pump(List().write,Void).isReadOnly;|,
+    Void,Void,False,__LINE__);
+tester.testSrc(0'|var R=T(1,2).pump(List(),Void).isReadOnly;|,
+    Void,Void,False,__LINE__);
+tester.testSrc(0'|var R=T(1,2).pump(List(),Void);|,Void,Void,T(1,2),__LINE__);
+tester.testSrc(0'|d:=L; var R=T(1,2).pump(d); R=(R.id==d.id)|,
+    Void,Void,False,__LINE__);
+tester.testSrc(0'|d:=L(); var R=T(1,2).pump(d); R=(R.id==d.id)|,
+    Void,Void,True,__LINE__);
+
+tester.testSrc(0'|var R=T("one",1,"two",2).pump(List,Void.Read,fcn{ vm.arglist.concat() })|,
+    Void,Void,T("one1","two2"),__LINE__);
+
+tester.testSrc(0'|var R=T(T(1),L(2,3),T(4,5,6),7)|
+    0'|.pump(String,Void.Xplode,String.create)|,Void,Void,"1234567",__LINE__);
+tester.testSrc(0'|var R=T(T(1),L(2,3),T(4,5,6),7)|
+    0'|.pump(String,'+(9),Void.Xplode,String.create)|,
+    Void,Void,"19239456916",__LINE__);
+tester.testSrc(0'|var R="a b     c"|
+    0'|.pump(String,"split",Void.Xplode,String.create)|,Void,Void,"abc",__LINE__);
+
+tester.testSrc(0'|var R=T(T(1),T(2,3),T(4,5,6),7)|
+    0'|.pump(String,Void.Xplode)|,Void,Void,"L(1)L(2,3)L(4,5,6)7",__LINE__);
+tester.testSrc(0'|var R=T(T(1),T(2,3),T(4,5,6),7)|
+    0'|.pump(String,'+(9),Void.Xplode)|,
+    Void,Void,"L(1,9)L(2,3,9)L(4,5,6,9)16",__LINE__);
+
+tester.testSrc(0'|var R=T(T(1),L(2,3),T(4,5,6),7)|
+    0'|.pump(String,Void.Xplode,Void.Xplode,String.create)|,Void,Void,"7",__LINE__);
+tester.testSrc(0'|var R=T(T(T(2,3)))|
+    0'|.pump(String,Void.Xplode,Void.Xplode,String.create)|,Void,Void,"",__LINE__);
+tester.testSrc(0'|var R=T(T(T(2,3)))|
+    0'|.pump(String,Void.Xplode,Void.Xplode)|,Void,Void,"",__LINE__);
+
+tester.testSrc(0'|var R=T(T(2,3))|
+    0'|.pump(String,Void.Xplode,'+,'*(2))|,Void,Void,"10",__LINE__);
+tester.testSrc(0'|var R=T(T(2,3))|
+    0'|.pump(String,Void.Xplode,T(Void.Write,5))|,Void,Void,"5",__LINE__);
+
+tester.testSrc(0'|var R=T(1,2).pump(List,T(4,5).pump(List))|,
+    Void,Void,T(4,4),__LINE__);		// !!!this is a weird one
+tester.testSrc(0'|var R=T(1,2).pump(List,T(4,5))|,
+    Void,Void,T(4,4),__LINE__);
+
+	// manual example:
+tester.testSrc(0'|var R=T(1,2,3).pump(List,'+(1),Void.Write,'+(1))|,
+   Void,Void,T(2,3,4),__LINE__);
+
+
+			////////////////////////////////////////// .flatten
+tester.testSrc(0'|fcn f(i){T.isType(i) and return(T(Void.Write).extend(i)); i}|
+    "var R=T(T(1,2,3,T(4,5,6)),L(8,9),10).pump(List,f);",
+    Void,Void,T(1,2,3,L(4,5,6),8,9,10),__LINE__);
+tester.testSrc(
+    "var R=T(T(1,2,3,T(4,5,6)),L(8,9),10).pump(List,T(Void.Write).extend);",
+    Void,Void,T(1,2,3,L(4,5,6),8,9,10),__LINE__);
+tester.testSrc(
+    "var R=T(T(1,2,3,T(4,5,6)),L(8,9),10)"
+    ".pump(List,T(Void.Write,Void.Write).append);",
+    Void,Void,T(1,2,3,L(4,5,6),8,9,10),__LINE__);
+tester.testSrc(
+    "var R=T(1,2,3,T(4,5,6),L(8,9),10)"
+    ".pump(List,T(Void.Write,Void.Write).append);",
+    Void,Void,T(1,2,3,4,5,6,8,9,10),__LINE__);
+tester.testSrc("var R;"
+    "fcn smush(list){list.pump(List,fcn(i){"
+    "  if(T.isType(i)) return(T(Void.Write).extend(smush(i))); i})}"
+    "R=smush(T(T(1,2,3,T(4,5,T(6))),L(8,9),10));",
+    Void,Void,T(1,2,3,4,5,6,8,9,10),__LINE__);
+
+            // flatten
+tester.testSrc("var R = T(1,T(2,T(3)),4);"
+    "R=R.pump(List,fcn(i){ if(T.isType(i)) return(Void.Recurse,i); i});",
+    Void,Void,T(1,2,T(3),4),__LINE__);
+tester.testSrc("var R = T(T(1,2,3,T(4,5,T(6))),L(8,9),10);"
+    "R=R.pump(List,fcn(i){ if(T.isType(i)) return(Void.Recurse,i,self.fcn); i});",
+    Void,Void,T(1,2,3,4,5,6,8,9,10),__LINE__);
+
+    // manual
+tester.testSrc("var R=T(1,T(2,T(3)),4).pump(List,"
+   "fcn(i){ if(T.isType(i)) return(Void.Recurse,i); i })",
+   Void,Void,L(1,2,L(3),4),__LINE__);
+tester.testSrc("var R=T(1,T(2,T(3,T(T(T(4))))),5).pump(List,"
+   "fcn(i){ if(T.isType(i)) return(Void.Recurse,i,self.fcn); i })",
+   Void,Void,T(1,2,3,4,5),__LINE__);
+
+
+   	///////////////////////////////////////////////////// .xplode
+tester.testSrc("var R = L(1,L(2,3).xplode());",Void,Void,L(1,2,3),__LINE__);
+tester.testSrc("var R; x:=L(111);"
+    "R=String.create(\"a\",x.xplode().len(),\"b\");",
+    Void,Void,"a0b",__LINE__);
+tester.testSrc("L(1,2,3).xplode().append(\"hoho\");",Void,"NotFoundError",Void,__LINE__);
+tester.testSrc("fcn f(x) { x } var R = f(L(L(1)).xplode());",
+    Void,Void,L(1),__LINE__);
+tester.testSrc("var R = L(L(1,2,3).xplode(0));",Void,Void,L(1,2,3),__LINE__);
+tester.testSrc("var R = L(L(1,2,3).xplode(1));",Void,Void,L(2,3),__LINE__);
+tester.testSrc("var R = L(L(1,2,3).xplode(2));",Void,Void,L(3),__LINE__);
+tester.testSrc("var R = L(L(1,2,3).xplode(3));",Void,"IndexError",Void,__LINE__);
+tester.testSrc("var R = L(L(1,2,3).xplode(-1));",Void,Void,L(3),__LINE__);
+tester.testSrc("var R = L(L(1,2,3).xplode(-2));",Void,Void,L(2,3),__LINE__);
+tester.testSrc("var R = L(L(1,2,3).xplode(1,2));",Void,Void,L(2,3),__LINE__);
+tester.testSrc("var R = L(L(1,2,3).xplode(1,*));",Void,Void,L(2,3),__LINE__);
+
+tester.testSrc("var R = L(L(1,2,3).xplode(5,*));",Void,Void,L(),__LINE__);
+tester.testSrc("var R = L(L().xplode(0,*));",Void,Void,L(),__LINE__);
+tester.testSrc("var R = L(L().xplode(0,1));",Void,Void,L(),__LINE__);
+tester.testSrc("var R = L(L().xplode(1,0));",Void,Void,L(),__LINE__);
+
+
+	////////////////////////////////////////////////////////// .find
+tester.testSrc("var R = L(1,2,3).find();",Void,"MissingArg",Void,__LINE__);
+
+tester.testSrc("var R = L(1,2,3).find(1);",Void,Void,0,__LINE__);
+tester.testSrc("var R = L(1,2,3).find(2);",Void,Void,1,__LINE__);
+tester.testSrc("var R = L(1,2,3).find(3);",Void,Void,2,__LINE__);
+tester.testSrc("var R = L(1,2,3).find(4);",Void,Void,Void,__LINE__);
+tester.testSrc("var R = L(1,2,3).find(*);",Void,Void,Void,__LINE__);
+
+tester.testSrc("var R = L(1,2,3).find(1,0);",   Void,Void,0,__LINE__);
+tester.testSrc("var R = L(1,2,3).find(1,1);",   Void,Void,Void,__LINE__);
+tester.testSrc("var R = L(1,2,3).find(3,1);",   Void,Void,2,__LINE__);
+tester.testSrc("var R = L(1,2,3).find(3,2)",    Void,Void,2,__LINE__);
+tester.testSrc("var R = L(1,2,3).find(3,-1);",  Void,Void,2,__LINE__);
+tester.testSrc("var R = L(1,2,3).find(1,-1);",  Void,Void,Void,__LINE__);
+tester.testSrc("var R = L(1,2,3).find(3,9);",   Void,Void,Void,__LINE__);
+tester.testSrc("var R = L(1,2,3).find(3,9,10);",Void,Void,Void,__LINE__);
+tester.testSrc("var R = L(1,2,3).find(3,-1);",  Void,Void,2,__LINE__);
+tester.testSrc("var R = L(1,2,3).find(2,-2);",  Void,Void,1,__LINE__);
+
+tester.testSrc("var R = ROList(1,2,3).find(3,9);",   Void,Void,Void,__LINE__);
+tester.testSrc("var R = ROList(1,2,3).find(3,9,10);",Void,Void,Void,__LINE__);
+
+tester.testSrc("var R = L(1,2,3).find(3,1,1);", Void,Void,Void,__LINE__);
+tester.testSrc("var R = L(1,2,3).find(3,2,1);", Void,Void,2,__LINE__);
+tester.testSrc("var R = L(1,2,3).find(3,2,9);", Void,Void,2,__LINE__);
+tester.testSrc("var R = L(1,2,3).find(3,9,2);", Void,Void,Void,__LINE__);
+tester.testSrc("var R = L(1,2,3).find(3,1,*);", Void,Void,2,__LINE__);
+tester.testSrc("var R = L(1,2,3).find(3,1,-1);",Void,Void,Void,__LINE__);
+tester.testSrc("var R = L(1,2,3).find(3,-2,1);",Void,Void,Void,__LINE__);
+
+tester.testSrc("var R = L(1,L(1)).find(L(1))",Void,Void,1,__LINE__);
+
+tester.testSrc("var R = L(List,ROList).find(ROList)",Void,Void,0,__LINE__);
+tester.testSrc("var R = L(L(1),ROList(1)).find(ROList(1))",Void,Void,0,__LINE__);
+
+
+			////////////////////////////////////////////// .pop
+tester.testSrc("var R=L(1,2,3).pop();",Void,Void,3,__LINE__);
+tester.testSrc("var R=L(1,2,3).pop(-1);",Void,Void,3,__LINE__);
+
+tester.testSrc("var R=L(1,2,3).pop(0);",Void,Void,1,__LINE__);
+tester.testSrc("var R=L(1,2,3); R.pop(0);",Void,Void,L(2,3),__LINE__);
+
+tester.testSrc("var R=L(1,2,3).pop(100);",Void,"IndexError",Void,__LINE__);
+tester.testSrc("var R=L(1,2,3).pop(100,100);",Void,Void,L(),__LINE__);
+
+tester.testSrc("var R=L(1,2,3).pop(-1,*);",Void,Void,L(3),__LINE__);
+tester.testSrc("var R=L(1,2,3); R.pop(-1,*);",Void,Void,L(1,2),__LINE__);
+
+tester.testSrc("var R=L(1,2,3).pop(0,0);",Void,Void,L(),__LINE__);
+tester.testSrc("var R=L(1,2,3); R.pop(0,0);",Void,Void,L(1,2,3),__LINE__);
+
+tester.testSrc("var R=L(1,2,3).pop(1,1);",Void,Void,L(2),__LINE__);
+tester.testSrc("var R=L(1,2,3); R.pop(1,1);",Void,Void,L(1,3),__LINE__);
+
+
+	//////////////////////////////////////////////////////// .read
+tester.testSrc("var R=L(1,2,3).read();",Void,Void,1,__LINE__);
+tester.testSrc("var R=L().read();",Void,"TheEnd",Void,__LINE__);
+tester.testSrc("var R=L(1,2,3).readln();",Void,Void,1,__LINE__);
+tester.testSrc("var R=L().readln();",Void,"TheEnd",Void,__LINE__);
+
+
+#if 0
+	//////////////////////////////////////////////////////// .removeIf
+tester.testSrc("var R=L(1,2).removeIf(fcn(x){x == 1})",Void,Void,L(2));
+tester.testSrc("var R=L(1,2).removeIf(fcn{True})",Void,Void,L());
+tester.testSrc("var R=L(1,1.2,\"3\",3).removeIf(fcn(x){x.isType(1)})",
+	Void,Void,L(1.2,"3"),__LINE__);
+tester.testSrc("var R=L(1,2,2,3).removeIf(fcn(x){x==2 and 1})",
+	Void,Void,L(1,2,3),__LINE__);
+tester.testSrc("var R=L(1,2,3).removeIf(fcn(x){x==2 and \"*\"})",
+	Void,Void,L(1),__LINE__);
+tester.testSrc("var R=L(1,2,3).removeIf(fcn(x){if (x==2) 0 else True});",
+	Void,Void,L(2,3),__LINE__);
+tester.testSrc("var R=L(1,2,3,2,2,2,2,2).removeIf(fcn(x){(x==2)});",
+	Void,Void,L(1,3),__LINE__);
+				// are locks released?
+tester.testSrc("var R=L(1,2,3,2,2,2,2,2).removeIf(fcn(x){(x==2)});"
+	"R.clear();",Void,Void,L(),__LINE__);
+
+fcn f(x)
+{
+   if (x.isType(List)) { x.removeIf(f); False; }
+   else (x % 2) == 0;
+}
+fcn f2 { L(1,L(2,3),4,L(L(5,6))).removeIf(f) }
+
+tester.testRun(f2,Void,L(1,L(3),L(L(5))),__LINE__);
+
+	// make sure the write lock is removed
+tester.testSrc("var R;"
+    "R=L(1,2,3); R.removeIf(fcn(x){x == 1}); R.removeIf(fcn(x){x==3});",
+    Void,Void,L(2),__LINE__);
+#endif
+
+	/////////////////////////////////////////////////////// .remove
+tester.testSrc("var R=L(1,2).remove(1);",Void,Void,L(2),__LINE__);
+tester.testSrc("var R=L(1,2).remove(1,2);",Void,Void,L(),__LINE__);
+tester.testSrc("var R=L(1,1).remove(1);",Void,Void,L(),__LINE__);
+tester.testSrc("var R=L(1,2,4).remove(1,2,3);",Void,Void,L(4),__LINE__);
+tester.testSrc("var R=(L(L(1,2),\"three\") - L(1,2));",Void,Void,L("three"),__LINE__);
+tester.testSrc("var R=L(\"3\").remove(3);",Void,Void,L("3"),__LINE__);
+
+tester.testSrc("var R=ROList(\"3\").remove(3);","SyntaxError","NotFoundError",Void,__LINE__);
+tester.testSrc("var R=ROList.remove(3);","SyntaxError",Void,Void,__LINE__);
+
+
+	////////////////////////////////////////////////////// .removeEach
+tester.testSrc("var R=L(1,2).removeEach(1);",Void,Void,L(2),__LINE__);
+tester.testSrc("var R=L(1,2).removeEach(L(1));",Void,Void,L(2),__LINE__);
+tester.testSrc("var R=L(1,2).removeEach(L(1,5));",Void,Void,L(2),__LINE__);
+
+
+	/////////////////////////////////////////////////////////// .clear
+tester.testSrc("var R = T().clear();","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R = L().clear();",Void,Void,T,__LINE__);
+
+tester.testSrc("var R=L().clear();",Void,Void,L(),__LINE__);
+tester.testSrc("var R=L(1,2,3).clear();",Void,Void,L(),__LINE__);
+
+tester.testSrc("var R=ROList.clear();","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R=ROList(4).clear();","SyntaxError","NotFoundError",Void,__LINE__);
+
+tester.testSrc("var R=L(1,2,3).clear(5,6,7);",Void,Void,T(5,6,7),__LINE__);
+
+
+	////////////////////////////////////////////////////////// []
+tester.testSrc("var R = L(1,L(2,3))[1];",Void,Void,L(2,3),__LINE__);
+tester.testSrc("var R = L(1,2,3)[0];",Void,Void,1,__LINE__);
+tester.testSrc("var R = L(1,2,3)[-1];",Void,Void,3,__LINE__);
+tester.testSrc("var R = L(1,2,3)[1,2];",Void,Void,L(2,3),__LINE__);
+tester.testSrc("var R = L(1,2,3)[1,*];",Void,Void,L(2,3),__LINE__);
+tester.testSrc("var R = L(1,2,3)[5,*];",Void,Void,L(),__LINE__);
+tester.testSrc("var R = L()[0,*];",Void,Void,L(),__LINE__);
+tester.testSrc("var R = L()[0,1];",Void,Void,L(),__LINE__);
+tester.testSrc("var R = L()[1,0];",Void,Void,L(),__LINE__);
+tester.testSrc("var R = L(1,2)[*];",Void,"IndexError",Void,__LINE__);
+
+tester.testSrc("var R=L(1,2,3).makeReadOnly(); R=(R[1,0].id == T.id);",
+    Void,Void,True,__LINE__);
+tester.testSrc("var R = L(1,2,3).makeReadOnly()[1,2].isReadOnly;",
+    Void,Void,True,__LINE__);
+tester.testSrc("var R = T(1,2,3)[1,2].isReadOnly;",
+    Void,Void,True,__LINE__);
+tester.testSrc("var R=L(1,2,3,4,5,6).makeReadOnly()[1,*][1,*]; R=R.isReadOnly;",
+    Void,Void,True,__LINE__);
+
+tester.testSrc("var R=T(1,2,3); R=(R[1,0].id == T.id);",Void,Void,True,__LINE__);
+tester.testSrc("var R=T(1,2,3); R=(R.id == R[0,*].id);",Void,Void,True,__LINE__);
+tester.testSrc("var R=T(1,2,3,4,5,6)[1,*][1,*]; R=R.isReadOnly;",
+    Void,Void,True,__LINE__);
+tester.testSrc("var R=T(1,2,3,4,5,6)[1,*]; R=(R.id == R[0,*].id);",
+    Void,Void,True,__LINE__);
+
+
+	///////////////////////////////////////////////////////// [] = x
+tester.testSrc("var R = L(\"HOHO\"); R[0]=5;",	Void,Void,L(5),__LINE__);
+tester.testSrc("var R = (L(1,2)[*] = 5);",Void,"IndexError",Void,__LINE__);
+tester.testSrc("var R = L(1,L(2,3));R[1] = 5;",	Void,Void,L(1,5),__LINE__);
+tester.testSrc("var R = L(1,2,3);R[0] = 5;",	Void,Void,L(5,2,3),__LINE__);
+tester.testSrc("var R = L(1,2);R[-1] = 5;",	Void,Void,L(1,5),__LINE__);
+
+tester.testSrc("var R = L(1,2,3);R[1,2]=5;",	Void,Void,L(1,5),__LINE__);
+tester.testSrc("var R = L(1,2,3);R[1,20]=5;",	Void,Void,L(1,5),__LINE__);
+tester.testSrc("var R = L(1,2,3);R[1,*]=L(5,6);",Void,Void,L(1,L(5,6)),__LINE__);
+tester.testSrc("var R = L(1,2,3);R[5,*]=5;",	Void,"IndexError",Void,__LINE__);
+tester.testSrc("var R = L();R[0,*]=5;",		Void,"IndexError",Void,__LINE__);
+tester.testSrc("var R = L();R[0,1]=5;",		Void,"IndexError",Void,__LINE__);
+tester.testSrc("var R = L();R[1,0]=5;",		Void,"IndexError",Void,__LINE__);
+tester.testSrc("var R = L();R[10,0]=5;",	Void,"IndexError",Void,__LINE__);
+tester.testSrc("var R = L(1,3); R[1,0]=2;",	Void,Void,L(1,2,3),__LINE__);
+tester.testSrc("var R = L(1,2); R[*,0]=3;",	Void,"IndexError",Void,__LINE__);
+
+
+	//////////////////////////////////////////////////// .tail
+tester.testSrc("var R=List.tail(0);",Void,Void,T,__LINE__);
+tester.testSrc("var R=List.tail(1);",Void,Void,T,__LINE__);
+
+tester.testSrc("var R=L(1,2,3).tail(1);",Void,Void,T(3),__LINE__);
+tester.testSrc("var R=L(1,2,3).tail(2);",Void,Void,T(2,3),__LINE__);
+tester.testSrc("var R=L(1,2,3).tail(3);",Void,Void,T(1,2,3),__LINE__);
+tester.testSrc("var R=L(1,2,3).tail(4);",Void,Void,T(1,2,3),__LINE__);
+tester.testSrc("var R=L(1,2,3).tail(-4);",Void,Void,T(1,2,3),__LINE__);
+tester.testSrc("var R=L(1,2,3).tail(0);",Void,Void,T,__LINE__);
+
+tester.testSrc("var R=T(1,2,3).tail(0);",Void,Void,T,__LINE__);
+tester.testSrc("var R=T(1,2,3).tail(1);",Void,Void,T(3),__LINE__);
+tester.testSrc("var R=T(1,2,3).tail(2);",Void,Void,T(2,3),__LINE__);
+tester.testSrc("var R=T(1,2,3).tail(3);",Void,Void,T(1,2,3),__LINE__);
+tester.testSrc("var R=T(1,2,3).tail(4);",Void,Void,T(1,2,3),__LINE__);
+tester.testSrc("var R=T(1,2,3).tail(-4);",Void,Void,T(1,2,3),__LINE__);
+tester.testSrc("var t=T(1,2,3), id=t.id; tail:=t.tail(-4); var R=(tail.id==id);",
+   Void,Void,True,__LINE__);
+tester.testSrc("var t=T(1,2,3), id=t.id; tail:=t.tail(3); var R=(tail.id==id);",
+   Void,Void,True,__LINE__);
+tester.testSrc("var t=T(1,2,3), id=t.id; tail:=t.tail(4); var R=(tail.id==id);",
+   Void,Void,True,__LINE__);
+
+tester.testSrc("var R=T().tail(1);",Void,Void,T,__LINE__);
+
+
+	//////////////////////////////////////////////////// .insert
+tester.testSrc("var R = L().insert();",Void,Void,ROList,__LINE__);
+tester.testSrc("var R = L().insert(\"foo\",2);",Void,"ValueError",Void,__LINE__);
+
+tester.testSrc("var R = L().insert(1,2);",Void,"IndexError",Void,__LINE__);
+tester.testSrc("var R = L().insert(0);",Void,Void,L(),__LINE__);
+tester.testSrc("var R = L().insert(0,5);",Void,Void,L(5),__LINE__);
+tester.testSrc("var R = L(1).insert(0,5);",Void,Void,L(5,1),__LINE__);
+tester.testSrc("var R = L(1).insert(10,5);",Void,"IndexError",Void,__LINE__);
+tester.testSrc("var R = L(1).insert(1,5);",Void,Void,L(1,5),__LINE__);
+tester.testSrc("var R = L(1).insert(*,5);",Void,Void,L(1,5),__LINE__);
+tester.testSrc("var R = L(1).insert(-1,5);",Void,Void,L(5,1),__LINE__);
+tester.testSrc("var R = L(1,2,3).insert(-1,5);",Void,Void,L(1,2,5,3),__LINE__);
+
+tester.testSrc("var R=ROList().insert(0,5);","SyntaxError","NotFoundError",Void,__LINE__);
+
+
+		/////////////////////////////////////// .append
+tester.testSrc("var R = L().append();",Void,Void,T,__LINE__);
+tester.testSrc("var R = L().append(1,2,3);",Void,Void,T(1,2,3),__LINE__);
+tester.testSrc("var R = L().append(T(1,2,3));",Void,Void,T(T(1,2,3)),__LINE__);
+tester.testSrc("var R = L().append(L(1,2,3));",Void,Void,T(T(1,2,3)),__LINE__);
+tester.testSrc("var R = L(1,2).append(3,T(4,5),L(6));",
+    Void,Void,T(1,2,3,T(4,5),T(6)),__LINE__);
+
+tester.testSrc("var R = T.append();",Void,Void,T,__LINE__);
+tester.testSrc("var R = T.append(1,2,3);",Void,Void,T(1,2,3),__LINE__);
+tester.testSrc("var R = T.append(T(1,2,3));",Void,Void,T(T(1,2,3)),__LINE__);
+tester.testSrc("var R = T.append(L(1,2,3));",Void,Void,T(T(1,2,3)),__LINE__);
+tester.testSrc("var R = T(1,2).append(3,T(4,5),L(6));",
+    Void,Void,T(1,2,3,T(4,5),T(6)),__LINE__);
+
+
+		/////////////////////////////////////// op_add(+)
+tester.testSrc("var R = (T + 1);",Void,Void,T(1),__LINE__);
+tester.testSrc("var R = (T + 1+2+3);",Void,Void,T(1,2,3),__LINE__);
+tester.testSrc("var R = (T(1,2) + T(3,T(4,5),L(6)));",
+    Void,Void,T(1,2,T(3,T(4,5),T(6))),__LINE__);
+
+tester.testSrc("var R = (T(1,2,3,4,5,6,7,8,9)[1,*] + T(3,T(4,5),L(6)));",
+    Void,Void,T(2,3,4,5,6,7,8,9,T(3,T(4,5),T(6))),__LINE__);
+
+
+		/////////////////////////////////////// op_sub(-)
+tester.testSrc("var R = (L(1,2,3) - 2);",Void,Void,T(1,3),__LINE__);
+tester.testSrc("var R = (L(1,2,3) - 5);",Void,Void,T(1,2,3),__LINE__);
+tester.testSrc(0'|var R=(L("a","b") - "a");|,Void,Void,T("b"),__LINE__);
+tester.testSrc(0'|var R=(L(True,True,False) - True);|,Void,Void,T(False),__LINE__);
+
+
+		/////////////////////////////////////// op_mul(*)
+tester.testSrc("var R = (L(5)*0);",Void,Void,T,__LINE__);
+tester.testSrc("var R = (L(5)*1);",Void,Void,T(5),__LINE__);
+tester.testSrc("var R = (L(5)*2);",Void,Void,T(T(5),T(5)),__LINE__);
+tester.testSrc("var R = (L(5)*0'|hoho|);",Void,Void,T(5),__LINE__);
+tester.testSrc("var R = (L(5)*-1);",Void,Void,T(5),__LINE__);
+tester.testSrc("var R = (L(5)*2.4);",Void,Void,T(T(5),T(5)),__LINE__);
+
+
+		/////////////////////////////////////// .extend
+tester.testSrc("var R = T.extend();",Void,Void,T,__LINE__);
+tester.testSrc("var R = T.extend(1,2,3);",Void,Void,T(1,2,3),__LINE__);
+tester.testSrc("var R = T.extend(T(1,2,3));",Void,Void,T(1,2,3),__LINE__);
+tester.testSrc("var R = T.extend(L(1,2,3));",Void,Void,T(1,2,3),__LINE__);
+tester.testSrc("var R = T(1,2).extend(3,T(4,5),L(6));",
+    Void,Void,T(1,2,3,4,5,6),__LINE__);
+
+tester.testSrc("var R = L().extend();",Void,Void,T,__LINE__);
+tester.testSrc("var R = L().extend(1,2,3);",Void,Void,T(1,2,3),__LINE__);
+tester.testSrc("var R = L().extend(T(1,2,3));",Void,Void,T(1,2,3),__LINE__);
+tester.testSrc("var R = L().extend(L(1,2,3));",Void,Void,T(1,2,3),__LINE__);
+tester.testSrc("var R = L(1,2).extend(3,T(4,5),L(6));",
+    Void,Void,T(1,2,3,4,5,6),__LINE__);
+
+tester.testSrc("var R = L(1,2); R.extend(R);", Void,Void,T(1,2,1,2),__LINE__);
+tester.testSrc("var R = L(1,2); R.extend(R,R);", Void,Void,T(1,2,1,2,1,2),__LINE__);
+tester.testSrc("var R = L(1,2); R.extend(R[0]);", Void,Void,T(1,2,1),__LINE__);
+tester.testSrc("var R = L(1,2); R.extend(R[0,*]);", Void,Void,T(1,2,1,2),__LINE__);
+tester.testSrc("var R = L(1,2); R.extend(R[1,*]);", Void,Void,T(1,2,2),__LINE__);
+
+
+		/////////////////////////////////////// .flatten
+tester.testSrc("var R = T.flatten();",Void,Void,T,__LINE__);
+tester.testSrc("var R = T(1,2,3).flatten();",Void,Void,T(1,2,3),__LINE__);
+tester.testSrc("var R = T(1,2,3).flatten();",Void,Void,T(1,2,3),__LINE__);
+tester.testSrc("var R = L(1,2,3).flatten();",Void,Void,T(1,2,3),__LINE__);
+tester.testSrc("var R = T(1,2,3,T(4,5),L(6)).flatten();",
+    Void,Void,T(1,2,3,4,5,6),__LINE__);
+tester.testSrc("var R = T(T,1,T(2),L(T(3))).flatten();",
+    Void,Void,T(1,2,T(3)),__LINE__);
+
+
+		///////////////////////////////////////.reverse
+tester.testSrc(0'|var [const] R = L(1,2,3).reverse();|,
+    Void,Void,T(3,2,1),__LINE__);
+tester.testSrc(0'|var [const] R = L(1,2,3).makeReadOnly().reverse();|,
+    Void,Void,T(3,2,1),__LINE__);
+tester.testSrc(0'|var [const] R = T(1,2,3).reverse();|,
+    Void,Void,T(3,2,1),__LINE__);
+tester.testSrc(0'|var [const] R = T(1,2,3,4,5,6)[2,3].reverse();|,
+    Void,Void,T(5,4,3),__LINE__);
+tester.testSrc(0'|var [const] R = L(1,2,3,4,5,6)[2,3].reverse();|,
+    Void,Void,T(5,4,3),__LINE__);
+
+tester.testSrc(0'|var R = L(1,2,3).reverse(-1);|, Void,Void,T(1,2,3),__LINE__);
+tester.testSrc(0'|var R = L(1,2,3).reverse(-2);|, Void,Void,T(1,3,2),__LINE__);
+tester.testSrc(0'|var R = L(1,2,3).reverse(-3);|, Void,Void,T(3,2,1),__LINE__);
+tester.testSrc(0'|var R = L(1,2,3).reverse(-4);|, Void,Void,T(3,2,1),__LINE__);
+tester.testSrc(0'|var R = L(1,2,3).reverse(-5);|, Void,Void,T(3,2,1),__LINE__);
+
+tester.testSrc(0'|var R = L(1,2,3).reverse(0);|,  Void,Void,T(3,2,1),__LINE__);
+tester.testSrc(0'|var R = L(1,2,3).reverse(1);|,  Void,Void,T(1,3,2),__LINE__);
+tester.testSrc(0'|var R = L(1,2,3).reverse(2);|,  Void,Void,T(1,2,3),__LINE__);
+tester.testSrc(0'|var R = L(1,2,3).reverse(3);|,  Void,Void,T(1,2,3),__LINE__);
+
+tester.testSrc(0'|var R = L(1,2,3).reverse(1,0);|, Void,Void,T(1,2,3),__LINE__);
+tester.testSrc(0'|var R = L(1,2,3).reverse(2,0);|, Void,Void,T(1,2,3),__LINE__);
+tester.testSrc(0'|var R = L(1,2,3).reverse(3,0);|, Void,Void,T(1,2,3),__LINE__);
+
+tester.testSrc(0'|var R = L(1,2,3).reverse(0,1);|, Void,Void,T(1,2,3),__LINE__);
+tester.testSrc(0'|var R = L(1,2,3).reverse(0,2);|, Void,Void,T(2,1,3),__LINE__);
+tester.testSrc(0'|var R = L(1,2,3).reverse(0,3);|, Void,Void,T(3,2,1),__LINE__);
+tester.testSrc(0'|var R = L(1,2,3).reverse(0,4);|, Void,Void,T(3,2,1),__LINE__);
+
+tester.testSrc(0'|var R = L(1,2,3).reverse(1,1);|, Void,Void,T(1,2,3),__LINE__);
+tester.testSrc(0'|var R = L(1,2,3).reverse(1,2);|, Void,Void,T(1,3,2),__LINE__);
+tester.testSrc(0'|var R = L(1,2,3).reverse(1,3);|, Void,Void,T(1,3,2),__LINE__);
+
+tester.testSrc(0'|var R = L(1,2,3).reverse(2,0);|, Void,Void,T(1,2,3),__LINE__);
+tester.testSrc(0'|var R = L(1,2,3).reverse(2,1);|, Void,Void,T(1,2,3),__LINE__);
+tester.testSrc(0'|var R = L(1,2,3).reverse(2,2);|, Void,Void,T(1,2,3),__LINE__);
+tester.testSrc(0'|var R = L(1,2,3).reverse(2,3);|, Void,Void,T(1,2,3),__LINE__);
+
+tester.testSrc(0'|var R = L(1,2,3).reverse(3,0);|, Void,Void,T(1,2,3),__LINE__);
+tester.testSrc(0'|var R = L(1,2,3).reverse(3,1);|, Void,Void,T(1,2,3),__LINE__);
+tester.testSrc(0'|var R = L(1,2,3).reverse(3,2);|, Void,Void,T(1,2,3),__LINE__);
+tester.testSrc(0'|var R = L(1,2,3).reverse(3,3);|, Void,Void,T(1,2,3),__LINE__);
+
+
+		//////////////////////////////////////////////////// .del
+tester.testSrc("var R = L().del(3);",Void,Void,L(),__LINE__);
+tester.testSrc("var R = L(1).del(3);",Void,Void,L(1),__LINE__);
+tester.testSrc("var R = L(1,2).del(0);",Void,Void,L(2),__LINE__);
+tester.testSrc("var R = L(1,2).del(-1);",Void,Void,L(1),__LINE__);
+tester.testSrc("var R = L(1,2).del(-1);",Void,Void,L(1),__LINE__);
+tester.testSrc("var R = L(1,2).del(0,*);",Void,Void,L(),__LINE__);
+tester.testSrc("var R = L(1,2,3).del(0,-1);",Void,Void,L(3),__LINE__);
+tester.testSrc("var R = L(1,2).del(0,-10);",Void,Void,L(1,2),__LINE__);
+
+
+	///////////////////////////////////////////////////////// .swap
+tester.testSrc("var R = L().swap(0,0);",Void,"IndexError",Void,__LINE__);
+tester.testSrc("var R = L(1).swap(0,0);",Void,Void,L(1),__LINE__);
+tester.testSrc("var R = L(1).swap(-1,-1);",Void,Void,L(1),__LINE__);
+tester.testSrc("var R = L(1,2).swap(0,-1);",Void,Void,L(2,1),__LINE__);
+tester.testSrc("var R = L(0,1,2,3).swap(1,2);",Void,Void,L(0,2,1,3),__LINE__);
+tester.testSrc("var R = L(1,2).swap(0,1);",Void,Void,L(2,1),__LINE__);
+tester.testSrc("var R = L(1,2).swap(0,2);",Void,"IndexError",Void,__LINE__);
+
+tester.testSrc("var R = L(1,2).swap(*,0);",Void,"IndexError",Void,__LINE__);
+tester.testSrc("var R = L(1,2).swap(0,*);",Void,"IndexError",Void,__LINE__);
+
+tester.testSrc("var R = L(1,2).swap(self);",Void,"NotImplementedError",Void,__LINE__);
+tester.testSrc("var R = L(1,2).swap();",Void,"MissingArg",Void,__LINE__);
+tester.testSrc("var R = L(1,2).swap(0);",Void,"MissingArg",Void,__LINE__);
+
+
+	///////////////////////// .filter, .filter1, .filter1n, filter22
+tester.testSrc("var R=T(5,0).filter()",Void,Void,T(5),__LINE__);
+tester.testSrc("var R=T(5,0).filter(Void)",Void,Void,T(5),__LINE__);
+tester.testSrc("var R=T(5,0).filter(T)",Void,Void,T(5),__LINE__);
+tester.testSrc(0'|var R=L(1).filter(")DN")|,Void,"NameError",Void,__LINE__);
+tester.testSrc(0'|var R=L(1,2).filter("isEven")|,Void,Void,T(2),__LINE__);
+tester.testSrc("var R=L(0,1,2).filter()",Void,Void,L(1,2),__LINE__);
+tester.testSrc("var R=L(0,1,2).filter1()",Void,Void,1,__LINE__);
+tester.testSrc("var R=L(0,1,2).filter(Void)",Void,Void,L(1,2),__LINE__);
+tester.testSrc(0'|var R=L(0,Void,L(),"").filter()|,Void,Void,L(),__LINE__);
+tester.testSrc("var R=L(1,0,3,True,False).filter()",Void,Void,L(1,3,True),__LINE__);
+
+//tester.testSrc("var R=L(1,0,0,0,3,0,0,2).filter(2)",Void,Void,L(1,3),__LINE__);
+
+
+tester.testSrc("var R=L().filter1()",Void,Void,False,__LINE__);
+tester.testSrc(0'|var R=L(0,Void,T,"").filter1()|,Void,Void,False,__LINE__);
+tester.testSrc(0'|var R=L(0,4,5).makeReadOnly().filter1()|,Void,Void,4,__LINE__);
+
+tester.testSrc(0'|var R = L(0,Void,T,"").filter1n()|,Void,Void,False,__LINE__);
+
+tester.testSrc(0'|var R=L("{",14,"AKA","(",")",15,"script",";",18);|
+   0'|R=R.pump((n:=Atomic.Int(0)).inc,T("isType",Int),Void.Filter);|,
+   Void,Void,Atomic.Int(3),__LINE__);
+tester.testSrc(0'|var R=L("{",14,"AKA","(",")",15,"script",";",18);|
+   0'|R=R.pump((n:=Atomic.Int(0)).inc,T("isType",Int),Void.Filter);|,
+   Void,Void,Atomic.Int(3),__LINE__);
+tester.testSrc(0'|var R=L("{",14,"AKA","(",")",15,"script",";",18);|
+   0'|R=R.pump((n:=Atomic.Int(0)).inc,T("isType",Int),Void.Filter);|,
+   Void,Void,Atomic.Int(3),__LINE__);
+tester.testSrc(0'|var R=L("{",14,"AKA","(",")",15,"script",";",18);|
+   0'|R=R.pump((n:=Atomic.Int(0)).inc,Int.isType,Void.Filter);|,
+   Void,Void,Atomic.Int(3),__LINE__);
+tester.testSrc(0'|var R=L("{",14,"AKA","(",")",15,"script",";",18);|
+   0'|R=R.pump(Ref(0).inc.fp(1),Int.isType,Void.Filter).value;|,
+   Void,Void,3,__LINE__);
+
+tester.testSrc(0'|var R=L(1,"2",3,4.5).filter(Int.isType);|,Void,Void,L(1,3),__LINE__);
+tester.testSrc(0'|var R=L(1,"2",3,4.5).pump(String,Int.isType,Void.Filter);|,
+   Void,Void,"13",__LINE__);
+
+
+	///////////////// Int
+tester.testSrc(0'|var R=T(0,1,5,6,9876543210123).filter();|,
+    Void,Void,T(1,5,6,9876543210123),__LINE__);
+tester.testSrc(0'|var R=T(0,1,5,6,9876543210123).filter("len");|,
+    Void,Void,T(0,1,5,6,9876543210123),__LINE__);
+tester.testSrc(0'|var R=T(0,1,5,6,9876543210123).filter("%%%");|,
+    Void,"NameError",Void,__LINE__);
+tester.testSrc(0'|var R=T(0,1,fcn{},5,6).filter("isEven");|,
+    Void,Void,T(0,6),__LINE__);
+
+	///////////////// Fcn
+tester.testSrc(0'|var R=T("foo","oo","bar","kangaroo")|
+    ".filter(fcn(nameFromList,pattern) { nameFromList.matches(pattern)},"
+    "        \"*oo*\");",Void,Void,T("foo","oo","kangaroo"),__LINE__);
+tester.testSrc(0'|var R=T("foo","oo","bar","kangaroo")|
+    0'|.filter(fcn(s){ if (s == "bar") return(Void.Skip); True });|,
+    Void,Void,T("foo","oo","kangaroo"),__LINE__);
+tester.testSrc(0'|var R=T("foo","oo","bar","kangaroo")|
+    0'|.filter(fcn(s){ if (s == "bar") return(Void.Stop,Void.Void); True});|,
+    Void,Void,T("foo","oo"),__LINE__);
+tester.testSrc(0'|var R=T(fcn{}).filter("build");|,
+    Void,"MissingArg",Void,__LINE__);
+
+	///////////////////// String
+tester.testSrc(0'|var R = L("1",Void,"",self).filter("len")|,
+    Void,Void,L("1"),__LINE__);
+tester.testSrc(0'|var R = L("1","2","123").filter("holds","1")|,
+    Void,Void,L("1","123"),__LINE__);
+tester.testSrc(0'|var R = L("2","123").filter1n("holds","1")|,Void,Void,1,__LINE__);
+tester.testSrc(0'|var R = T("2","123").filter1("holds","1")|,Void,Void,"123",__LINE__);
+tester.testSrc(0'|var R = L("2","23").filter1("holds","1")|,Void,Void,False,__LINE__);
+tester.testSrc("var R = L(123).filter(\"toString\")",	// PtrInt
+    Void,Void,L(123),__LINE__);
+tester.testSrc("var R = L(123,\"foo\")"
+    ".filter(fcn(x) { throw(Exception.BadDay) });",Void,"BadDay",Void,__LINE__);
+tester.testSrc("class C { fcn toBool { return(True) }}"
+    0'|var R = L(C).filter().pump(Void,"name");|,Void,Void,"C",__LINE__);
+
+tester.testSrc(0'|var R=L("1").filter("noop")|,Void,Void,L("1"),__LINE__);
+tester.testSrc(0'|var R=L(4,5,6).filter("noop")|,Void,Void,L(4,5,6),__LINE__);
+tester.testSrc(0'|var R=L(4,5,6).filter1n("noop")|,Void,Void,0,__LINE__);
+tester.testSrc(0'|var R=T(4,5,6).filter1("noop")|,Void,Void,4,__LINE__);
+
+    	///////////////// Method
+tester.testSrc("var R; class A{} class B{}"
+    "R = (L(A,B).filter(A.isInstanceOf) == L(A));",Void,Void,True,__LINE__);
+
+    	////////////////// Op
+tester.testSrc(0'|var R=T(1,2,3,4).filter22(Op("<"),3);|,
+    Void,Void,T(T(1,2),T(3,4)),__LINE__);
+tester.testSrc(0'|var R = L("2","").filter(Op("==").fp("2"))|,
+    Void,Void,T("2"),__LINE__);
+
+	///////////////// closure
+tester.testSrc("fcn f(x,y){x+y} var R = L(0,1,2).filter(f.fp(0));",
+    Void,Void,T(1,2),__LINE__);
+
+	//////////////// Deferred
+tester.testSrc(0'|d := Deferred(Op,"+",1);|
+    0'|var R = T(-1,0,1).filter(d);|,Void,Void,T(0,1),__LINE__);
+tester.testSrc(0'|var R=L(Deferred("","HOHO")).filter("len");|
+    "R=R[0].BaseClass.isCooked;",Void,Void,True,__LINE__);
+tester.testSrc(0'|var R=L(Deferred("","HOHO")).filter("matches","H*");|
+    "R=R.len();",Void,Void,1,__LINE__);
+tester.testSrc(0'|var R=L(Deferred("","HOHO")).filter("matches","H*");|
+    "R=R[0].BaseClass.isCooked;",Void,Void,True,__LINE__);
+tester.testSrc(0'|var R=T(Deferred(fcn{})).filter("build");|,
+    Void,Void,T,__LINE__);
+tester.testSrc(0'|var R=T(Deferred(fcn{ self.fcn })).filter("build");|,
+    Void,"MissingArg",Void,__LINE__);
+
+	/////////////////// List
+tester.testSrc(0'|var R = T(fcn foo{},fcn bar{})|
+    0'|.filter(fcn(f){ f.name.matches("f*") }).len();|, Void,Void,1,__LINE__);
+tester.testSrc(0'|var R = T(fcn foo{},fcn bar{})|
+    0'|.filter(T("name",T("matches","f*"))).apply("name");|,
+    Void,Void,T,__LINE__);
+tester.testSrc(0'|var R = T(fcn foo{},fcn bar{})|
+    0'|.filter1n(fcn(f){f.name.matches("b*")});|,
+    Void,Void,1,__LINE__);
+
+
+
+fcn qsort(list) {
+   if (not list) return(list); // L() --> L()
+//   reg pivot = list.pop(list.len()/2), rest = list;
+   reg pivot = list[0], rest = list[1,*];
+   left,right := rest.filter22(Op("<"),pivot); // fcn(x,y){x<y}
+   T.extend(qsort(left),pivot,qsort(right));
+}
+fcn q1 { return(qsort(L(5,3,32,67,2,78,23,542,1))) }
+fcn q2 { return(qsort("the quick brown fox".split())) }
+tester.testRun(q1,Void,L(1,2,3,5,23,32,67,78,542),__LINE__);
+tester.testRun(q2,Void,L("brown","fox","quick","the"),__LINE__);
+
+fcn qsort2(list) {
+   if (not list) return(list); // L() --> L()
+   reg pivot = list[0], rest = list[1,*];
+   left,right := rest.filter22(Op("<"),pivot); // fcn(x,y){x<y}
+   T.extend(qsort(left),pivot,qsort(right));
+}
+fcn q3 { return(qsort2(T(5,3,32,67,2,78,23,542,1))) }
+tester.testRun(q3,Void,T(1,2,3,5,23,32,67,78,542),__LINE__);
+
+
+	////////////////////////////////////////////////// .apply[2]
+tester.testSrc("var R=T.apply();",Void,"MissingArg",Void,__LINE__);
+tester.testSrc("var R=T.apply(Void);",Void,Void,T,__LINE__);
+tester.testSrc("var R=T(15,16).apply(Void);",Void,Void,T(15,16),__LINE__);
+tester.testSrc("var R=T(15,16).apply(Void);",Void,Void,T(15,16),__LINE__);
+tester.testSrc("var R=T(15,16).apply(T);",Void,Void,T(T(15),T(16)),__LINE__);
+tester.testSrc("var R=T(15,16).apply(String);",Void,Void,T("15","16"),__LINE__);
+
+tester.testSrc("var R=T(1,2,3,4).apply(Void.Stop);",Void,Void,T,__LINE__);
+tester.testSrc("var R=T(1,2,3,4).apply(Void.Skip);",Void,Void,T,__LINE__);
+
+	// Method
+tester.testSrc("var R = L(15,16).apply(\"toString\",16)",    // PtrInts
+    Void,Void,L("f","10"),__LINE__);
+tester.testSrc(0'|var R = L("1","2","321").apply("holds","1")|,
+    Void,Void,L(True,False,True),__LINE__);
+	// core dumper
+tester.testSrc(0'|var R = L(4,5,6).apply("noop")|,Void,Void,L(4,5,6),__LINE__);
+	// core dumper, not thunking PtrInt:
+tester.testSrc(0'|var R = L(5,6,7).apply("Method","noop")[0].instance;|,
+    Void,Void,5,__LINE__);
+
+//tester.testSrc(0'|var R = L(0x1234).apply("__sGet",0);|,Void,Void,T(0x34),__LINE__);
+
+tester.testSrc(0'|var R = T(1,"HOHO").apply("walker").toString();|,
+    Void,Void,"L(Walker,Walker)",__LINE__);
+tester.testSrc(0'|var R = T(1,2).apply("".walker).toString();|,
+    Void,Void,"L(Walker,Walker)",__LINE__);
+
+	////////////////////// String
+tester.testSrc(0'|var R = L(4,5,6).apply("noop")|,Void,Void,L(4,5,6),__LINE__);
+tester.testSrc(0'|var R = L(4,5,6).apply("toString")|,
+   Void,Void,L("4","5","6"),__LINE__);
+tester.testSrc(0'|var R = L(4,5,6).apply(String)|,
+   Void,Void,L("4","5","6"),__LINE__);
+tester.testSrc(0'|var R=L().apply("$$$")|,Void,"NameError",Void,__LINE__);
+
+    	///////////////////// property
+tester.testSrc(0'|var R = L(12,3.4,L(5)).apply("otype")|,
+    Void,Void,L("Int","Float","List"),__LINE__);
+
+	////////////////////// Property
+tester.testSrc(0'|class C{ var f = self.Property("name") }|
+    0'|var R = C.f.toString()|,Void,Void,"Property(C.name)",__LINE__);
+tester.testSrc(0'|class C{ var f = self.Property("name") }|
+    0'|var R = L(C).apply("f").apply("toString")|,
+    Void,Void,L("Property(C.name)"),__LINE__);
+	// core dumper, not thunking PtrInt:
+tester.testSrc(0'|var R = L(5,6,7,8,9).apply("Property","name")[0].instance;|,
+    Void,Void,5,__LINE__);
+
+	///////////////////////// var
+tester.testSrc("var R = L(Exception.BadDay).apply(\"text\")",
+    Void,Void,L("I'm having a bad day"),__LINE__);
+
+	////////////////////////// Fcn
+tester.testSrc("class Foo { var n; fcn init(n) { self.n = n; } }"
+    "var R = L(1).apply(Foo).toString()",
+    Void,Void,"L(Class(Foo))",__LINE__);
+tester.testSrc("class Foo { var n; fcn init(n) { self.n = n; } }"
+    "var R = L(1).apply(Foo)[0].n",Void,Void,1,__LINE__);
+
+tester.testSrc("var R = L(1,2).apply(fcn(x) { x + 10 })",Void,Void,L(11,12),__LINE__);
+tester.testSrc("var R = L(1,2).apply(fcn(x,y) { y * (x + 10) },10)",
+	Void,Void,L(110,120),__LINE__);
+
+tester.testSrc("var R = L().apply(fcn {})",Void,Void,L(),__LINE__);
+tester.testSrc("var R = L(1).apply(fcn {vm.arglist})",Void,Void,L(L(1)),__LINE__);
+
+tester.testSrc(0'|var R=L(4,5,6).pump(List,fcn(x){ x.Method("toString") })|
+    "[0].instance;", Void,Void,4,__LINE__);
+
+tester.testSrc(0'|var R = T(1,2,3,4,5,6).apply(|
+    "   fcn(x){if (x<5)return(Void.Skip); x})", Void,Void,T(5,6),__LINE__);
+
+	////////////////////////// Op
+tester.testSrc(0'|var R = L(1,2,3).apply(Op("+",1))|,
+    Void,Void,T(2,3,4),__LINE__);
+
+	//////////////////////// closure
+tester.testSrc("fcn f(x,y){x+y} var R = L(1,2,3).apply(f.fp(1));",
+    Void,Void,T(2,3,4),__LINE__);
+
+	///////////////////////// Deferred
+tester.testSrc(0'|d := Deferred(Op,"+",1);|
+    0'|var R = L(1,2,3).apply(d);|,Void,Void,T(2,3,4),__LINE__);
+
+tester.testSrc(0'|var R = T(5).apply(Deferred.once(fcn(x){x+122},1));|,
+    Void,Void,T(123),__LINE__);
+tester.testSrc(0'|var R = T(5).apply(Deferred(fcn(x){x+122},1));|,
+    Void,Void,T(5),__LINE__);
+
+tester.testSrc(0'|var R=T(5,6).apply(Deferred(fcn{return(fcn(x){x+123})}));|,
+    Void,Void,T(128,129),__LINE__);
+
+    	/////////////////////////////// List of actions
+tester.testSrc(0'|var R=T(fcn f{},fcn b{}).pump(List,"name",T("matches","f*"));|,
+    Void,Void,T(True,False),__LINE__);
+
+tester.testSrc(0'|f:=Op("+",1); g:=Op("*",2); h:=Op("-",3); fgh:=T(f,g,h);|
+    "var R=T(10).pump(List,fgh.reverse().xplode());",Void,Void,T(15),__LINE__);
+tester.testSrc(0'|f:=Op("+",1); g:=Op("*",2); h:=Op("-",3); fgh:=T(f,g,h);|
+    "var R=T(10).pump(Void,fgh.reverse().xplode());",Void,Void,15,__LINE__);
+tester.testSrc(0'|f:=Op("+",1); g:=Op("*",2); h:=Op("-",3); fgh:=L(f,g,h);|
+    "var R=T(10).pump(Void,fgh.reverse().xplode());",Void,Void,15,__LINE__);
+
+    	/////////////////////// Int
+tester.testSrc(0'|var R=T(0,1,5,6,9876543210123).apply("foo");|,
+    Void,Void,T,__LINE__);
+
+		// is result writable?
+tester.testSrc(0'|var R = L().apply("len").isReadOnly|,Void,Void,True,__LINE__);
+tester.testSrc(0'|var R = L(1).apply("len").isReadOnly|,Void,Void,True,__LINE__);
+
+tester.testSrc(0'|var R = L(1,2,3).apply('/.fp(100))|,
+    Void,Void,T(100,50,33),__LINE__);
+
+tester.testSrc(0'|var R=L(1,2).apply("toString",2);|,
+    Void,Void,T("1","10"),__LINE__);
+
+
+	//////////////////////////////////////////////////// .sort
+tester.testSrc("var R = L(4,23,6,1).sort()",Void,Void,L(1,4,6,23),__LINE__);
+tester.testSrc("var R = L(\"one\",\"two\",\"3\").sort()",
+	Void,Void,L("3","one","two"),__LINE__);
+tester.testSrc("var R = L(1,\"two\",3).sort()",Void,"ValueError",Void,__LINE__);
+
+tester.testSrc("var R = L(4,23,6,1).sort('<)",
+	Void,Void,L(1,4,6,23),__LINE__);
+tester.testSrc("var R = L(4,23,6,1).sort('>)",
+	Void,Void,L(23,6,4,1),__LINE__);
+tester.testSrc("var R = L(\"one\",\"two\",\"3\").sort('>)",
+	Void,Void,L("two","one","3"),__LINE__);
+
+tester.testSrc("var R=T(4,23,6,1).sort()",Void,Void,T(1,4,6,23),__LINE__);
+tester.testSrc("var R=T(4,23,6,1).sort().isReadOnly;",Void,Void,True,__LINE__);
+tester.testSrc("var R = T(4,23,6,1).sort('>)",
+	Void,Void,T(23,6,4,1),__LINE__);
+tester.testSrc("var R=T(9,8,7,6,5,4,3,2,1)[1,*].sort();",	// TP
+    Void,Void,T(1,2,3,4,5,6,7,8),__LINE__);
+tester.testSrc("var R=Dictionary(5,4,3,2,1,0).keys.sort();",	// ROList#
+    Void,Void,T("1","3","5"),__LINE__);
+
+
+	///////////////////////////////////////////// .callProperty
+tester.testSrc(0'|var R = L(2,3.4,L(5)).callProperty("otype")|,
+	Void,Void,L("Int","Float","List"),__LINE__);
+
+
+	//////////////////////////////// .callMethod
+tester.testSrc("var R = L(\"1\",\"22\",\"333\").callMethod(\"len\")",
+	Void,Void,L(1,2,3),__LINE__);
+tester.testSrc("var R = L(\"1\",\"22\",\"333\").callMethod(\"toInt\")",
+	Void,Void,L(1,22,333),__LINE__);
+tester.testSrc("var R = L(1,22,333).callMethod(\"toString\",16)",
+	Void,Void,L("1","16","14d"),__LINE__);
+
+
+	////////////////////////////////////////////////// .call --> .pump
+tester.testSrc(0'|class C { fcn f(x=123){ x }}|
+    0'|var R=T(C).pump(List,"f");|,Void,Void,L(123),__LINE__);
+tester.testSrc(0'|class C { fcn f(x=123){ x }}|
+    0'|var R=L(C).pump(List,T("f",456));|,Void,Void,L(456),__LINE__);
+
+tester.testSrc(0'|class C { fcn f(x=123){ x }}|
+    0'|var R=T(Deferred(C)).pump(List,"f");|,Void,Void,T(123),__LINE__);
+
+tester.testSrc(0'|var R=T("",123).pump(List,"noop");|,Void,Void,L("",123),__LINE__);
+
+tester.testSrc(0'|var R=L(1,2).pump(List,T("toString",2));|,
+    Void,Void,T("1","10"),__LINE__);
+
+
+	////////////////////////////////////////////////// .holds
+tester.testSrc("var R = L(1,2,3).holds(3)",Void,Void,True,__LINE__);
+tester.testSrc("var R = L(1,2,3).holds(\"3\")",Void,Void,False,__LINE__);
+tester.testSrc("var R = L(\"3\").holds(3)",Void,Void,False,__LINE__);
+tester.testSrc("var R = L(1).holds(1.0)",Void,Void,False,__LINE__);
+tester.testSrc("var R = L(1.0).holds(1)",Void,Void,False,__LINE__);
+tester.testSrc("var R = L(True).holds(1)",Void,Void,False,__LINE__);
+tester.testSrc("var R = L(1).holds(True)",Void,Void,False,__LINE__);
+tester.testSrc("var R = L(\"True\").holds(True)",Void,Void,False,__LINE__);
+tester.testSrc("var R = L(True).holds(\"True\")",Void,Void,False,__LINE__);
+tester.testSrc("var R = L(L(1)).holds(L(1))",Void,Void,True,__LINE__);
+tester.testSrc("var R = L(L(L(1))).holds(L(L(1)))",Void,Void,True,__LINE__);
+
+tester.testSrc("var R = L(List).holds(ROList)",Void,Void,True,__LINE__);
+tester.testSrc("var R = L(L(1)).holds(ROList(1))",Void,Void,True,__LINE__);
+
+tester.testSrc("d := self.fcn.code.code;"
+    "var R = L(d).holds(d.copy());",Void,Void,True,__LINE__);
+
+
+	////////////////////////////////////////////// opEq, ==, !=
+tester.testSrc("var R = (L(1,2,3) == 3)",Void,Void,False,__LINE__);
+tester.testSrc("var R = ( L(L(1)) == L(L(1)) )",Void,Void,True,__LINE__);
+tester.testSrc("var R = ( T(1) == T(1) )",Void,Void,True,__LINE__);
+tester.testSrc("var R = ( T(1) == L(1) )",Void,Void,True,__LINE__);
+
+tester.testSrc("var R = (List == ROList)",Void,Void,True,__LINE__);
+tester.testSrc("var R = ( L(1) == ROList(1) )",Void,Void,True,__LINE__);
+
+tester.testSrc("var R = ( L(1) != L(2) )",Void,Void,True,__LINE__);
+tester.testSrc("var R = ( T(1) != T(2) )",Void,Void,True,__LINE__);
+
+
+	////////////////////////////////// .toList
+tester.testSrc("var R = (3).toList()",Void,Void,L(0,1,2),__LINE__);
+
+
+	////////////////////////////////////////////////// .toString
+tester.testSrc("var R = List.toString();", Void,Void,"L()",__LINE__);
+tester.testSrc("var R = L().toString();", Void,Void,"L()",__LINE__);
+tester.testSrc("var R = L().toString(0);", Void,Void,"L()",__LINE__);
+tester.testSrc("var R = L(1).toString(0);", Void,Void,"L(...)",__LINE__);
+tester.testSrc("var R = L(1,2,3).toString(2);", Void,Void,"L(1,2,...)",__LINE__);
+tester.testSrc("var R = L(1,2,3).toString(*);", Void,Void,"L(1,2,3)",__LINE__);
+
+tester.testSrc("var R = L(1); R.append(R); R=R.toString()",
+	Void,Void,"L(1,L(1,L(1,L(...))))",__LINE__);
+tester.testSrc("var R = L(1); R.append(R); R=R.toString(*,2)",
+	Void,Void,"L(1,L(1,L(1,L(...))))",__LINE__);
+tester.testSrc("var R = L(1); R.append(R,3); R=R.toString(2)",
+	Void,Void,"L(1,L(1,L(1,L(...),...),...),...)",__LINE__);
+tester.testSrc("var R = L(1); R.append(R,3); R=R.toString(2,0)",
+	Void,Void,"L(1,L(...),...)",__LINE__);
+tester.testSrc("var R = L(L(1,2,3)); R=R.toString()",
+	Void,Void,"L(L(1,2,3))",__LINE__);
+tester.testSrc("var R = L(L(1,L(2),3)); R=R.toString(*,2)",
+	Void,Void,"L(L(1,L(2),3))",__LINE__);
+tester.testSrc("var R = L(1,L(2,3,4,5),6); R=R.toString(3)",
+	Void,Void,"L(1,L(2,3,4,...),6)",__LINE__);
+		// Tuple
+tester.testSrc("var R=L(1,20).calcChunk(0,5).toString();",Void,Void,"L(1,4)",__LINE__);
+tester.testSrc("var R=vm.arglist.toString();",Void,Void,"L()",__LINE__);
+
+
+	/////////////////////////////////////// .calcChunk
+tester.testSrc("var R=L(1,20).calcChunk(0,5);",Void,Void,L(1,4),__LINE__);
+tester.testSrc("var R=L(1).calcChunk(0,5);",Void,Void,L(1,1),__LINE__);
+tester.testSrc("var R=L(1).calcChunk(0,0);",Void,"IndexError",Void,__LINE__);
+
+
+		/////////////////////////////////////////////// misc
+tester.testSrc("var R = List.isReadOnly;",Void,Void,False,__LINE__);
+tester.testSrc("List.makeReadOnly(); var R=List.isReadOnly;",
+    Void,Void,False,__LINE__);
+tester.testSrc("var R = (L(1,2,3).isThreadSafe == List.isThreadSafe);",
+    Void,Void,True,__LINE__);
+tester.testSrc("var R = List().makeReadOnly().isReadOnly;",
+    Void,Void,True,__LINE__);
+
+tester.testSrc("var R = ROList.isThreadSafe;",Void,Void,True,__LINE__);
+tester.testSrc("var R = ROList(1,2,3).isThreadSafe;",Void,Void,True,__LINE__);
+
+tester.testSrc("var R = Thread.List.isReadOnly;",Void,Void,False,__LINE__);
+tester.testSrc("var R = Thread.List.isThreadSafe;",Void,Void,True,__LINE__);
+tester.testSrc("Thread.List.makeReadOnly(); var R=Thread.List.isReadOnly;",
+    Void,Void,False,__LINE__);
+tester.testSrc("var R = Thread.List().makeReadOnly().isReadOnly;",
+    Void,Void,True,__LINE__);
+tester.testSrc("var R = Thread.List(1,2,3).isThreadSafe;",Void,Void,True,__LINE__);
+
+tester.testSrc("var R = L(1,2); R+5;",Void,Void,L(1,2,5),__LINE__);
+tester.testSrc("var R = ROList(1,2); R+5;",Void,Void,L(1,2),__LINE__);
+tester.testSrc("var R = ROList(1,2); R+=5;",Void,Void,L(1,2,5),__LINE__);
+tester.testSrc("var R = List(1).makeReadOnly(); R+5;",Void,Void,L(1),__LINE__);
+tester.testSrc("var R = List(1).makeReadOnly(); R+=5;",Void,Void,L(1,5),__LINE__);
+
+
+		///////////////////////////////////// Bugs
+tester.testSrc("L(1).filter(fcn { GarbageMan })",
+   Void,"NotImplementedError",Void,__LINE__);
+
+
+		//////////////////////////////////////////////// .toData
+tester.testSrc("var R=L(1,2,3).toData();",Void,Void,Data(0,0,1,2,3),__LINE__);
+tester.testSrc("var R=L(1,ROList(2),L(L(L(L(3))))).toData();",
+    Void,Void,Data(0,0,1,2,3),__LINE__);
+tester.testSrc(0'|var R=L("1","2").toData().text;|,Void,Void,"12",__LINE__);
+tester.testSrc(0'|var R=L("1","2").toData("").text;|,Void,Void,"1",__LINE__);
+tester.testSrc(0'|var R=L("1","2").toData(Int).text;|,Void,Void,"12",__LINE__);
+tester.testSrc(0'|var R=L("1","2").toData(String).bytes();|,
+    Void,Void,T(0x31,0,0x32,0),__LINE__);
+
+
+		/////////////////////////////////////////////////// Op
+tester.testSrc(0'|var R=L(1,2,4).apply(Op("+"),10)|,Void,Void,T(11,12,14),__LINE__);
+
+
+    		////////////////////////////////////////////////// .sum
+tester.testSrc("var R=L(1,2,3).sum();",Void,Void,6,__LINE__);
+tester.testSrc("var R=L(1,2,3.5).sum();",Void,Void,6,__LINE__);
+tester.testSrc("var R=L(1,2,3.5).sum(1);",Void,Void,7,__LINE__);
+tester.testSrc("var R=L(1,2,3.5).sum(0.0);",Void,Void,6.5,__LINE__);
+tester.testSrc(0'|var R=L(1,2,3.5).sum("");|,Void,Void,"123.5",__LINE__);
+
+
+		///////////////////////////////////////////////// .set
+tester.testSrc("var R=T(1,2,3).set(1,5);",Void,Void,T(1,5,3),__LINE__);
+tester.testSrc("var R=T(1,2,3).makeReadOnly().set(1,5);",Void,Void,T(1,5,3),__LINE__);
+tester.testSrc("var R=T(1,2,3)[1,*].set(1,5);",Void,Void,T(2,5),__LINE__);
+tester.testSrc("var R=L(1,2,3).set(1,5);",Void,Void,T(1,5,3),__LINE__);
+
+tester.testSrc("var R=T(1,2,3).set(10,5);",Void,"IndexError",Void,__LINE__);
+tester.testSrc("var R=T(1,2,3).set(-1,5);",Void,"IndexError",Void,__LINE__);
+tester.testSrc("var R=T(1,2,3).set(*,5);",Void,"TypeError",Void,__LINE__);
+tester.testSrc("var R=L(1,2,3).set(-1,5);",Void,Void,T(1,2,5),__LINE__);
+
+
+		///////////////////////////////////////////////// .walker
+tester.testSrc("w := T(1,2,3,4,5,6)[3,2].walker(); var R = w.walk(99);",
+   Void,Void,T(4,5),__LINE__);
+tester.testSrc("w := T(1,2,3,4,5,6)[3,2].walker(); w.next(); var R = w.walk(99);",
+   Void,Void,T(5),__LINE__);
+tester.testSrc("w := T(1,2,3,4,5,6)[3,2].walker(); w.walk(99); var R = w.walk(99);",
+   Void,"TheEnd",T,__LINE__);
+
+tester.testSrc("w:=T.walker(); var R = w.walk(99);",Void,"TheEnd",T,__LINE__);
+tester.testSrc("w:=T(1,2,3).walker(); w.walk(99);var R=w.pump(List);",
+   Void,Void,T,__LINE__);
+tester.testSrc("w:=T(1,2,3).walker(); w.pump(Void);var R=w.walk(99);",
+   Void,"TheEnd",T,__LINE__);
+
+
+		///////////////////////////////////////////////// .merge
+tester.testSrc(0'|var R=L("a","c","z").merge(L("d","f"));|,
+   Void,Void,T("a","c","d","f","z"),__LINE__);
+tester.testSrc(0'|var R=L(5,6,7).merge(L(4,9));|,
+   Void,Void,T(4,5,6,7,9),__LINE__);
+tester.testSrc(0'|var R=L().merge(L(4,9));|,Void,Void,T(4,9),__LINE__);
+tester.testSrc(0'|var R=L().merge(T(4,9));|,Void,Void,T(4,9),__LINE__);
+tester.testSrc(0'|var R=L(Data).merge(L(1,2,3,4));|,Void,"NotImplementedError",Void,__LINE__);
+tester.testSrc(0'|var R=L(Data); try{ R.merge(L(1,2,3,4)) }catch{};|,
+   Void,Void,T(Void,Void,Void,Void,Data),__LINE__);
+
+tester.testSrc(0'|var R=L(1,3,5); R.merge(2);|,
+   Void,Void,T(1,2,3,5),__LINE__);
+tester.testSrc(0'|var R=L(2,3,5); R.merge(1);|,
+   Void,Void,T(1,2,3,5),__LINE__);
+tester.testSrc(0'|var R=L(2,3,5); R.merge(1,7);|,
+   Void,Void,T(1,2,3,5,7),__LINE__);
+
+tester.testSrc(0'|var R=L(1,3,5,7); R.merge();|,
+   Void,"MissingArg",Void,__LINE__);
+tester.testSrc(0'|var R=L(1,3,5,7); R.merge(Data);|,
+   Void,"NotImplementedError",Void,__LINE__);
+
+
+		///////////////////////////////////////////////// .add
+tester.testSrc(0'|var R=List().pad(5,7).pad(3,11);|,
+   Void,Void,T(7,7,7,7,7,11,11,11),__LINE__);
+
+
+		///////////////////////////////////////////////// .shuffle
+tester.testSrc(0'|var R=List().shuffle();|,Void,Void,T,__LINE__);
+tester.testSrc(0'|var R=List(4).shuffle();|,Void,Void,T(4),__LINE__);
+tester.testSrc(0'|var R=List(1,2).shuffle().len();|,Void,Void,2,__LINE__);
+tester.testSrc(0'|var R=List(1,2,3).shuffle().len();|,Void,Void,3,__LINE__);
+
+
+		///////////////////////////////////////////////// .zip
+tester.testSrc(0'|var R=List.zip(T(1),T(2));|,Void,Void,T,__LINE__);
+tester.testSrc(0'|var R=T.zip(T(1),T(2));|,Void,Void,T(T(1,2)),__LINE__);
+
+tester.testSrc(0'|var R=T(5,6,7).zip(T(1),T(2));|,Void,Void,T(T(5,1,2)),__LINE__);
+
+
+tester.stats();
+returnClass(tester);

@@ -1,0 +1,278 @@
+// -*-c-*-
+// Test Proxy and Delegator classes
+
+tester := Test.UnitTester(__FILE__);
+
+
+		////////////////////////// __notFound, Proxy classes
+tester.testSrc(0'|class C{ fcn __notFound(name){"BAR"} }|
+   "var R = C.foo;",	"SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc(
+   0'|c := class C { fcn __notFound(name) { name + "XX" } };|
+   "var R = c.foo;",	Void,Void,"fooXX",__LINE__);
+
+tester.testSrc("c := class C { fcn __notFound{123} };"
+   "var R = c.range;", Void,Void,123,__LINE__);
+tester.testSrc("c := class C { fcn __notFound{123} };"
+   "var R = c.BaseClass.range;",  Void,"NotFoundError",123,__LINE__);
+tester.testSrc("c := class C { fcn __notFound{ 123 } };"
+   "var R = c.name;",	Void,Void,"C",__LINE__);
+
+tester.testSrc(0'|C := class { |
+   0'|fcn __notFound(name){if(name=="foo")"BAR"; else Void.Void}}|
+   "var R = C.foo;",	Void,Void,"BAR",__LINE__);
+tester.testSrc(0'|C := class { |
+   0'|fcn __notFound(name){if(name=="foo")"BAR"; else Void.Void}}|
+   "var R = C.hoho;",	Void,"NotFoundError",Void,__LINE__);
+
+const PC = 0'|class Proxy { fcn __notFound(name) { "FOO" } }|;
+tester.testSrc(PC + "var R = Proxy.name",Void,Void,"Proxy",__LINE__);
+tester.testSrc(PC+"var R = Proxy().name",Void,Void,"Proxy",__LINE__);
+tester.testSrc(PC+"var R = Proxy.resolve.toString()",Void,Void,"Method(Proxy.resolve)",__LINE__);
+tester.testSrc(PC+"var R = Proxy.resolve(\"name\")",Void,Void,"Proxy",__LINE__);
+tester.testSrc(PC+"var R = Proxy.resolve(\"name\",False)",Void,Void,"Proxy",__LINE__);
+tester.testSrc(PC+"var R = Proxy.BaseClass.resolve(\"name\")",Void,Void,"Proxy",__LINE__);
+tester.testSrc(PC+"var R = Proxy.BaseClass.name",Void,Void,"Proxy",__LINE__);
+tester.testSrc(PC+"var R = Proxy().BaseClass.name",Void,Void,"Proxy",__LINE__);
+
+
+  			///////////////////////// __sGet
+tester.testSrc(0'|class C{fcn __notFound{"FOO"}} var R=C[5];|,
+    Void,"NotImplementedError","5",__LINE__);
+tester.testSrc(0'|class C{fcn __notFound{"FOO"}} c:=C; var R=c[5];|,
+    Void,"NotImplementedError","5",__LINE__);
+tester.testSrc(0'|class C{fcn __notFound{"FOO"};fcn __sGet{123}} var R=C[5];|,
+    Void,Void,123,__LINE__);
+tester.testSrc(0'|class C{fcn __notFound{"FOO"};fcn __sGet{123}} class D(C){}|
+    "var R=D[5];",Void,Void,123,__LINE__);
+tester.testSrc(0'|class C{fcn __sGet{123}} class D(C){fcn __notFound{"FOO"}}|
+    "var R=D[5];",Void,Void,123,__LINE__);
+tester.testSrc(0'|class C{fcn __sGet{123}} class D(C){fcn __notFound{"FOO"}}|
+    "d:=D; var R=d[5];",Void,Void,123,__LINE__);
+
+tester.testSrc(	// "abc".resolve("__sGet")
+    0'|class C { var s="abc"; fcn __notFound(name){ s.resolve(name) }; }|
+    "c:=C(); var R=c[1]",Void,"NotImplementedError","b",__LINE__);
+
+
+		// compiled proxies
+println("HOHOH");
+fcn f{ Vault.dir() }
+f.unasm();
+
+class Proxy{ fcn __notFound{ "FOO" } }
+Vault.add(Proxy,"Tmp");
+
+tester.testSrc("var R = Tmp.Proxy.name",Void,Void,"Proxy",__LINE__);
+tester.testSrc("var R = Tmp.Proxy.BaseClass.name",Void,Void,"Proxy",__LINE__);
+
+tester.testSrc("var R = Tmp.Proxy.foo","SyntaxError",Void,"FOO",__LINE__);
+
+tester.testSrc("var R = Tmp.Proxy.toString.toString()",
+    Void,Void,"Method(Proxy.toString)",__LINE__);
+tester.testSrc("var R = Tmp.Proxy.toString()", Void,Void,"Class(Proxy)",__LINE__);
+tester.testSrc("var R = Tmp.Proxy.__notFound.toString.toString()",
+   Void,Void,"Method(__notFound.toString)",__LINE__);
+
+class Proxy2{ fcn __sGet{ 123 }} class Proxy3(Proxy2){ fcn __notFound{ "FOO" }}
+Vault.add(Proxy2,"Tmp"); Vault.add(Proxy3,"Tmp");
+tester.testSrc("var R=Tmp.Proxy3[5];",Void,Void,123,__LINE__);
+
+class Proxy4(Proxy){} Vault.add(Proxy4,"Tmp");
+tester.testSrc("var R=Tmp.Proxy4.__notFound.toString();",Void,Void,"Fcn(__notFound)",__LINE__);
+tester.testSrc("var R=Tmp.Proxy4.foo;","SyntaxError",Void,"FOO",__LINE__);
+tester.testSrc("p:=Tmp.Proxy4; var R=p.foo;",Void,Void,"FOO",__LINE__);
+
+
+		////////////// deathGrip
+compileText := Compiler.Compiler.compileText;
+
+c := compileText("R := Tmp.Proxy.name; returnClass(R)",0,True);
+tester.testRun(c,Void,"Proxy",__LINE__);
+c := compileText("R := Tmp.Proxy.BaseClass.name; returnClass(R)",0,True);
+tester.testRun(c,Void,"Proxy",__LINE__);
+c := compileText("returnClass(Tmp.Proxy.__notFound.toString())",0,True);
+tester.testRun(c,Void,"Fcn(__notFound)",__LINE__);
+c := compileText("returnClass(Tmp.Proxy.toString.toString())",0,True);
+tester.testRun(c,Void,"Method(Proxy.toString)",__LINE__);
+c := compileText("returnClass(Tmp.Proxy.toString())",0,True);
+tester.testRun(c,Void,"Class(Proxy)",__LINE__);
+
+
+		//////////////////////////////////////// Parents
+tester.testSrc("class C{ fcn f{ 123 }} class D(C){ fcn __notFound{ f() }}"
+    "var R = D.foo;","SyntaxError",Void,456,__LINE__);
+tester.testSrc("class C{ fcn f{ 123 }} class D(C){ fcn __notFound{ f() }}"
+    "d:=D; var R = d.foo;",Void,Void,123,__LINE__);
+tester.testSrc("class C{ fcn f{ 123 }} class D(C){ fcn __notFound{ 456 }}"
+    "var R = D.f();",Void,Void,123,__LINE__);
+tester.testSrc("class C{ fcn f{ 123 }} class D(C){ fcn __notFound{ 456 } }"
+    "d:=D; var R = d.f.toString();",Void,Void,"Fcn(f)",__LINE__);
+
+tester.testSrc(0'|class C {fcn __notFound{"FOO"}} class D(C){}|
+    "var R=D.foo;","SyntaxError",Void,"FOO",__LINE__);
+tester.testSrc(0'|class C{ fcn __notFound{ "FOO" }} class D(C){}|
+    "d:=D; var R=d.foo;",Void,Void,"FOO",__LINE__);
+
+tester.testSrc(0'|class C {fcn __notFound{"FOO"}; var foo=123; } class D(C){}|
+    "var R=D.foo;",Void,Void,123,__LINE__);
+tester.testSrc(0'|class C {fcn __notFound{"FOO"}; var foo=123; } class D(C){}|
+    "d:=D; var R=d.foo;",Void,Void,123,__LINE__);
+
+tester.testSrc(0'|class C{fcn __notFound{"FOO"}; var foo=123;} class D(C){}|
+    "var R=D.C.topdog.toString();",Void,Void,"Class(D)",__LINE__);
+tester.testSrc(0'|class C{fcn __notFound{"FOO"}; var foo=123;} class D(C){}|
+    "d:=D; var R=d.C.topdog.toString();",Void,Void,"Class(D)",__LINE__);
+
+///////
+tester.testSrc("class C{fcn f{123}} class D{var[mixin]__r=C; fcn g{__r.f()}}"
+    "var R = D.g();",Void,Void,123,__LINE__);
+////////
+
+
+		//////////////////////////////////////// Delegators
+mixer := "class A1 { fcn f {1}} class A2 { fcn f {2}}"
+	 "class Proxy {"
+	 "  var [mixin] __r=A1; var a1=A1, a2=A2;"
+	 "  fcn set(klass) { __r = klass } }"
+	 "var R;";
+
+tester.testSrc(mixer+ "class C(Proxy) { R = __r.f() }",Void,Void,1,__LINE__);
+tester.testSrc(mixer+ "class C(Proxy) {} R = C.__r.f()",Void,Void,1,__LINE__);
+tester.testSrc(mixer+ "class C(Proxy) { Proxy.set(A2); R = __r.f(); }",
+     Void,Void,2,__LINE__);
+tester.testSrc(mixer +		// #3
+    "class C(Proxy) { Proxy.set(A2); } R = C().Proxy.__r.f();",
+    Void,Void,2,__LINE__);
+tester.testSrc(mixer +		// #4
+     "class C(Proxy) { Proxy.__r = A2; } R = C.__r.f();", Void,Void,2,__LINE__);
+tester.testSrc(mixer + 		// #5
+    "class C(Proxy) { Proxy.set(A2); R = __r.f(); }",Void,Void,2,__LINE__);
+tester.testSrc(mixer + "class C(Proxy) { set(A2); R = __r.f(); }",Void,Void,2,__LINE__);
+tester.testSrc(mixer + 		// #7
+    "class C(Proxy) { Proxy.set(A2); } R=C.Proxy.__r.f();",Void,Void,2,__LINE__);
+tester.testSrc(mixer + 		// #8
+    "class C2(Proxy){} class C3(C2) { set(A2); R=__r.f() }",Void,Void,2,__LINE__);
+tester.testSrc(mixer +		// #9
+    "class C3(Proxy) { Proxy.__r = A2; } R = C3().__r.f();",
+    Void,Void,2,__LINE__);
+tester.testSrc(mixer +		// #10
+    "class C3(Proxy) { Proxy.__r = A2; } p := C3(); R=p.__r.f();",
+    Void,Void,2,__LINE__);
+tester.testSrc(mixer +		// #11
+    "class C(Proxy) { Proxy.set(A2); } R = C().Proxy.a1.f();",
+    Void,Void,1,__LINE__);
+
+tester.testSrc("class A{var v; fcn f{}} class A2{fcn f{self}}"
+    "class B{var [mixin]__r=A} class C(B){B.__r=A2}"
+    "var R=C().__r.f.container.toString();",
+    Void,Void,"Class(A2)",__LINE__);
+tester.testSrc("class A{var v; fcn f{}} class A2{fcn f{self}}"
+    "class B{var [mixin]__r=A} class C(B){B.__r=A2}"
+    "var R=C().__r.f.container.topdog.toString();",
+    Void,Void,"Class(A2)",__LINE__);
+
+class Speaker1 { fcn speech { 111 } }
+class Speaker2 { fcn speech { 222 } }
+class Speech {
+   var [mixin] speaker = Speaker1;
+   var [const] speakers = T(Speaker1,Speaker2);
+   var [protected] s = 0;
+   fcn speech { speaker.speech() }
+   fcn changeSpeakers {
+      s = (s+1)%speakers.len();
+      speaker = speakers[s];
+   }
+}
+tester.testRun(Speech.speech,Void,111,__LINE__);
+tester.testRun(fcn{Speech.changeSpeakers(); Speech.speech();},Void,222,__LINE__);
+//tester.testRun(fcn{ Speech.speaker.speek(); },"NotFoundError",Void,__LINE__);
+
+Vault.add(Speech,"Tmp");
+tester.testSrc("Tmp.Speech.speaker.speek();",Void,"NotFoundError",Void,__LINE__);
+
+
+    		///////////////////////////////////////////
+switcher :=
+  "class Deferred { var target, doIt;"
+  "   fcn init(name){target = name}"
+  "   fcn __notFound {if (doIt)target; else Void.Void}"
+  "   fcn nowIsTheTime { doIt = True; }"
+  "}";
+
+tester.testSrc(switcher+
+    "p := Deferred(123); p.nowIsTheTime(); var R=p.thisIsATest",
+    Void,Void,123,__LINE__);
+tester.testSrc(switcher+
+   "var p = Deferred(123); var R=p.thisIsATest",
+   Void,"NotFoundError",666,__LINE__);
+
+
+tester.testSrc(0'|class C { fcn __notFound(name) {123}; }|
+    "c:=C(); var R=c.cook.toString();",Void,Void,"Method(C.cook)",__LINE__);
+tester.testSrc(0'|class C { fcn __notFound(name) {123}; }|
+    "c:=C(); var R=c.fp.toString();",Void,Void,"Method(C.fp)",__LINE__);
+tester.testSrc(0'|class C { fcn __notFound(name) {123}; }|
+    "c:=C(); var R=c.isContainer;",Void,Void,True,__LINE__);
+
+
+
+    				//////////////////////// BlackHole
+class [static] BlackHole {
+   fcn __notFound(name) { return(self); }
+   fcn toString { return("BlackHole");  }
+}
+Vault.add(BlackHole,"Tmp");
+tester.testSrc("var R=Tmp.BlackHole.name",Void,Void,"BlackHole",__LINE__);
+tester.testSrc("var R=Tmp.BlackHole.foo","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R=Tmp.BlackHole.len.toString()",Void,Void,"Method(BlackHole.len)",__LINE__);
+tester.testSrc("var R=Tmp.BlackHole.len()",Void,Void,0,__LINE__);
+
+
+
+    			//////////// manual example
+driver:=
+" class VirtualDriver {"
+"      var name = 0;"
+"      fcn open     { name+1 }"
+"      fcn close    { name+2 }"
+"   }"
+
+"   class Hardware {"
+"      var [mixin] driver = VirtualDriver;"
+"      fcn installDriver(driver){ self.driver = driver; }"
+"      fcn doCoolThings {"
+"         driver.open() +"
+"         driver.close();"
+"      }"
+"   }"
+"   hardware := Hardware();";
+
+tester.testSrc(driver+"var R=hardware.doCoolThings();",Void,Void,3,__LINE__);
+tester.testSrc(driver+
+    "class GizmoDriver(VirtualDriver) {"
+    "  fcn init { name = 10; }"
+    "}"
+    "hardware.installDriver(GizmoDriver());"
+    "var R=hardware.doCoolThings();",Void,Void,23,__LINE__);
+
+
+logger :=
+  "var R; class [static] Logger {"
+     "var log;"
+     "log = self.fcn.idFcn;"
+     "}"
+  0'|class A(Logger) { log("A"); }|
+  0'|class B(Logger) { fcn f { log("B"); } }|
+  ;
+tester.testSrc(logger+"A();",Void,Void,Void,__LINE__);
+tester.testSrc(logger+"B.f();",Void,Void,Void,__LINE__);
+
+tester.testSrc(logger+"Logger.log=fcn(m){R=m};A();",Void,Void,"A",__LINE__);
+tester.testSrc(logger+"Logger.log=fcn(m){R=m};B.f();",Void,Void,"B",__LINE__);
+
+
+
+tester.stats();
+returnClass(tester);

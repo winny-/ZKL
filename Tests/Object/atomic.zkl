@@ -1,0 +1,595 @@
+// -*-c-*-
+// Test Atomic, Atomics, waitFor
+// See also: fence, thread
+
+tester := TheVault.Test.UnitTester.UnitTester(__FILE__);
+
+/* ******************************************************************** */
+/* **************************** Locks ********************************* */
+/* ******************************************************************** */
+
+tester.testSrc("var R = Atomic.Lock().isLocked;",Void,Void,False,__LINE__);
+tester.testSrc("var R = Atomic.Lock(False).isLocked;",Void,Void,False,__LINE__);
+tester.testSrc("var R = Atomic.Lock(True).isLocked;",Void,Void,True,__LINE__);
+tester.testSrc("lock:=Atomic.Lock(); lock.acquire(); var R=lock.isLocked;",
+	Void,Void,True,__LINE__);
+tester.testSrc("lock:=Atomic.Lock(); lock.acquire(); var R=lock.acquire(0.01);",
+	Void,Void,False,__LINE__);
+
+const LOCK = 
+"var lock = Atomic.Lock();"
+"var e    = Atomic.Bool();"
+"class Lock {"
+"   fcn init(waitTime=0) { launch(waitTime); }"
+"   fcn liftoff(waitTime=0)"
+"   {"
+"      if (waitTime) lock.acquire(waitTime); else lock.acquire();"
+"      e.set();"
+"   }"
+"}";
+
+	// Release the lock so the the thread can get it
+tester.testSrc(LOCK + "lock.acquire(); Lock(); lock.release();"
+    "e.wait(1); var R = 0 + 10*lock.isLocked + e.value;",
+    Void,Void,11,__LINE__);
+	// wedge the thread waiting for the lock
+tester.testSrc(LOCK + "lock.acquire(); Lock();"
+    "e.wait(1); var R = 0 + 10*lock.isLocked + e.value;"
+    "lock.release();",	// release the thread (cleanup)
+    Void,Void,10,__LINE__);
+
+tester.testSrc(LOCK + "Lock(1);"
+    "e.wait(1); var R = 0 + 10*lock.isLocked + e.value;",
+    Void,Void,11,__LINE__);
+tester.testSrc(LOCK + "lock.acquire(); Lock(0.5);"
+    "e.wait(5); var R = 0 + 10*lock.isLocked + e.value;",
+    Void,Void,11,__LINE__);
+tester.testSrc(LOCK + "lock.acquire(); Lock(5);"
+    "e.wait(0.5); var R = 0 + 10*lock.isLocked + e.value;",
+    Void,Void,10,__LINE__);
+
+class L1	// test Lock timeout value
+{
+   var lock = Atomic.Lock(); lock.acquire();
+   var b = Atomic.Bool();
+   fcn liftoff(n) { lock.acquire(n); b.set(); }
+   fcn test(n) { launch(n); b.wait(2); }
+}
+tester.testRun(fcn{L1().test(0.01)}, Void,True,__LINE__);
+tester.testRun(fcn{L1().test(10)},   Void,False,__LINE__);
+
+#if 0
+class L2	// can acquire be interrupted?
+{
+   var lock = Atomic.Lock(); lock.acquire();
+   var myVMid, b = Atomic.Bool(), b2 = Atomic.Bool();
+   fcn liftoff(n) {
+      onExit(b2.set);
+      myVMid = vm.vmID; b.set();
+      if (n) lock.acquire(n); else lock.acquire();
+   }
+   fcn test(n)
+   {
+      launch(n);	// create stuck thread
+      b.wait(); 	// wait for thread to start
+      Atomic.sleep(0.1);
+      vm.kick(myVMid);
+      b2.wait(2);
+   }
+}
+#else
+class L2	// can acquire be interrupted?
+{
+   var lock = Atomic.Lock(); lock.acquire();
+   var myVM, b = Atomic.Bool(), b2 = Atomic.Bool();
+   fcn liftoff(n) {
+      onExit(b2.set);
+      myVM = vm;
+      if (n) lock.acquire(n); else lock.acquire();
+   }
+   fcn test(n)
+   {
+      launch(n);		// create stuck thread
+      Atomic.wait(2,lock);	// wait for lock to be acquired
+      vm.kick(myVM);
+      Atomic.wait(5,myVM);
+      b2.value;
+   }
+}
+#endif
+
+tester.testRun(fcn{L2().test(0)}, Void,True,__LINE__);
+tester.testRun(fcn{L2().test(10)},Void,True,__LINE__);
+
+tester.testSrc("var R,b=Atomic.Bool(), a=Atomic.Lock(); a.acquire();"
+    "fcn{a.acquire(6);b.set();}.launch();"
+    "R=b.wait(3);",Void,Void,False,__LINE__);
+tester.testSrc("var R,b=Atomic.Bool(), a=Atomic.Lock(); a.acquire();"
+    "fcn{a.acquire(6);b.set();}.launch();"
+    "a.release(); R=b.wait(3);",Void,Void,True,__LINE__);
+
+tester.testSrc("a:=Atomic.Lock(); var b=Atomic.Bool();"
+    "fcn(a){ b.wait(); a.acquire() }.launch(a);"
+    "var R=(Void != Atomic.setAndWait(b,5,a));",Void,Void,True,__LINE__);
+tester.testSrc("a:=Atomic.Lock(1);var b=Atomic.Bool();"
+    "fcn(a){b.wait();a.release()}.launch(a);"
+    "var R=(Void != Atomic.setAndWait(b,3,a));",Void,Void,True,__LINE__);
+tester.testSrc("a:=Atomic.Lock();var b=Atomic.Bool();"
+    "fcn(a){b.wait();a.release()}.launch(a);"
+    "var R=(Void != Atomic.setAndWait(b,3,a));",Void,Void,False,__LINE__);
+tester.testSrc("a:=Atomic.Lock(1);var b=Atomic.Bool();"
+    "fcn(a){b.wait();a.release()}.launch(a);"
+    "var R=(Void != Atomic.setAndWait(b,3,a));",Void,Void,True,__LINE__);
+
+
+/* ******************************************************************** */
+/* ****************** waitFor, wait, setAndWait *********************** */
+/* ******************************************************************** */
+
+tester.testSrc("b:=Atomic.Bool(); var R=(Void!=Atomic.setAndWait(b,0,b));",
+    Void,Void,True,__LINE__);
+tester.testSrc("b:=Atomic.Bool(); var R=Atomic.setAndWait(b,0,Atomic.Bool());",
+    Void,Void,Void,__LINE__);
+tester.testSrc("b:=Atomic.Bool();var R=Atomic.setAndWait(b,0.001,Atomic.Bool());",
+    Void,Void,Void,__LINE__);
+
+tester.testSrc("b:=Atomic.Bool(); var R = (Void!=Atomic.setAndWait(0,1,b));",
+    Void,"TypeError",True,__LINE__);
+
+tester.testSrc("var R, b=Atomic.Bool(), c=Atomic.Bool();"
+    "fcn{b.wait();c.set();}.launch();"
+    "R=(Void != Atomic.setAndWait(b,5,c));",Void,Void,True,__LINE__);
+
+tester.testSrc("var R, p=Thread.Straw(),b=Atomic.Bool();"	// wait for VM 
+    "fcn{p.write(vm);b.wait();}.launch();"
+    "R=(Void != Atomic.setAndWait(b,5,p.read()));",Void,Void,True,__LINE__);
+
+tester.testSrc("var R=Atomic.waitFor(T(fcn(a){a.toBool()},1),1,2)",
+    Void,Void,True,__LINE__);
+
+
+    	///////////////////////////////////// AtomicBools
+tester.testSrc("b := Atomic.Bool(); var R = b.wait(0.1);",
+    Void,Void,False,__LINE__);		// timeout
+tester.testSrc(
+   "var b = Atomic.Bool(); fcn(b) { b.set(); }.launch(b);"
+   "var R = b.wait(2);",	Void,Void,True,__LINE__);
+tester.testSrc(
+   "var b = Atomic.Bool(); class { fcn liftoff { b.set(); } }.launch();"
+   "var R = b.wait(2);",	Void,Void,True,__LINE__);
+tester.testSrc(
+   "b := Atomic.Bool(True); fcn(b) { b.clear(); }.launch(b);"
+   "var R = b.waitFor(False,2);",	Void,Void,True,__LINE__);
+tester.testSrc(
+   "b := Atomic.Bool(False); fcn(b) { b.clear(); }.launch(b);"
+   "var R = b.wait(2);", Void,Void,False,__LINE__);  // timeout
+
+tester.testSrc("b := Atomic.Bool(); b.set(); var R=b.wait(0);",Void,Void,True,__LINE__);
+tester.testSrc("b := Atomic.Lock(); var R = b.acquire(0);",Void,Void,True,__LINE__);
+
+tester.testSrc("a:=Atomic.Bool(0);b:=Atomic.Bool();"
+    "fcn(a,b){b.wait();a.set()}.launch(a,b);"
+    "var R=(Void != Atomic.setAndWait(b,5,a));",Void,Void,True,__LINE__);
+tester.testSrc("a:=Atomic.Bool(1); b:=Atomic.Bool();"  // set twice
+    "fcn(a,b){b.wait();a.set()}.launch(a,b);"
+    "var R=(Void != Atomic.setAndWait(b,3,a));",Void,Void,True,__LINE__);
+tester.testSrc("a:=Atomic.Bool(0);b:=Atomic.Bool();"
+    "fcn(a,b){b.wait();a.tryToSet()}.launch(a,b);"
+    "Atomic.setAndWait(b,5,a);var R=a.value;",Void,Void,True,__LINE__);
+tester.testSrc("a:=Atomic.Bool(0); b:=Atomic.Bool();"
+    "fcn(a,b){b.wait();a.setIf(1,0)}.launch(a,b);"
+    "var R=(Void != Atomic.setAndWait(b,5,a));",Void,Void,True,__LINE__);
+
+tester.testSrc("b:=Atomic.Bool(); var R=b.setAndWaitFor(b,1,0);",
+    Void,"AssertionError",True,__LINE__);
+
+tester.testSrc("a:=Atomic.Bool(); b:=Atomic.Bool(1);"
+    "var R=b.setAndWaitFor(a);", Void,Void,True,__LINE__);
+tester.testSrc("a:=Atomic.Bool(); b:=Atomic.Bool(1);"
+    "b.setAndWaitFor(a); var R=a.isSet();", Void,Void,True,__LINE__);
+
+tester.testSrc("b:=Atomic.Bool(); c:=Atomic.Bool();"
+    "var R=b.setAndWaitFor(c,1,0);", Void,Void,False,__LINE__);
+tester.testSrc("b:=Atomic.Bool(); c:=Atomic.Bool();"
+    "var R=b.setAndWaitFor(c,1,0); R=c.value;", Void,Void,True,__LINE__);
+tester.testSrc("b:=Atomic.Bool(); c:=Atomic.Bool();"
+    "var R=b.setAndWaitFor(c,1,0.001);", Void,Void,False,__LINE__);
+tester.testSrc("b:=Atomic.Bool(); c:=Atomic.Bool();"
+    "var R=b.setAndWaitFor(c,1,0.001); R=c.value;", Void,Void,True,__LINE__);
+
+tester.testSrc("b:=Atomic.Bool(); c:=Atomic.Bool();"
+    "var R=b.setAndWaitFor(c,0,0);", Void,Void,True,__LINE__);
+tester.testSrc("b:=Atomic.Bool(); c:=Atomic.Bool();"
+    "var R=b.setAndWaitFor(c,0,0); R=c.value;", Void,Void,True,__LINE__);
+tester.testSrc("b:=Atomic.Bool(); c:=Atomic.Bool();"
+    "var R=b.setAndWaitFor(c,0,0.001);", Void,Void,True,__LINE__);
+tester.testSrc("b:=Atomic.Bool(); c:=Atomic.Bool();"
+    "var R=b.setAndWaitFor(c,0,0.001); R=c.value;", Void,Void,True,__LINE__);
+
+tester.testSrc("b:=Atomic.Bool(); c:=Atomic.Bool();"
+    "fcn(b,c){c.wait();b.set();}.launch(b,c);"
+    "var R=b.setAndWaitFor(c,1,5);", Void,Void,True,__LINE__);
+
+
+    	///////////////////////////////////// AtomicInts
+tester.testSrc("a:=Atomic.Int(0);var b=Atomic.Bool();"
+    "fcn(a){b.wait();a.set(1)}.launch(a);"
+    "var R=(Void != Atomic.setAndWait(b,5,a));",Void,Void,True,__LINE__);
+tester.testSrc("a:=Atomic.Int(0);var b=Atomic.Bool();"
+    "fcn(a){b.wait();a.set()}.launch(a);"
+    "var R=(Void != Atomic.setAndWait(b,3,a));",Void,Void,False,__LINE__);
+tester.testSrc("a:=Atomic.Int(0);var b=Atomic.Bool();"
+    "fcn(a){b.wait();a.setIf(1,0)}.launch(a);"
+    "var R=(Void != Atomic.setAndWait(b,5,a));",Void,Void,True,__LINE__);
+tester.testSrc("a:=Atomic.Int(0);var b=Atomic.Bool();"
+    "fcn(a){b.wait();a.inc()}.launch(a);"
+    "var R=(Void != Atomic.setAndWait(b,5,a));",Void,Void,True,__LINE__);
+tester.testSrc("a:=Atomic.Int(0);var b=Atomic.Bool();"
+    "fcn(a){b.wait();a.dec()}.launch(a);"
+    "var R=(Void != Atomic.setAndWait(b,5,a));",Void,Void,True,__LINE__);
+
+tester.testSrc("b:=Atomic.Bool(); n:=Atomic.Int(2);"
+    0'|var R=n.setAndWaitFor(b,2,0); R = String(R,b.value,":",n.value);|,
+    Void,Void,"TrueTrue:2",__LINE__);
+tester.testSrc("b:=Atomic.Bool(); n:=Atomic.Int();"
+    0'|var R=n.setAndWaitFor(b,2,0); R = String(R,b.value,":",n.value);|,
+    Void,Void,"FalseTrue:0",__LINE__);
+tester.testSrc("b:=Atomic.Bool(); n:=Atomic.Int();"
+    0'|var R=n.setAndWaitFor(b,2,0.1); R = String(R,b.value,":",n.value);|,
+    Void,Void,"FalseTrue:0",__LINE__);
+
+tester.testSrc(
+   "n := Atomic.Int(0); fcn(n){n.set(123)}.launch(n);"
+   "var R = n.waitFor(5,3);",	Void,Void,False,__LINE__);    // timeout
+tester.testSrc(
+   "n := Atomic.Int(0); fcn(n){n.set(123)}.launch(n);"
+   "var R = n.waitFor(123,3);",	Void,Void,True,__LINE__);
+tester.testSrc("var b=Atomic.Bool();"
+   "n := Atomic.Int(0); fcn(n){b.wait();do(666){n.inc()}}.launch(n);"
+   "var R = n.setAndWaitFor(b,300,10);",	Void,Void,True,__LINE__);
+
+tester.testSrc(		////////// are inc/dec truely atomic?
+   "var R=Atomic.Int(); n := Atomic.Int(6666);"
+   "fcn finc(n){ do(1000){n.inc()} R.inc(); } do(3) { finc.launch(n); }"
+   "R.waitFor(3,10); R=n.value;",	Void,Void,9666,__LINE__);
+tester.testSrc(
+   "var R=Atomic.Int(); n := Atomic.Int(6666);"
+   "fcn finc(n){ do(1000){n.dec()} R.inc(); } do(3) { finc.launch(n); }"
+   "R.waitFor(3,10); R=n.value;",	Void,Void,3666,__LINE__);
+
+tester.testSrc("var b=Atomic.Bool();"
+   "n := Atomic.Int(400); fcn(n) { b.wait();do(500) { n.dec()} }.launch(n);"
+   "var R = n.setAndWaitFor(b,350,10);",	Void,Void,True,__LINE__);
+tester.testSrc("var b=Atomic.Bool();"
+   "n := Atomic.Int(0); fcn(n) { b.wait();do(500) { n.inc()} }.launch(n);"
+   "var R = n.setAndWaitFor(b,41,10);",  Void,Void,True,__LINE__);
+
+tester.testSrc("n:=Atomic.Int(123); b:=Atomic.Bool();"  // set twice
+    "fcn(b,n){b.wait();n.set(123)}.launch(b,n);"
+    "var R=n.setAndWaitFor(b,123,10,True);",Void,Void,True,__LINE__);
+
+
+/* ******************************************************************** */
+/* **************************** Interrupt ***************************** */
+/* ******************************************************************** */
+
+class TestWaitForInterrupt	// test interrupting waitFor
+{
+   var myVMid, b = Atomic.Bool();
+   fcn liftoff(waiter)
+   {
+      onExit(b.set);		// thread was interrupted and died
+      myVMid = vm; b.set();
+      Atomic.waitFor(waiter);		// stall thread until interrupted
+   }
+//fcn splashdown { b.set() }	//!!! oh shit
+   fcn test(waiter)
+   {
+      launch(waiter); b.wait(); b.clear();
+      Atomic.sleep(1);	//!!!! wait for VM to get into waitFor()
+      vm.kick(myVMid);
+      b.wait(2);	// if test fails, don't wait forever
+   }
+   fcn testFcn    { test(fcn { False });       }
+   fcn testMethod { test(Atomic.Bool().isSet); }
+}
+tester.testRun(TestWaitForInterrupt().testFcn,   Void,True,__LINE__);
+tester.testRun(TestWaitForInterrupt().testMethod,Void,True,__LINE__);
+
+		/////////////////////////// sleep
+tester.testSrc("var R, p=Thread.Straw();"
+    "fcn{p.write(vm);R=Atomic.sleep(5)}.launch();"
+    "v:=p.read();Atomic.sleep(0.5); vm.kick(v);",
+    Void,Void,Void,__LINE__);
+tester.testSrc("var R, p=Thread.Straw(), b=Atomic.Bool();"
+    "fcn{p.write(vm);R=Atomic.setAndWait(b,5)}.launch();"
+    "v:=p.read();b.wait();vm.kick(v);",
+    Void,Void,Void,__LINE__);
+tester.testSrc("var R, p=Thread.Straw(), b=Atomic.Bool(),c=Atomic.Bool();"
+    "fcn{p.write(vm);R=b.setAndWaitFor(c,1,5)}.launch();"
+    "v:=p.read();c.wait();vm.kick(v);",
+    Void,Void,Void,__LINE__);
+tester.testSrc("var R, p=Thread.Straw(), b=Atomic.Bool(),n=Atomic.Int();"
+    "fcn{p.write(vm);R=n.setAndWaitFor(b,1,5)}.launch();"
+    "v:=p.read();b.wait();vm.kick(v);",
+    Void,Void,Void,__LINE__);
+
+
+class DoesTryCatchExceptionFromAnotherVM
+{
+   var pipe = Thread.Pipe(), R;
+   fcn veg
+   {
+      try
+      {
+	 pipe.write(vm);
+	 Atomic.Bool().wait();	// block
+      }
+      catch { R = __exception.name; }
+      pipe.close();		// signal waiting main thread
+   }
+   fcn test
+   {
+      veg.launch();
+      vm.kick(pipe.read(10));
+      try { pipe.read(5); } catch(TheEnd) {} catch { R = __exception.toString(); }
+      R      
+   }
+}
+tester.testRun(DoesTryCatchExceptionFromAnotherVM.test,Void,"HeyYou",__LINE__);
+
+tester.testSrc("var R=Atomic.sleep(0.1);",Void,Void,True,__LINE__);
+
+tester.testSrc("var R, p=Thread.Pipe(), b=Atomic.Bool();"
+    "fcn f { v:=p.read(); b.wait(); vm.kick(v); }.launch();"
+    "try { p.write(vm); R=Atomic.setAndWait(b,10);}catch{R=5};",
+    Void,Void,5,__LINE__);
+
+    // does kicking a thread trigger a VM event?
+tester.testSrc("var R, p1=Thread.Pipe(), b=Atomic.Bool();"
+    "fcn { try{p1.write(vm);p1.write(vm);Atomic.setAndWait(b,5)}"
+    "      catch{Atomic.sleep(5)}}.launch();"	// keep running
+    "fcn { v:=p1.read(); b.wait(); vm.kick(v);}.launch();"
+    "v:= p1.read(5); R=Atomic.wait(2,v);",
+    Void,Void,Void,__LINE__);
+
+
+/* ******************************************************************** */
+/* **************************** WriteLock ***************************** */
+/* ******************************************************************** */
+
+tester.testSrc("var R = Atomic.WriteLock().isSet();",Void,Void,False,__LINE__);
+tester.testSrc("w:=Atomic.WriteLock(); w.acquireForReading();var R=w.isSet();",
+	Void,Void,False,__LINE__);
+tester.testSrc("w:=Atomic.WriteLock(); w.acquireForWriting();var R=w.isSet();",
+	Void,Void,True,__LINE__);
+
+class WL
+{
+   var w = Atomic.WriteLock();
+   var e = Atomic.Bool(), e2 = Atomic.Bool(), b = Atomic.Bool();
+   class Writer		// thread 1
+   {
+      fcn init(reader) { launch(reader); }
+      fcn liftoff(reader)
+      {
+	 b.set();
+	 if (reader) w.acquireForReading() else w.acquireForWriting();
+	 e.set();
+      }
+   }
+   class Test1		// thread 2
+   {
+      fcn liftoff { w.acquireForReading(); w.readerRelease(); e2.set(); }
+   }
+   fcn test1
+   {
+      w.acquireForReading(); Writer(False);	// can't acquire write lock
+      b.wait(); Atomic.sleep(0.5);
+      Test1().launch();	// can't acquire read lock
+      s := e.wait(0.1);	// False, could not acquire write lock
+      w.readerRelease();		// let Test1 finish
+      w.writerRelease();		// let Writer finish
+      s
+   }
+   fcn test1_2
+   {
+      w.acquireForReading(); Writer(False);	// can't acquire write lock
+      b.wait();
+      Test1().launch();			// can't acquire read lock
+      s := e2.wait(0.1);	// False
+      w.writerRelease();		// let Writer finish
+      w.readerRelease();		// let Test1 finish
+      s
+   }
+   fcn test1_3
+   {
+      w.acquireForReading(); Writer(False);	// can't acquire write lock
+      b.wait();
+      w.readerRelease();
+      e.wait(1);	// True
+   }
+   fcn test1_3_1
+   {
+      w.acquireForReading(); Writer(False);	// can't acquire write lock
+      w.readerRelease();
+      e.wait(1);	// True
+   }
+   fcn test1_4
+   {
+      w.acquireForReading(); Writer(False);	// can't acquire write lock
+      b.wait();
+      Test1().launch();		// can't acquire read lock
+      w.readerRelease();	// Writer gets lock no matter what
+      w.writerRelease();	// let Test1 have lock
+      e2.wait(1);	// True
+   }
+   fcn test3
+   {
+      w.acquireForReading(); Writer(False); b.wait();  // no stall
+      w.readerRelease();
+      e.wait(1);	// True
+   }
+   fcn test4
+   {
+      w.acquireForReading(); Writer(False); b.wait();
+      s := e.wait(0.1);	// False, Writer stalled
+      w.readerRelease();		// let Writer get lock and finish
+      s
+   }
+   class Test5		// thread 2
+   {
+      fcn liftoff
+      {
+	 w.writerRelease();
+	 w.acquireForReading(); w.readerRelease(); w.readerRelease();
+	 e2.set();
+      }
+   }
+   fcn test5
+   {
+      w.acquireForReading(); Writer(False);  // stall: can't acquire writelock
+      b.wait(); Test5.launch();     // release writelock
+      e2.wait(1);	// True
+   }
+   fcn test6
+   {
+      w.acquireForWriting(); Writer(True);	// can't acquire
+      b.wait();
+      s := e.wait(0.1);	// False
+      w.writerRelease();		// let the thread finish
+      s
+   }
+   fcn test7
+   {
+      w.acquireForWriting(); Writer(True);	// stall: can't acquire
+      b.wait(); w.writerRelease();	// go
+      e.wait(1);	// True
+   }
+}
+tester.testRun(WL().test1,	Void,False,__LINE__);
+tester.testRun(WL().test1_2,	Void,False,__LINE__);
+tester.testRun(WL().test1_3,	Void,True,__LINE__);
+tester.testRun(WL().test1_3_1,	Void,True,__LINE__);
+tester.testRun(WL().test1_4,	Void,True,__LINE__);
+tester.testRun(WL().test3,	Void,True,__LINE__);
+tester.testRun(WL().test4,	Void,False,__LINE__);
+tester.testRun(WL().test5,	Void,True,__LINE__);
+tester.testRun(WL().test6,	Void,False,__LINE__);
+tester.testRun(WL().test7,	Void,True,__LINE__);
+
+#if 0
+tester.testSrc("a:=Atomic.WriteLock();"
+    "fcn(a){Atomic.sleep(0.5);a.acquireForReading()}.launch(a);"
+    "var R=(Void != Atomic.wait(3,a));",Void,Void,True,__LINE__);
+tester.testSrc("a:=Atomic.WriteLock(); a.acquireForReading();"
+    "fcn(a){Atomic.sleep(0.5);a.acquireForReading()}.launch(a);"
+    "var R=(Void != Atomic.wait(3,a));",Void,Void,False,__LINE__);
+tester.testSrc("a:=Atomic.WriteLock();"
+    "fcn(a){Atomic.sleep(0.5);a.acquireForWriting()}.launch(a);"
+    "var R=(Void != Atomic.wait(3,a));",Void,Void,True,__LINE__);
+
+tester.testSrc("a:=Atomic.WriteLock(); a.acquireForReading();"
+    "fcn(a){Atomic.sleep(0.5);a.readerRelease()}.launch(a);"
+    "var R=(Void != Atomic.wait(3,a));",Void,Void,True,__LINE__);
+tester.testSrc("a:=Atomic.WriteLock(); a.acquireForWriting();"
+    "fcn(a){Atomic.sleep(0.5);a.writerRelease()}.launch(a);"
+    "var R=(Void != Atomic.wait(3,a));",Void,Void,True,__LINE__);
+#endif
+
+
+	///////////////////////// timeouts
+tester.testSrc("w := Atomic.WriteLock(); w.acquireForReading();"
+    "var R = w.acquireForWriting(0.2)",Void,Void,False,__LINE__);
+tester.testSrc("w := Atomic.WriteLock(); w.acquireForReading();"
+    "w.acquireForWriting(0.2); var R=w.value",Void,Void,False,__LINE__);
+tester.testSrc("w := Atomic.WriteLock(); w.acquireForWriting();"
+    "var R = w.acquireForReading(0.2)",Void,Void,False,__LINE__);
+tester.testSrc("w := Atomic.WriteLock(); w.acquireForWriting();"
+    "w.acquireForReading(0.2); var R=w.value",Void,Void,True,__LINE__);
+tester.testSrc("w := Atomic.WriteLock(); w.acquireForWriting();"
+    "var R = w.acquireForWriting(0.2)",Void,Void,False,__LINE__);
+
+
+/* ******************************************************************** */
+/* ****************************** Bools ******************************* */
+/* ******************************************************************** */
+
+tester.testSrc("b := Atomic.Bool(); var R = b.value",Void,Void,False,__LINE__);
+tester.testSrc("b := Atomic.Bool(1); var R = b.value",Void,Void,True,__LINE__);
+tester.testSrc("b := Atomic.Bool(); b.set(); var R = b.value",Void,Void,True,__LINE__);
+tester.testSrc("b := Atomic.Bool(); var R=b.set();",Void,Void,False,__LINE__);
+tester.testSrc("b := Atomic.Bool(); b.set(1); var R = b.value",Void,Void,True,__LINE__);
+tester.testSrc("b := Atomic.Bool(); var R=b.set(1);",Void,Void,False,__LINE__);
+tester.testSrc("b := Atomic.Bool(); b.set(0); var R = b.value",Void,Void,False,__LINE__);
+tester.testSrc("b := Atomic.Bool(); var R = b.set(1);",Void,Void,False,__LINE__);
+tester.testSrc("b := Atomic.Bool(1); var R = b.set(0);",Void,Void,True,__LINE__);
+tester.testSrc("b := Atomic.Bool(1); var R = b.toBool();",Void,Void,True,__LINE__);
+tester.testSrc("b := Atomic.Bool();  var R = b.toBool();",Void,Void,False,__LINE__);
+tester.testSrc("b := Atomic.Bool(1); var R; if (b) R = 2;",Void,Void,2,__LINE__);
+tester.testSrc("b := Atomic.Bool(1); var R=b.clear();",Void,Void,True,__LINE__);
+
+tester.testSrc("b := Atomic.Bool(); var R=b.tryToSet(1);",Void,Void,True,__LINE__);
+tester.testSrc("b := Atomic.Bool(); b.tryToSet(1); var R=b.value",
+    Void,Void,True,__LINE__);
+tester.testSrc(
+   "var b = Atomic.Bool(); fcn { Atomic.sleep(1); b.tryToSet(); }.launch();"
+   "var R = b.wait(2);",	Void,Void,True,__LINE__);
+
+tester.testSrc("b := Atomic.Bool(); var R=b.setIf(True,False);",Void,Void,True,__LINE__);
+tester.testSrc("b := Atomic.Bool(); b.setIf(True,False); var R=b.value",
+    Void,Void,True,__LINE__);
+tester.testSrc("b := Atomic.Bool(); var R=b.setIf(True,True);",Void,Void,False,__LINE__);
+tester.testSrc("b := Atomic.Bool(); b.setIf(True,True); var R=b.value",
+    Void,Void,False,__LINE__);
+tester.testSrc(
+   "var b = Atomic.Bool(); fcn { Atomic.sleep(1); b.setIf(1,0); }.launch();"
+   "var R = b.wait(2);",	Void,Void,True,__LINE__);
+
+#if 0
+tester.testSrc(
+   "var b=Atomic.Bool(); var go=Atomic.Bool();"
+   "fcn { go.set(); b.waitFor(1,5); b.pulse(); }.launch();"
+   "go.wait(5,True); b.pulse(); var R = b.wait(5,True);", Void,Void,True,__LINE__);
+#endif
+
+/* ******************************************************************** */
+/* ******************************* Ints ******************************* */
+/* ******************************************************************** */
+
+tester.testSrc("n := Atomic.Int(1); var R = n.toBool();",Void,Void,True,__LINE__);
+tester.testSrc("n := Atomic.Int();  var R = n.toBool();",Void,Void,False,__LINE__);
+tester.testSrc("n := Atomic.Int(1); var R; if (n) R = 2;",Void,Void,2,__LINE__);
+tester.testSrc("n := Atomic.Int(1); var R = n.set(2);",Void,Void,1,__LINE__);
+
+tester.testSrc("n := Atomic.Int(1); var R = n.dec();",Void,Void,0,__LINE__);
+tester.testSrc("n := Atomic.Int();  var R = n.inc();",Void,Void,1,__LINE__);
+
+tester.testSrc("n := Atomic.Int(); var R=n.setIf(1,0);",Void,Void,True,__LINE__);
+tester.testSrc("n := Atomic.Int(); n.setIf(1,0); var R=n.value;",Void,Void,1,__LINE__);
+tester.testSrc("n := Atomic.Int(); var R=n.setIf(1,2);",Void,Void,False,__LINE__);
+tester.testSrc("n := Atomic.Int(); n.setIf(1,2); var R=n.value;",Void,Void,0,__LINE__);
+tester.testSrc(
+   "var n = Atomic.Int(0); fcn { Atomic.sleep(1); n.setIf(5,0); }.launch();"
+   "var R = n.waitFor(5,2);",	Void,Void,True,__LINE__);
+
+tester.testSrc("n := Atomic.Int(5); var R=(n == 5);",Void,Void,True,__LINE__);
+tester.testSrc("n := Atomic.Int(5); var R=(5 == n);",Void,Void,True,__LINE__);
+tester.testSrc("n := Atomic.Int(5); var R=(n == 4);",Void,Void,False,__LINE__);
+
+tester.testSrc("n := Atomic.Int(5); var R=(n > 4);",Void,Void,True,__LINE__);
+tester.testSrc("n := Atomic.Int(5); var R=(4 > n);",Void,Void,False,__LINE__);
+tester.testSrc("n := Atomic.Int(5); var R=(n >  5);",Void,Void,False,__LINE__);
+tester.testSrc("n := Atomic.Int(5); var R=(n >= 5);",Void,Void,True,__LINE__);
+tester.testSrc("n := Atomic.Int(5); var R=(n <  5);",Void,Void,False,__LINE__);
+tester.testSrc("n := Atomic.Int(5); var R=(n <= 5);",Void,Void,True,__LINE__);
+
+tester.testSrc("n1 := Atomic.Int(5); n2 := Atomic.Int(6);"
+    "var R=(n1 != n2);",Void,Void,True,__LINE__);
+tester.testSrc("n1 := Atomic.Int(5); n2 := Atomic.Int(6);"
+    "var R=(n1 < n2);",Void,Void,True,__LINE__);
+
+
+
+tester.stats();
+returnClass(tester);

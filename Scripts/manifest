@@ -1,0 +1,23 @@
+# manifest for zkl scripts
+$zipDst      = ZKL/Scripts
+$packageName = zkl_scripts.zip
+
+[files]
+manifest README.txt
+
+    # zkl.h.zkl isn't in this directory but is needed by some scripts
+../Include/zkl.h.zkl
+
+calendar.zkl
+find.zkl
+findDupFiles.zkl
+hash.zkl
+hexDump.zkl
+#instructionProfiler.zkl
+manifest.zkl
+sinebar.zkl
+update.zkl
+zgrep.zkl
+addLineNumbers.zkl
+
+#extractTable.zkl   gperf.zkl 

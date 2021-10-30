@@ -1,0 +1,74 @@
+// -*-c-*-
+// Test Bool and Void
+
+tester := TheVault.Test.UnitTester.UnitTester(__FILE__);
+
+	//////////////////// Bool
+tester.testSrc("var R = (True == 1);",Void,Void,False,__LINE__);
+tester.testSrc("var R = (1 == True);",Void,Void,False,__LINE__);
+tester.testSrc("var R = (True == False);",Void,Void,False,__LINE__);
+tester.testSrc("var R = (True == True);",Void,Void,True,__LINE__);
+
+tester.testSrc("var R = (False == 0);",Void,Void,False,__LINE__);
+tester.testSrc("var R = (0 == False);",Void,Void,False,__LINE__);
+tester.testSrc("var R = (False == True);",Void,Void,False,__LINE__);
+tester.testSrc("var R = (False == False);",Void,Void,True,__LINE__);
+
+tester.testSrc("var R = (True != 1);",Void,Void,True,__LINE__);
+tester.testSrc("var R = (True != 0);",Void,Void,True,__LINE__);
+tester.testSrc("var R = (1 != True);",Void,Void,True,__LINE__);
+tester.testSrc("var R = (True != True);",Void,Void,False,__LINE__);
+tester.testSrc("var R = (True != False);",Void,Void,True,__LINE__);
+
+tester.testSrc("var R; x := True; if (x == 2) R=123;",Void,Void,Void,__LINE__);
+tester.testSrc("var R; x := True; if (2 == x) R=123;",Void,Void,Void,__LINE__);
+tester.testSrc("var R; x := True; if (1 == x) R=123;",Void,Void,Void,__LINE__);
+tester.testSrc("var R; x := True; if (x == 1) R=123;",Void,Void,Void,__LINE__);
+
+tester.testSrc("var R = (True + 2);",Void,Void,True,__LINE__);
+tester.testSrc("var R = (2 + True);",Void,Void,3,__LINE__);
+tester.testSrc("var R = (False + 2);",Void,Void,True,__LINE__);
+tester.testSrc("var R = (2 + False);",Void,Void,2,__LINE__);
+
+tester.testSrc("var R = (True * 2);",Void,Void,True,__LINE__);
+tester.testSrc("var R = (2 * True);",Void,Void,2,__LINE__);
+tester.testSrc("var R = (False * 2);",Void,Void,False,__LINE__);
+tester.testSrc("var R = (2 * False);",Void,Void,0,__LINE__);
+
+tester.testSrc("var R = (True - 1);",Void,Void,False,__LINE__);
+tester.testSrc("var R = (2 - True);",Void,Void,1,__LINE__);
+tester.testSrc("var R = (False - 1);",Void,Void,True,__LINE__);
+tester.testSrc("var R = (2 - False);",Void,Void,2,__LINE__);
+
+tester.testSrc("var R = (True / 1);",Void,"NotImplementedError",Void,__LINE__);
+tester.testSrc("var R = (2 / True);",Void,Void,2,__LINE__);
+tester.testSrc("var R = (False / 1);",Void,"NotImplementedError",Void,__LINE__);
+tester.testSrc("var R = (2 / False);",Void,"MathError",Void,__LINE__);
+
+tester.testSrc("var R=True;  R=R();",Void,Void,True,__LINE__);
+tester.testSrc("var R=True;  R=R(True);",Void,Void,True,__LINE__);
+tester.testSrc("var R=True;  R=R(False);",Void,Void,True,__LINE__);
+tester.testSrc("var R=True;  R=R(Void);",Void,Void,True,__LINE__);
+tester.testSrc("var R=False; R=R();",Void,Void,False,__LINE__);
+tester.testSrc("var R=False; R=R(Void);",Void,Void,False,__LINE__);
+tester.testSrc("var R=True(False);",Void,Void,True,__LINE__);
+
+tester.testSrc("var R=True.isType(True);",Void,Void,True,__LINE__);
+tester.testSrc("var R=True(False).isType(True);",Void,Void,True,__LINE__);
+
+tester.testSrc("var R=True();",Void,Void,True,__LINE__);
+
+
+	///////////////////////////////////////////////////////////// Void
+tester.testSrc("var R = (Void == 0);",Void,Void,False,__LINE__);
+tester.testSrc("var R = (Void == Void);",Void,Void,True,__LINE__);
+tester.testSrc("var R = (Void != Void);",Void,Void,False,__LINE__);
+tester.testSrc("var R = (0 == Void);",Void,Void,False,__LINE__);
+tester.testSrc("var R = (not Void);",Void,Void,True,__LINE__);
+tester.testSrc("var R = (Void.id != Void(Void).id);",Void,Void,True,__LINE__);
+tester.testSrc("var R = (Void.id == Void(5).id);",Void,Void,True,__LINE__);
+
+
+
+tester.stats();
+returnClass(tester);

@@ -1,0 +1,566 @@
+// -*-c-*-
+// test the assembler, Tokenizer and asm optos
+
+tester := Test.UnitTester(__FILE__);
+
+var d1,d2;
+tester.testRun(fcn {
+   d1 = Data(); Compiler.Asm.writeRootClass(Thread,d1);
+   d1.seek(0);
+   klass := Compiler.Asm.readRootClass(d1,False,False);
+   klass.name
+}, Void,"Thread",__LINE__);
+
+tester.testRun(fcn {
+   d1 := Data(); Compiler.Asm.writeRootClass(Thread,d1);
+   d1.seek(0);
+   klass := Compiler.Asm.readRootClass(d1,False,False);
+   Compiler.Asm.writeRootClass(klass,d2 = Data());
+   d1 == d2	// bit for bit the same?
+}, Void,True,__LINE__);
+
+		
+tester.testSrc(
+   "class [static] A{ class B{ var b; class C{ var c; } class D(C){ var d; }}}"
+   "d := Data(); Compiler.Asm.writeRootClass(A,d); d.seek(0);"
+   "klass := Compiler.Asm.readRootClass(d,False,False);"
+   "var R = klass.name;",
+   Void,Void,"A",__LINE__);
+
+tester.testSrc(
+   "class [static] A{ class B { var b; } class C(B){ var c; }}"
+   "d := Data(); Compiler.Asm.writeRootClass(A,d); d.seek(0);"
+   "klass := Compiler.Asm.readRootClass(d,False,False);"
+   "var R = klass.name;",
+   Void,Void,"A",__LINE__);
+
+tester.testSrc(
+   "class [static] A{ class [static] B{} class C(B){} }"
+   "d := Data(); Compiler.Asm.writeRootClass(A,d); d.seek(0);"
+   "klass := Compiler.Asm.readRootClass(d,False,False);"
+   "var R = klass.name;",
+   Void,Void,"A",__LINE__);
+
+tester.testSrc(
+   "class [static] A{ class [static] B{}"
+   "     class C(B){ var c; class D(B){ var d; } class E(D){var e }}}"
+   "d := Data(); Compiler.Asm.writeRootClass(A,d); d.seek(0);"
+   "klass := Compiler.Asm.readRootClass(d,False,False);"
+   "d2 := Data(); Compiler.Asm.writeRootClass(A,d2);"
+   "var R = (d == d2)",
+   Void,Void,True,__LINE__);
+
+tester.testSrc(
+   "class [static] A{ class B{ var b;"
+   "    class [static] S{} class C(S){ var c } class D(C){}} }"
+   "d := Data(); Compiler.Asm.writeRootClass(A,d); d.seek(0);"
+   "klass := Compiler.Asm.readRootClass(d,False,False);"
+   "var R = klass.name;",
+   Void,Void,"A",__LINE__);
+
+tester.testSrc(
+   "class [static] C{} attr:=C.attributes;"
+   "d := Data(); Compiler.Asm.writeRootClass(C,d); d.seek(0);"
+   "klass := Compiler.Asm.readRootClass(d,False,False);"
+   "var R = (klass.attributes == attr);",
+   Void,Void,True,__LINE__);
+
+tester.testSrc(
+   "class [static] C{ var [const] a; var [proxy] b; } vb:=C.varBits;"
+   "d := Data(); Compiler.Asm.writeRootClass(C,d); d.seek(0);"
+   "klass := Compiler.Asm.readRootClass(d,False,False);"
+   "var R = (klass.varBits == vb);",
+   Void,Void,True,__LINE__);
+
+tester.testSrc(
+   "class [static] A(Exception.IndexError) { fcn init {}}"
+   "d := Data(); Compiler.Asm.writeRootClass(A,d); d.seek(0);"
+   "klass := Compiler.Asm.readRootClass(d,False,False);"
+   "var R = (Exception.IndexError.isInstanceOf(klass.IndexError));",
+   Void,Void,True,__LINE__);
+tester.testSrc(
+   "class [static] Z { class A{var v=123;} class B(A){} }"
+   "d := Data(); Compiler.Asm.writeRootClass(Z,d); d.seek(0);"
+   "klass := Compiler.Asm.readRootClass(d,False,False); klass();"
+   "var R = klass.B.v;", Void,Void,123,__LINE__);
+tester.testSrc(
+   "class [static] Z { class A{var v=123;} class B{} class C(B,A){} }"
+   "d := Data(); Compiler.Asm.writeRootClass(Z,d); d.seek(0);"
+   "klass := Compiler.Asm.readRootClass(d,False,False); klass();"
+   "var R = klass.C.v;", Void,Void,123,__LINE__);
+tester.testSrc(
+   "class [static] C{ fcn f(n){ n.isEven } }"
+   "d := Data(); Compiler.Asm.writeRootClass(C,d); d.seek(0);"
+   "klass := Compiler.Asm.readRootClass(d,False,False);"
+   "var R = klass.f(5);", Void,Void,False,__LINE__);
+tester.testSrc(
+   "class [static] C{ class D{ var v=123 } }"
+   "d := Data(); Compiler.Asm.writeRootClass(C,d); d.seek(0);"
+   "klass := Compiler.Asm.readRootClass(d,False,False);"
+   "var R = klass.__constructor().D.v;", Void,Void,123,__LINE__);
+tester.testSrc(
+   "class [static] C{ class D{ var v=123 } class E{ class F(D){} }}"
+   "d := Data(); Compiler.Asm.writeRootClass(C,d); d.seek(0);"
+   "klass := Compiler.Asm.readRootClass(d,False,False);"
+   "var R = klass.__constructor().E.F.v;", Void,Void,123,__LINE__);
+
+
+		////////////// static fcns
+tester.testSrc("fcn f {}     var R=f.isStatic;", Void,Void,True,__LINE__);
+tester.testSrc("fcn f {self} var R=f.isStatic;", Void,Void,False,__LINE__);
+tester.testSrc("class [static] C { fcn f {} } var R=C.f.isStatic;",
+    Void,Void,True,__LINE__);
+
+tester.testSrc(	
+   "class [static] C { fcn f {} }"
+   "d := Data(); Compiler.Asm.writeRootClass(C,d); d.seek(0);"
+   "klass := Compiler.Asm.readRootClass(d,False,False);"
+   0'|var R = "%s %s".fmt(C.f.isStatic, klass.f.isStatic);|,
+   Void,Void,"True True",__LINE__);
+
+tester.testSrc("var R = fcn{vm}.isStatic",       Void,Void,True,__LINE__);
+tester.testSrc("var R = fcn{vm.name}.isStatic",  Void,Void,True,__LINE__);
+tester.testSrc("var R = fcn{self.name}.isStatic",Void,Void,False,__LINE__);
+tester.testSrc("fcn f{vm} var R=f.code.code.bytes()[0]",Void,Void,174,__LINE__);
+
+
+   		////////// self.var, fcn
+tester.testSrc(0'|class C { var v; fcn f { self.v } }|
+   0'|d:=Data(); C.f.unasm(d); var R=(d.find("getVar(0)").isType(1));|,
+   Void,Void,True,__LINE__);
+tester.testSrc(0'|class C { var v; fcn f { self.v = 1; } }|
+   0'|d:=Data(); C.f.unasm(d); var R=(d.find("setVar(0)").isType(1));|,
+   Void,Void,True,__LINE__);
+tester.testSrc(0'|class C { fcn g{} fcn f { self.g(); } }|
+   0'|d:=Data(); C.f.unasm(d); var R=(d.find("fcnN(1)").isType(1));|,
+   Void,Void,True,__LINE__);
+
+tester.testSrc(0'|c := Compiler.Asm.asm("self\nsetVarI(0)\n");|
+   "var R = c.code.bytes();", Void,Void,T(157,0),__LINE__);
+
+tester.testSrc(0'|c := Compiler.Asm.asm("self\ngetVarI(0)\n");|
+   "var R = c.code.bytes();", Void,Void,T(156,0),__LINE__);
+
+tester.testSrc(0'|c := Compiler.Asm.asm("self\nfcnNI(0)\n");|
+   "var R = c.code.bytes();", Void,Void,T(148,0),__LINE__);
+
+tester.testSrc(0'|c := Compiler.Asm.asm("self\nclassNI(0)\n");|
+   "var R = c.code.bytes();", Void,Void,T(146,0),__LINE__);
+
+
+   		///////////////////////////////// jmps
+tester.testSrc("c := Compiler.Asm.asm("
+   0'|"label(A)\nadd\njmpBack(A)\n\ndone\n");|
+   "var R = c.code.bytes();",  // --> add,jmpBack(2),done
+   Void,Void,T(70,209,2,0),__LINE__);
+tester.testSrc("c := Compiler.Asm.asm("
+   0'|"jmpFwd(A)\nadd\nlabel(A)\ndone\n");|
+   "var R = c.code.bytes();",  // --> jmpFwd(1),add,done
+   Void,Void,T(206,2,70,0),__LINE__);
+
+   		////// jmp chasing, collapsing
+tester.testSrc(0'|Compiler.Asm.asm("label(A)\njmpFwd(A)\n");|,
+   Void,"AsmError",Void,__LINE__);	// infinite loop
+
+tester.testSrc("c := Compiler.Asm.asm("	// remove null jmp
+   0'|"jmpFwd(A)\nlabel(A)\njmpFwd(B)\nlabel(B)\ndone\n");|
+   "var R = c.code.bytes();",  // --> done
+   Void,Void,T(0),__LINE__);
+tester.testSrc("c := Compiler.Asm.asm("	// remove null jmp
+   0'|"jmpFwd(C)\nlabel(A)\nlabel(B)\nlabel(C)\ndone\n");|
+   "var R = c.code.bytes();",  // --> done
+   Void,Void,T(0),__LINE__);
+tester.testSrc("c := Compiler.Asm.asm("	// remove null jmp
+   0'|"jmpTrue(C)\nlabel(A)\nlabel(B)\nlabel(C)\ndone\n");|
+   "var R = c.code.bytes();",  // --> done
+   Void,Void,T(0),__LINE__);
+tester.testSrc("c := Compiler.Asm.asm("	// remove null jmps
+   0'|"jmpFwd(D)\njmpTrue(C)\njmpFalse(B)\n|
+   0'|label(A)\nlabel(B)\nlabel(C)\nlabel(D)\ndone\n");|
+   "var R = c.code.bytes();",  // --> done
+   Void,Void,T(0),__LINE__);
+
+tester.testSrc("c := Compiler.Asm.asm("
+   0'|"jmpFwd(A)\nadd\nlabel(A)\njmpFwd(B)\nadd\nlabel(B)\ndone\n");|
+   "var R = c.code.bytes();",  // --> hopFwd(7),add,hopFwd(3),add,done
+   Void,Void,T(206,5,70,206,2,70,0),__LINE__);
+tester.testSrc("c := Compiler.Asm.asm("
+   0'|"jmpTrue(A)\nadd\nlabel(A)\njmpTrue(B)\nadd\nlabel(B)\ndone\n");|
+   "var R = c.code.bytes();",
+   // --> hopTrue(7),add,hopTrue(3),add,done
+   Void,Void,T(207,5,70,207,2,70,0),__LINE__);
+tester.testSrc("c := Compiler.Asm.asm("
+   0'|"label(TOP)\nadd\njmpTrue(A)\nadd\nlabel(A)\njmpTrue(B)\nadd\nlabel(B)\n|
+   0'|jmpBack(TOP)\ndone\n");| "var R = c.code.bytes();",
+   // --> add\nhopTrue(7),add,hopTrue(3),add,hopBack(9),done
+   Void,Void,T(70,207,5,70,207,2,70,209,8,0),__LINE__);
+
+tester.testSrc("c := Compiler.Asm.asm("
+   0'|"jmpTrue(A)\nadd\nlabel(A)\njmpFalse(B)\nadd\nlabel(B)\ndone\n");|
+   "var R = c.code.bytes();",
+   // --> hopTrue(7),add,hopFalse(3),add,done
+   Void,Void,T(207,4,70,208,2,70,0),__LINE__);
+
+tester.testSrc("c := Compiler.Asm.asm("
+   0'|"jmpTrue(A)\nadd\nlabel(A)\njmpFwd(B)\nadd\nlabel(B)\n|
+   0'|jmpTrue(C)\nadd\nlabel(C)\ndone\n");|
+   "var R = c.code.bytes();",
+   // --> hopTrue(11),add,hopFwd(3),add,hopTrue(3),add,done
+   Void,Void,T(207,8,70,206,2,70,207,2,70,0),__LINE__);
+
+tester.testSrc("c := Compiler.Asm.asm("  // jmp to jmpBool
+   0'|"jmpFwd(A)\nadd\nlabel(A)\njmpFalse(B)\nadd\nlabel(B)\ndone\n");|
+   "var R = c.code.bytes();",
+   // --> hopFwd(3),add,hopFalse(3),add,done
+   Void,Void,T(206,2,70,208,2,70,0),__LINE__);
+
+tester.testSrc("c := Compiler.Asm.asm("		// infinite loop
+   0'|"label(Top)\njmpFwd(Bot)\nadd\nlabel(Bot)\njmpBack(Top)\ndone\n");|,
+   Void,"AsmError",Void,__LINE__);
+
+tester.testSrc("c := Compiler.Asm.asm("	  // null jumps, both jmp to done
+   0'|"label(Top)\njmpFwd(Done)\njmpBack(Top)\nlabel(Done)\ndone\n");|
+   "var R = c.code.bytes();",
+   Void,Void,T(0),__LINE__);
+
+tester.testSrc("c := Compiler.Asm.asm("	  // short short jmp
+   0'|"jmpFalse(A)\njmpFwd(B)\nlabel(A)\nlabel(B)\ndone\n");|
+   "var R = c.code.bytes();",
+   Void,Void,T(0),__LINE__);	// --> done
+
+   	//// jmp to before jmp
+tester.testSrc("c := Compiler.Asm.asm("
+   0'|"label(TOP)\nadd\njmpTrue(A)\nadd\nlabel(A)\njmpBack(TOP)\ndone\n");|
+   "var R = c.code.bytes();",  // --> add,hopTrue(3),add,jmpBack(5),done
+   Void,Void,T(70,207,2,70,209,5,0),__LINE__);
+tester.testSrc("c := Compiler.Asm.asm("
+   0'|"label(TOP)\nadd\njmpFwd(A)\nadd\nlabel(A)\njmpBack(TOP)\ndone\n");|
+   "var R = c.code.bytes();",  // --> add,hopBack(2),add,jmpBack(5),done
+   Void,Void,T(70,209,2,70,209,5,0),__LINE__);
+tester.testSrc("c := Compiler.Asm.asm("
+   0'|"jmpTrue(A)\nadd\nsub\nlabel(B)\nmul\nlabel(A)\njmpBack(B)\ndone\n");|
+   "var R = c.code.bytes();",  // --> hopTrue(3),add,sub,mul,jmpBack(2),done
+   Void,Void,T(207,3,70,72,71,209,2,0),__LINE__);
+
+   	////// jmpBool to jmp!Bool,jmp
+tester.testSrc("c := Compiler.Asm.asm("
+   0'|"jmpTrue(A)\nadd\nlabel(A)\njmpFalse(B)\njmpFwd(C)\nsub\n|
+   0'|label(C)\nlabel(B)\ndone\n");|
+   "var R = c.code.bytes();",
+   // --> hopTrue(7),add,hopFalse(4),hopFwd(2),sub,done
+   Void,Void,T(207,7,70,208,4,206,2,72,0),__LINE__);
+
+
+	////////////////////////////////////////////// block opto
+tester.testSrc("fcn f { reg x; { x + 1 } }"
+    "var R = f.unasm(Data()).find(\"createBlock\");",Void,Void,Void,__LINE__);
+
+
+    			//////////////////////////////////// registers
+tester.testSrc("fcn f { r:=3; r + 1; }"			// getReg
+    0'|var R = f.unasm(Data()).find("getReg0").isType(1);|,
+    Void,Void,True,__LINE__);
+tester.testSrc(0'|c := Compiler.Asm.asm("getReg(0)\n");|
+   "var R = c.code.bytes();", Void,Void,T(220),__LINE__);
+tester.testSrc(0'|c := Compiler.Asm.asm("getReg(1)\n");|
+   "var R = c.code.bytes();", Void,Void,T(221),__LINE__);
+tester.testSrc(0'|c := Compiler.Asm.asm("getReg(2)\n");|
+   "var R = c.code.bytes();", Void,Void,T(222),__LINE__);
+tester.testSrc(0'|c := Compiler.Asm.asm("getReg(3)\n");|
+   "var R = c.code.bytes();", Void,Void,T(223),__LINE__);
+tester.testSrc(0'|c := Compiler.Asm.asm("getReg(4)\n");|
+   "var R = c.code.bytes();", Void,Void,T(224),__LINE__);
+tester.testSrc(0'|c := Compiler.Asm.asm("getReg(5)\n");|
+   "var R = c.code.bytes();", Void,Void,T(225),__LINE__);
+tester.testSrc(0'|c := Compiler.Asm.asm("getReg(6)\n");|
+   "var R = c.code.bytes();", Void,Void,T(151,6),__LINE__);
+
+tester.testSrc("fcn f { r := 1 }"				// setReg
+    0'|var R = f.unasm(Data()).find("setReg0").isType(1);|,
+    Void,Void,True,__LINE__);
+tester.testSrc(0'|c := Compiler.Asm.asm("setReg(0)\n");|
+   "var R = c.code.bytes();", Void,Void,T(226),__LINE__);
+tester.testSrc(0'|c := Compiler.Asm.asm("setReg(1)\n");|
+   "var R = c.code.bytes();", Void,Void,T(227),__LINE__);
+tester.testSrc(0'|c := Compiler.Asm.asm("setReg(2)\n");|
+   "var R = c.code.bytes();", Void,Void,T(228),__LINE__);
+tester.testSrc(0'|c := Compiler.Asm.asm("setReg(3)\n");|
+   "var R = c.code.bytes();", Void,Void,T(229),__LINE__);
+tester.testSrc(0'|c := Compiler.Asm.asm("setReg(4)\n");|
+   "var R = c.code.bytes();", Void,Void,T(230),__LINE__);
+tester.testSrc(0'|c := Compiler.Asm.asm("setReg(5)\n");|
+   "var R = c.code.bytes();", Void,Void,T(231),__LINE__);
+tester.testSrc(0'|c := Compiler.Asm.asm("setReg(6)\n");|
+   "var R = c.code.bytes();", Void,Void,T(152,6),__LINE__);
+
+tester.testSrc("fcn f { r:=3; r; }"  // --> allocReg(1),IntB(3),done
+    0'|var R = f.code.code.bytes();|,
+    Void,Void,T(150,1,203,3,0),__LINE__);
+
+tester.testSrc(0'|c := Compiler.Asm.asm("setReg(0)\ngetReg(0)\n");|
+   "var R = c.code.bytes();",  // --> setReg0
+   Void,Void,T(226),__LINE__);
+tester.testSrc(0'|c := Compiler.Asm.asm("setReg(0)\ngetReg(0)\ndone\n");|
+   "var R = c.code.bytes();",  // --> done
+   Void,Void,T(0),__LINE__);
+tester.testSrc(0'|c := Compiler.Asm.asm("setReg(0)\nlabel(foo)\ngetReg(0)\n");|
+   "var R = c.code.bytes();",  // --> setReg0,getReg0
+   Void,Void,T(226,220),__LINE__);
+
+tester.testSrc(0'|c := Compiler.Asm.asm("getRegI(0)\n");|
+   "var R = c.code.bytes();",  // --> getRegI0
+   Void,Void,T(215),__LINE__);
+tester.testSrc(0'|c := Compiler.Asm.asm("getRegI(1)\n");|
+   "var R = c.code.bytes();",  // --> getRegI1
+   Void,Void,T(216),__LINE__);
+tester.testSrc(0'|c := Compiler.Asm.asm("getRegI(2)\n");|
+   "var R = c.code.bytes();",  // --> getRegI(1)
+   Void,Void,T(153,2),__LINE__);
+
+
+   		////////////////////////////////////////// incReg, decReg
+tester.testSrc("var R; r:=3; r += 1; R = r;",Void,Void,4,__LINE__);
+tester.testSrc("var R; r:=3; r -= 1; R = r;",Void,Void,2,__LINE__);
+tester.testSrc("fcn f{ r:=3; r += 1; }"
+    0'|var R = f.unasm(Data()).find("incReg").isType(1);|,
+    Void,Void,True,__LINE__);
+tester.testSrc("fcn f { r:=3; r -= 1; }"
+    0'|var R = f.unasm(Data()).find("decReg").isType(1);|,
+    Void,Void,True,__LINE__);
+tester.testSrc("fcn f { r:=3; r += 2; }"
+    0'|var R = f.unasm(Data()).find("incReg").isType(1);|,
+    Void,Void,False,__LINE__);
+tester.testSrc("fcn f { r:=3; {{{r += 1;}}} }"
+    0'|var R = f.unasm(Data()).find("incReg").isType(1);|,
+    Void,Void,True,__LINE__);
+tester.testSrc("fcn f { reg r; try { r += 1 } catch{} }"
+    0'|var R = f.unasm(Data()).find("incReg").isType(1);|,
+    Void,Void,False,__LINE__);
+tester.testSrc(0'|fcn f { reg r; r += "1" }|
+    0'|var R = f.unasm(Data()).find("incReg").isType(1);|,
+    Void,Void,False,__LINE__);
+tester.testSrc(0'|fcn f { var r; r += 1 }|
+    0'|var R = f.unasm(Data()).find("incReg").isType(1);|,
+    Void,Void,False,__LINE__);
+tester.testSrc(0'|fcn f(r) { r += 1 }|
+    0'|var R = f.unasm(Data()).find("incReg").isType(1);|,
+    Void,Void,False,__LINE__);
+
+   		////////////////////////////////////////// reg+=
+tester.testSrc("var R; r:=3; r += 5; R = r;",Void,Void,8,__LINE__);
+tester.testSrc(0'|var R; r:="foo"; r += 5; R = r;|,Void,Void,"foo5",__LINE__);
+tester.testSrc(0'|var R; r:=3; r += "5"; R = r;|,Void,Void,8,__LINE__);
+tester.testSrc(0'|var R; r:=3; r += "bar"; R = r;|,Void,"ValueError",8,__LINE__);
+tester.testSrc(0'|fcn f { r:=3; r += 5 }|
+    0'|var R = f.unasm(Data()).find("reg+=").isType(1);|,
+    Void,Void,True,__LINE__);
+tester.testSrc(0'|fcn f(r) { r += 5 }|
+    0'|var R = f.unasm(Data()).find("reg+=").isType(1);|,
+    Void,Void,False,__LINE__);
+
+
+   	//////////////// register rollups
+tester.testSrc("fcn f { {T(a:=1)} {T(b:=1)} }"
+    0'|var R = f.code.code.bytes(0,2);|,
+    Void,Void,T(150,1),__LINE__);
+tester.testSrc("fcn f { a:=1; {T(b:=1)} }"
+    0'|var R = f.code.code.bytes(0,2);|,
+    Void,Void,T(150,2),__LINE__);
+
+
+   		///////////////////////////////////// args
+tester.testSrc(0'|c := Compiler.Asm.asm("argN(0)\n");|
+   "var R = c.code.bytes();", Void,Void,T(210),__LINE__);
+tester.testSrc(0'|c := Compiler.Asm.asm("argN(1)\n");|
+   "var R = c.code.bytes();", Void,Void,T(211),__LINE__);
+tester.testSrc(0'|c := Compiler.Asm.asm("argN(2)\n");|
+   "var R = c.code.bytes();", Void,Void,T(212),__LINE__);
+tester.testSrc(0'|c := Compiler.Asm.asm("argN(3)\n");|
+   "var R = c.code.bytes();", Void,Void,T(130,3),__LINE__);
+
+
+   		/////////////////////////////// ints
+tester.testSrc(0'|c := Compiler.Asm.asm("Int(0)\n");|
+   "var R = c.code.bytes();", Void,Void,T(200),__LINE__);
+tester.testSrc(0'|c := Compiler.Asm.asm("Int(1)\n");|
+   "var R = c.code.bytes();", Void,Void,T(201),__LINE__);
+
+tester.testSrc(0'|c := Compiler.Asm.asm("Int(2)\n");|		// IntB
+   "var R = c.code.bytes();", Void,Void,T(203,2),__LINE__);
+tester.testSrc(0'|c := Compiler.Asm.asm("Int(255)\n");|
+   "var R = c.code.bytes();", Void,Void,T(203,255),__LINE__);
+
+tester.testSrc(0'|c := Compiler.Asm.asm("Int(256)\n");|		// IntW
+   "var R = c.code.bytes();", Void,Void,T(204,1,0),__LINE__);
+tester.testSrc(0'|c := Compiler.Asm.asm("Int(65535)\n");|
+   "var R = c.code.bytes();", Void,Void,T(204,255,255),__LINE__);
+
+
+   			/////////////////////////////// calls
+tester.testSrc(0'|c := Compiler.Asm.asm("resolve(f)\ncallResult\n");|
+   "var R = c.code.bytes();", Void,Void,T(116,0xff,0xff),__LINE__);
+tester.testSrc(0'|c := Compiler.Asm.asm("resolve(f)\ncallResultZ\n");|
+   "var R = c.code.bytes();", Void,Void,T(115,0xff,0xff),__LINE__);
+
+
+		////////////////////// misc
+tester.testSrc("c := Compiler.Compiler.compileText("
+   0'|"fcn f {(1).walker(2).walk(99);}",0,True); var R = c.f();|,
+   Void,Void,T(1,2),__LINE__);
+//!!!! walker() not getting gripped! expression ) .dataref
+
+#if 0
+tester.testSrc("fcn f(a,b) { if (not a) b }"
+   "var R = f.code.code.bytes();",	// --> arg0,hopTrue(2),arg1,done
+   Void,Void,T(210,207,2,211,0),__LINE__);
+#endif
+   // why the above is bad:
+tester.testSrc("fcn f(a,b) { if (not a and b) 4; }"
+   "var R = f(True,False);",
+   Void,Void,False,__LINE__);
+
+tester.testSrc(0'|c := Compiler.Asm.asm("done\ndone\n");|
+   "var R = c.code.bytes();", Void,Void,T(0),__LINE__);
+tester.testSrc(0'|c := Compiler.Asm.asm("done\ndone\ndone\n");|
+   "var R = c.code.bytes();", Void,Void,T(0),__LINE__);
+
+tester.testSrc(0'|c := Compiler.Asm.asm("setX\npop\n");|
+   "var R = c.code.bytes();", Void,Void,T(102),__LINE__);
+
+tester.testSrc(0'|c := Compiler.Asm.asm("push\npop\ndone\n");|
+   "var R = c.code.bytes();", Void,Void,T(0),__LINE__);
+
+tester.testSrc(0'|c := Compiler.Asm.asm("getX\nsetX\n");|
+   "var R = c.code.bytes();", Void,Void,T(136),__LINE__);
+
+tester.testSrc(0'|c := Compiler.Asm.asm("createBlock\npopBlock\ndone\n");|
+   "var R = c.code.bytes();", Void,Void,T(0),__LINE__);
+
+
+    ///////////////////////////////////////////////////// foreach
+tester.testSrc("fcn f{ foreach n in (4){ println(n) }}"
+   0'|d:=Data(); f.unasm(d); var R=(d.find("callIMethodNZ(0)").isType(1));|,
+   Void,Void,True,__LINE__);
+tester.testSrc("fcn f{ foreach n in (4){ println(n) }}"
+   0'|d:=Data(); f.unasm(d); var R=(d.find("iPropertyN(0)").isType(1));|,
+   Void,Void,True,__LINE__);
+
+
+    ////////////////////////////////////////////////////
+    ////////////////////////////////////////// Tokenizer
+
+tester.testRun(fcn {		// incomplete String: newline in ""
+   src := "println(\"foo\nbar\")";
+   Compiler.Tokenizer.tokenizeText(src);
+}, "SyntaxError",Void,__LINE__);
+
+var src1 = "n = 1; \n println(n)";
+var result1 = ROList("{",1,"n","=","1",";",2,"println(","n",")","}");
+var result2 = ROList("{",1,"n","=","1",";",  "println(","n",")","}");
+var result3 = ROList("{",1,"n",2,"=",3,"1",";",5,"println(","n",")","}");
+
+tester.testRun(fcn {		// String
+   src := 0'|println("foo\nbar")|;
+   Compiler.Tokenizer.tokenizeText(src)[0];
+},Void,L("{",1,"println(","\"foo\nbar\"",")","}"),__LINE__);
+
+tester.testRun(fcn {		// String
+   Compiler.Tokenizer.tokenizeText(src1)[0];
+},Void,result1,__LINE__);
+
+tester.testRun(fcn {		// List
+   println("List");
+   src := src1.split();
+   Compiler.Tokenizer.tokenizeText(src)[0];
+},Void,result2,__LINE__);
+tester.testRun(fcn {		// List
+   println("List");
+   src := src1.split("\n");
+   Compiler.Tokenizer.tokenizeText(src)[0];
+},Void,result2,__LINE__);
+tester.testRun(fcn {		// List
+   println("List");
+   src := src1.split(" ");
+   Compiler.Tokenizer.tokenizeText(src)[0];
+},Void,result1,__LINE__);
+
+tester.testRun(fcn{		// Pipe of lines
+   println("Pipe of lines");
+   reg pipe = Thread.Pipe();
+   foreach line in (src1.split("\n")) { pipe.write(line+"\n"); }
+   pipe.close();
+   Compiler.Tokenizer.tokenizeText(pipe)[0];
+},Void,result1,__LINE__);
+
+tester.testRun(fcn{		// Data/Data
+   src := Data(0,Int,src1.split(" "));
+   Compiler.Tokenizer.tokenizeText(src)[0];
+},Void,result1,__LINE__);
+tester.testRun(fcn{		// Data/Strings
+   src := Data(0,String,src1.split(" "));
+   Compiler.Tokenizer.tokenizeText(src)[0];
+},Void,result3,__LINE__);
+tester.testRun(fcn{		// Data/Strings
+   src := Data(0,Int,src1.split(" ")).mode(String);
+   Compiler.Tokenizer.tokenizeText(src)[0];
+},Void,result1,__LINE__);
+
+tester.testRun(fcn{		// Data/Data
+   src := Data(0,Int,src1.split("\n"));
+   Compiler.Tokenizer.tokenizeText(src)[0];
+},Void,result2,__LINE__);
+tester.testRun(fcn{		// Data/Strings
+   src := Data(0,String,src1.split("\n"));
+   Compiler.Tokenizer.tokenizeText(src)[0];
+},Void,result1,__LINE__);
+
+
+		///////////////////////////////////////// varBits
+tester.testSrc(
+   "class [static] Z { var c; var  p; }"
+   "d := Data(); Compiler.Asm.writeRootClass(Z,d); d.seek(0);"
+   "klass := Compiler.Asm.readRootClass(d,False,False);"
+   "var R = (Z.varBits == klass.varBits);", Void,Void,True,__LINE__);
+tester.testSrc(
+   "class [static] Z { var [const] c; var [proxy] p; }"
+   "d := Data(); Compiler.Asm.writeRootClass(Z,d); d.seek(0);"
+   "klass := Compiler.Asm.readRootClass(d,False,False);"
+   "var R = (Z.varBits==klass.varBits);", Void,Void,True,__LINE__);
+tester.testSrc(
+   "class [static] Z { var [const] c; var p; }"
+   "d := Data(); Compiler.Asm.writeRootClass(Z,d); d.seek(0);"
+   "klass := Compiler.Asm.readRootClass(d,False,False);"
+   "var R = (Z.varBits==klass.varBits);", Void,Void,True,__LINE__);
+tester.testSrc(
+   "class [static] Z { var c; var [proxy] p; }"
+   "d := Data(); Compiler.Asm.writeRootClass(Z,d); d.seek(0);"
+   "klass := Compiler.Asm.readRootClass(d,False,False);"
+   "var R = (Z.varBits==klass.varBits);", Void,Void,True,__LINE__);
+tester.testSrc(
+   "class [static] Z { var a; var [const]c; var d; var [proxy] p; }"
+   "d := Data(); Compiler.Asm.writeRootClass(Z,d); d.seek(0);"
+   "klass := Compiler.Asm.readRootClass(d,False,False);"
+   "var R = (Z.varBits==klass.varBits);", Void,Void,True,__LINE__);
+
+
+		///////////////////////////////////////// package
+tester.testSrc(0'|c:=Compiler.Compiler.packageText( "Attributes(static);" |
+   0'|"var [const]v = pimport(\"Tests/manifest\")");|
+   "var R;",Void,Void,Void,__LINE__);
+tester.testSrc(0'|c:=Compiler.Compiler.packageText(|
+   0'|"var [const]v = pimport(\"Tests/manifest\"); v.foo");|
+   "var R;",Void,"SyntaxError",Void,__LINE__);
+tester.testSrc(0'|c:=Compiler.Compiler.packageText( "Attributes(static);" |
+   0'|"var [const]v = pimport(\"Tests/manifest\").foo");|
+   "var R;",Void,Void,Void,__LINE__);
+tester.testSrc(0'|c:=Compiler.Compiler.packageText(|
+   0'|"var [const]v = pimport(\"Tests/manifest\").copy(); v.foo");|
+   "var R;",Void,"SyntaxError",Void,__LINE__);
+tester.testSrc(0'|c:=Compiler.Compiler.packageText( "Attributes(static);" |
+   0'|"var [const]v = pimport(\"Tests/manifest\").copy; v.foo");|
+   "var R;",Void,Void,Void,__LINE__);
+
+
+
+tester.stats();
+returnClass(tester);

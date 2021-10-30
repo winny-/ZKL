@@ -1,0 +1,386 @@
+// -*-c-*-
+// Test File
+// Assumes I'm running in the Tests/.. directory
+
+tester := Test.UnitTester(__FILE__);
+
+			/////////////////////////// .readln
+tester.testSrc(0'|f:=File("Tests/README.txt"); var R=f.readln();f.close();|,
+    Void,Void,"This file: Tests/README.txt\n",__LINE__);
+tester.testSrc(0'|f:=File("Tests/lorem_ipsum.txt");|
+    "f.readln(); var R=f.readln(); f.close();",Void,Void,
+    "velit, non maximus lectus.  Integer nec sapien risus.  Morbi iaculis\n",
+    __LINE__);
+tester.testSrc(0'|f:=File("Tests/emptyFile");var R=f.readln();|,
+    Void,"TheEnd",0,__LINE__);
+
+
+tester.testSrc(0'|var R=File.exists("Tests/README.txt");|,Void,Void,True,__LINE__);
+tester.testSrc(0'|var R=File.exists("Tests/foobar");|,Void,Void,False,__LINE__);
+tester.testSrc(0'|var R=File.exists("./Tests/README.txt");|,Void,Void,True,__LINE__);
+tester.testSrc(0'|var R=File.exists("Tests");|,Void,Void,True,__LINE__);
+tester.testSrc(0'|var R=File.exists("./Tests");|,Void,Void,True,__LINE__);
+
+tester.testSrc(0'|var R=File.info("Tests/README.txt").isType(T);|,
+   Void,Void,True,__LINE__);
+tester.testSrc(0'|var R=File.info("Tests/foobar");|,Void,"NameError",Void,__LINE__);
+tester.testSrc(0'|var R=File.info("./Tests/README.txt").isType(T);|,
+   Void,Void,True,__LINE__);
+tester.testSrc(0'|var R=File.info("Tests").isType(T);|,Void,Void,True,__LINE__);
+tester.testSrc(0'|var R=File.info("./Tests").isType(T);|,Void,Void,True,__LINE__);
+
+tester.testSrc(0'|var R=File.isDir("Tests");|,Void,Void,True,__LINE__);
+tester.testSrc(0'|var R=File.isDir("./Tests");|,Void,Void,True,__LINE__);
+tester.testSrc(0'|var R=File.isDir("Tests/foobar");|,Void,Void,False,__LINE__);
+tester.testSrc(0'|var R=File.isDir("./Tests/README.txt");|,Void,Void,False,__LINE__);
+
+
+			/////////////////////////// .read
+tester.testSrc(0'|f:=File("Tests/README.txt"); var R=f.read(9).text;f.close();|,
+    Void,Void,"This file",__LINE__);
+tester.testSrc(0'|f:=File("Tests/README.txt"); var R=f.read(9);f.close();|
+    "R=R.isType(Data);", Void,Void,True,__LINE__);
+tester.testSrc(0'|f:=File("Tests/README.txt"); d:=Data(); f.read(9,d);|
+    "var R=d.text; f.close();", Void,Void,"This file",__LINE__);
+tester.testSrc(0'|f:=File("Tests/README.txt"); d:=Data(Void,"hoho"); f.read(9,d);|
+    "var R=d.text; f.close();", Void,Void,"This file",__LINE__);
+tester.testSrc(0'|f:=File("Tests/README.txt"); d:=Data(Void,"hoho"); f.read(1,d);|
+    "var R=d.text; f.close();", Void,Void,"T",__LINE__);
+tester.testSrc(0'|f:=File("Tests/README.txt"); d:=Data(Void,"hoho"); f.read(0,d);|
+    "var R=d.len(); f.close();", Void,Void,0,__LINE__);
+tester.testSrc(0'|f:=File("Tests/README.txt"); d:=Data(); f.read(*,d);|
+    "var R=(d.len()<f.len()); f.close();", Void,Void,True,__LINE__);
+tester.testSrc(0'|f:=File("Tests/README.txt"); d:=Data; f.read(*,d);|
+    "var R=d.len(); f.close();", Void,Void,0,__LINE__);
+
+tester.testSrc(0'|f:=File("Tests/lorem_ipsum.txt");|
+    "d:=f.read(); f.close();  var R=(d.len()>1);", Void,Void,True,__LINE__);
+tester.testSrc(0'|f:=File("Tests/lorem_ipsum.txt");|
+    "d:=f.read(6); f.close(); var R=d.len();", Void,Void,6,__LINE__);
+tester.testSrc(0'|f:=File("Tests/lorem_ipsum.txt");|
+    "d:=Data(600); d:=f.read(*,d); f.close(); var R=d.len();", 
+    Void,Void,600,__LINE__);
+
+tester.testSrc(0'|f:=File("Tests/lorem_ipsum.txt");|
+    "f.read(10); d:=f.read(10); f.close(); var R=d.text;", 
+    Void,Void,"m dolor si",__LINE__);
+
+tester.testSrc(0'|f:=File("Tests/lorem_ipsum.txt");|
+    "buf:=Data(); f.read(10,buf); f.close(); var R=buf.text;", 
+    Void,Void,"Lorem ipsu",__LINE__);
+tester.testSrc(0'|f:=File("Tests/lorem_ipsum.txt");|
+    "buf:=Data(); b:=f.read(10,buf); f.close(); var R=(b.id==buf.id);", 
+    Void,Void,True,__LINE__);
+tester.testSrc(0'|f:=File("Tests/lorem_ipsum.txt");|
+    "buf:=Data(5000); f.read(5000,buf);f.read(5000,buf); f.close(); var R;", 
+    Void,"TheEnd",True,__LINE__);
+
+tester.testSrc(0'|f:=File("Tests/emptyFile"); var R=f.read().len(); f.close();|,
+    Void,"TheEnd",0,__LINE__);
+tester.testSrc(0'|f:=File("Tests/emptyFile"); f.read(*,Data());|
+    "f.close(); var R=f.read().len();", Void,"TheEnd",0,__LINE__);
+
+tester.testSrc(0'|f:=File("Tests/emptyFile"); f.read(*,Data());|
+    "f.close(); var R=True;", Void,"TheEnd",Void,__LINE__);
+tester.testSrc(0'|f:=File("Tests/emptyFile"); f.read(*,Data(),True);|
+    "f.close(); var R=True;", Void,"TheEnd",Void,__LINE__);
+tester.testSrc(0'|f:=File("Tests/emptyFile"); f.read(*,Data(),False);|
+    "f.close(); var R=True;", Void,Void,True,__LINE__);
+tester.testSrc(0'|f:=File("Tests/lorem_ipsum.txt"); f.read(*,Data(),False);|
+    "f.read(*,Data(),False); f.close(); var R=True;", Void,Void,True,__LINE__);
+tester.testSrc(0'|f:=File("Tests/lorem_ipsum.txt"); d:=Data(); var R=0;|
+    "while(f.read(*,d,False)){ R+=d.len() } f.close(); R=(R>0)",
+     Void,Void,True,__LINE__);
+tester.testSrc(0'|f:=File("Tests/lorem_ipsum.txt"); d:=Data();|
+    "while(f.read(*,d)){} f.close(); var R=d.len();",
+     Void,"TheEnd",Void,__LINE__);
+
+
+				    /////////////////////////// .read1
+tester.testSrc(0'|f:=File("Tests/emptyFile");var R=f.read1();|,
+    Void,"TheEnd",0,__LINE__);
+tester.testSrc(0'|f:=File("Tests/lorem_ipsum.txt");var R=f.read1();|,
+    Void,Void,0x4c,__LINE__);
+
+
+			/////////////////////////// .popen & .read
+tester.testSrc(
+#<<<
+0'|
+    cmd:=(System.isWindows and "dir Tests\Object\file.zkl" or
+			       "ls Tests/Object/file.zkl");
+    p:=System.popen(cmd,"r");
+    d:=p.read(); p.close();  var R=(d.len()>1);|, Void,Void,True,__LINE__);
+#<<<
+
+tester.testSrc(
+#<<<
+0'|
+    cmd:=(System.isWindows and "dir Tests\Object\file.zkl" or
+			       "ls Tests/Object/file.zkl");
+    p:=System.popen(cmd,"r");
+    d:=p.read(6); p.close(); var R=d.len();|, Void,Void,6,__LINE__);
+#<<<
+
+tester.testSrc(
+    0'|cmd:=(System.isWindows and "dir " or "ls -l ") + "Tests";|
+    0'|p:=System.popen(cmd,"r"); d:=Data(600);|
+    "d:=p.read(*,d); p.close(); var R=d.len();", Void,Void,600,__LINE__);
+
+
+			/////////////////////////// .pump
+tester.testSrc(
+    0'|f,txt := File("Tests/lorem_ipsum.txt","rb"), f.read(); f.close();|
+    0'|f,buf := File("Tests/lorem_ipsum.txt","rb"), Data(); |
+    0'|r:=f.pump(buf,Data); f.close(); var R=(txt==r);|,
+    Void,Void,True,__LINE__);
+
+tester.testSrc(0'|f:=File("Tests/README.txt");|
+    0'|var R=f.pump(9,String,"text","toUpper",T.fp(Void.Stop));f.close();|,
+    Void,Void,"THIS FILE",__LINE__);
+tester.testSrc(0'|f:=File("Tests/README.txt"); d:=Data();|
+    0'|var R=f.pump(d,Data,"text","toUpper",T.fp(Void.Stop));f.close();|
+    "R=R.text[0,9];", Void,Void,"THIS FILE",__LINE__);
+tester.testSrc(0'|f:=File("Tests/README.txt"); d:=Data();|
+    0'|f.pump(d,Data,"text","toUpper",T.fp(Void.Stop));f.close();|
+    "var R=d.text[0,9];", Void,Void,"This file",__LINE__);
+tester.testSrc(0'|f:=File("Tests/README.txt"); d:=Data;|
+    0'|f.pump(d,Data,"text","toUpper",T.fp(Void.Stop));f.close();|
+    "var R=d.text[0,9];", Void,"TypeError","",__LINE__);
+
+
+			///////////////////////////// .splitFileName
+tester.testSrc(0'|var R=File.splitFileName("")|,
+	Void,Void,ROList("","","",""),__LINE__);
+tester.testSrc("var R; R = File.splitFileName(\"foo\")",
+	Void,Void,ROList("","","foo",""),__LINE__);
+tester.testSrc("var R; R = File.splitFileName(\"foo.zkl\")",
+	Void,Void,ROList("","","foo",".zkl"),__LINE__);
+tester.testSrc("var R; R = File.splitFileName(\"foo.h.zkl\")",
+	Void,Void,ROList("","","foo.h",".zkl"),__LINE__);
+
+tester.testSrc(0'|var R=File.splitFileName("..")|,
+	Void,Void,ROList("","..","",""),__LINE__);
+tester.testSrc(0'|var R=File.splitFileName(".")|,
+	Void,Void,ROList("", ".", "",""),__LINE__);
+tester.testSrc("var R; R = File.splitFileName(\"./foo\")",
+	Void,Void,ROList("","./","foo",""),__LINE__);
+tester.testSrc("var R; R = File.splitFileName(\"foo/.\")",
+	Void,Void,ROList("","foo/","",""),__LINE__);
+tester.testSrc("var R; R = File.splitFileName(\"Src/foo.zkl\")",
+	Void,Void,ROList("","Src/","foo",".zkl"),__LINE__);
+tester.testSrc("var R; R = File.splitFileName(\"Src/../foo.zkl\")",
+	Void,Void,ROList("","Src/../","foo",".zkl"),__LINE__);
+
+tester.testSrc(0'|var R; R = File.splitFileName("/foo/bar/")|,
+	Void,Void,T("","/foo/bar/","",""),__LINE__);
+tester.testSrc(0'|var R; R = File.splitFileName("/foo/./bar/")|,
+	Void,Void,T("","/foo/bar/","",""),__LINE__);
+tester.testSrc(0'|var R; R = File.splitFileName("foo/bar/")|,
+	Void,Void,T("","foo/bar/","",""),__LINE__);
+tester.testSrc(0'|var R; R = File.splitFileName("foo/bar//")|,
+	Void,Void,T("","foo/bar/","",""),__LINE__);
+tester.testSrc(0'|var R; R = File.splitFileName("foo/bar///")|,
+	Void,Void,T("","foo/bar/","",""),__LINE__);
+tester.testSrc(0'|var R; R = File.splitFileName("foo//bar///")|,
+	Void,Void,T("","foo/bar/","",""),__LINE__);
+tester.testSrc(0'|var R; R = File.splitFileName("../foo/../fred.txt")|,
+	Void,Void,T("","../foo/../","fred",".txt"),__LINE__);
+
+tester.testSrc(0'|var R=File.splitFileName("/media/craigd/Tunes/My Music/Dire Straits/")|,
+	Void,Void,ROList("","/media/craigd/Tunes/My Music/Dire Straits/","",""),__LINE__);
+tester.testSrc(0'|var R=File.splitFileName("/media/craigd/Tunes/My Music/Dire Straits/Dire Straits.mp3")|,
+	Void,Void,ROList("","/media/craigd/Tunes/My Music/Dire Straits/","Dire Straits",".mp3"),__LINE__);
+
+tester.testSrc(0'|var R=File.splitFileName("/home/craigd/Tmp")|,
+	Void,Void,ROList("","/home/craigd/","Tmp",""),__LINE__);
+#if 0	// screw it
+tester.testSrc(0'|var R=File.splitFileName("foo...txt")|,
+	Void,Void,ROList("","","foo..",".txt"),__LINE__);
+#endif
+
+tester.testSrc(0'|var R=File.splitFileName(".foo")|,
+	Void,Void,ROList("","",".foo",""),__LINE__);
+
+if (System.isUnix){
+   tester.testSrc(0'|var R; R = File.splitFileName("foo.")|,
+	Void,Void,ROList("","","foo.",""),__LINE__);
+}else if (System.isWindows){
+   tester.testSrc(0'|var R; R = File.splitFileName("foo.")|,
+	Void,Void,ROList("","","foo",""),__LINE__);
+
+   tester.testSrc("var R; R = File.splitFileName(\"C:/Src/../foo.zkl\")",
+	Void,Void,ROList("C:","/Src/../","foo",".zkl"),__LINE__);
+   tester.testSrc(0'|var R=File.splitFileName("C:/Src/./foo.zkl")|,
+	Void,Void,ROList("C:","/Src/","foo",".zkl"),__LINE__);
+   tester.testSrc("var R; R = File.splitFileName(\"C:foo\")",
+	Void,Void,ROList("C:","","foo",""),__LINE__);
+}
+
+
+			///////////////////////////////// .searchFor
+tester.testSrc(0'|var R = File.searchFor("Tests/Object/file.zkl",T)|,
+	Void,Void,"Tests/Object/file.zkl",__LINE__);
+tester.testSrc(0'|var R = File.searchFor("Tests/Object/file.foo",T)|,
+	Void,Void,Void,__LINE__);
+tester.testSrc(0'|var R = File.searchFor("Object/file.zkl",L("Tests"))|,
+	Void,Void,"Tests/Object/file.zkl",__LINE__);
+tester.testSrc(0'|var R = File.searchFor("Tests/Object/FILE[.]zkl",T,0x20)|,
+	Void,Void,"Tests/Object/file.zkl",__LINE__);
+
+
+		//////////////////////////////////////// .glob
+tester.testSrc(0'|var R = File.glob("/");|,Void,Void,L("/"),__LINE__);
+tester.testSrc(0'|var R = File.glob("/",0x6);|,Void,Void,L("/"),__LINE__);
+
+tester.testSrc(0'|var R = File.glob("");|,Void,Void,L(),__LINE__);
+
+tester.testSrc(0'|var R = File.glob(".");|,Void,Void,L("./"),__LINE__);
+tester.testSrc(0'|var R = File.glob("./");|,Void,Void,L("./"),__LINE__);
+
+tester.testSrc(0'|var R = File.glob("~"); R = R[0].matches("*/");|,
+   Void,Void,True,__LINE__);
+tester.testSrc(0'|var R = File.glob("~/"); R = R[0].matches("*/");|,
+   Void,Void,True,__LINE__);
+
+tester.testSrc(0'|var R = (File.glob("/*").len()  > 1);|,Void,Void,True,__LINE__);
+tester.testSrc(0'|var R = (File.glob("/*/").len() > 1);|,Void,Void,True,__LINE__);
+tester.testSrc(0'|var R = File.glob("/*/").filter("matches","*[^/]");|,
+    Void,Void,T,__LINE__);
+tester.testSrc(		// there should be some regular ole files in "/"
+    0'|var R = (File.glob("/*").filter("matches","*[^/]").len() > 0);|,
+    Void,Void,True,__LINE__);
+
+tester.testSrc(0'|var R = File.glob("T*/O*/at*l");|,
+   Void,Void,L("Tests/Object/atomic.zkl"),__LINE__);
+tester.testSrc(0'|var R = File.glob("*/*/atom*.zkl");|,
+   Void,Void,L("Tests/Object/atomic.zkl"),__LINE__);
+
+tester.testSrc(0'|var R = File.glob("T??ts*/Ob*t");|,
+   Void,Void,L("Tests/Object/"),__LINE__);
+tester.testSrc(0'|var R = File.glob("T??ts*/Ob*t",0x10);|,	// only dirs
+   Void,Void,L("Tests/Object/"),__LINE__);
+tester.testSrc(0'|var R = File.glob("T??ts*/Ob*",0x08);|,	// no dirs
+   Void,Void,L(),__LINE__);
+tester.testSrc(0'|var R = File.glob("T??ts*/Ob*",0x02);|,	// no path
+   Void,Void,L("Object/"),__LINE__);
+tester.testSrc(0'|var R = File.glob("T??ts*/Ob*",0x04);|,	// no slash
+   Void,Void,L("Tests/Object"),__LINE__);
+tester.testSrc(0'|var R = File.glob("Tests/*",0x1).len();|,	// only one
+   Void,Void,1,__LINE__);
+tester.testSrc(0'|var R = File.glob("Tests/v*r*",0x21);|,
+   Void,Void,L("Tests/var.zkl"),__LINE__);
+tester.testSrc(0'|var R = File.glob("Tests/V*R*",0x21);|,
+   Void,Void,L("Tests/var.zkl"),__LINE__);
+tester.testSrc(0'|var R = File.glob("Test[sS]/V*R*",0x21);|,
+   Void,Void,L("Tests/var.zkl"),__LINE__);
+
+
+if (System.isWindows){
+   tester.testSrc(0'|var R = File.glob("TESTS/V*R*",0x21);|,
+      Void,Void,L("TESTS/var.zkl"),__LINE__);
+   tester.testSrc(0'|var R = File.glob("TEST\\s/V*R*",0x21);|,
+      Void,Void,T,__LINE__);
+}else{
+   tester.testSrc(0'|var R = File.glob("TESTS/V*R*",0x21);|,
+      Void,Void,L,__LINE__);
+   tester.testSrc(0'|var R = File.glob("TEST\\s/V*R*",0x21);|,
+      Void,Void,L("Tests/var.zkl"),__LINE__);
+}
+
+if(System.isUnix)
+  tester.testSrc(0'|var R = File.glob("TEST\\S/V*R*",0x21);|,
+      Void,Void,L,__LINE__);
+
+   	// no matches
+tester.testSrc(0'|var R = File.glob("./Foo/Z/Bar/jimmy");|, Void,Void,L(),__LINE__);
+
+if (System.isWindows)
+{
+   tester.testSrc(0'|var R = File.glob("\\");|,Void,Void,L("/"),__LINE__);
+   tester.testSrc(0'|var R = File.glob("\\",0x6);|,Void,Void,L("/"),__LINE__);
+
+   tester.testSrc(0'|var R = File.glob("/P*Files");|,
+      Void,Void,L("/Program Files/"),__LINE__);
+   tester.testSrc(0'|var R = File.glob("/P*Files",6);|,
+      Void,Void,L("Program Files"),__LINE__);
+   tester.testSrc(0'|var R = File.glob("/P*Files",8);|,Void,Void,T,__LINE__);
+
+   tester.testSrc(0'|var R = File.glob("C:");|, Void,Void,T,__LINE__);
+   tester.testSrc(0'|var R = File.glob("C:/");|,Void,Void,L("C:/"),__LINE__);
+   tester.testSrc(0'|var R = File.glob("C:/",4);|,Void,Void,L("C:/"),__LINE__);
+   tester.testSrc(0'|var R = File.glob("C:/.");|,Void,Void,L("C:/./"),__LINE__);
+   tester.testSrc(0'|var R = File.glob("c:/.",4);|,Void,Void,L("c:/."),__LINE__);
+   tester.testSrc(0'|var R = File.glob("c:/.",6);|,Void,Void,L("."),__LINE__);
+}
+else if (System.isUnix)		// and Linux
+{
+   tester.testSrc(0'|var R = File.glob("/?sr/",4);|,Void,Void,L("/usr"),__LINE__);
+   tester.testSrc(0'|var R = File.glob("/usr",8);|,Void,Void,T,__LINE__);
+   tester.testSrc(0'|var R = File.glob("/usr/b*n",0x10);|,
+      Void,Void,L("/usr/bin/"),__LINE__);
+}
+
+
+		//////////////////////////////////////// .globular
+tester.testSrc(0'|var R=File.globular("Tests","o*er*",True,0,String);|,
+    Void,Void,"Tests/Object/others.zkl",__LINE__);
+tester.testSrc(0'|var R=File.globular("Tests","O*",True,0x20,List).sort();|,
+    Void,Void,L("Tests/Object/","Tests/Object/others.zkl"),__LINE__);
+
+
+				////////////////////////////////// .howza
+tester.testSrc(0'|f:=File("Tests/lorem_ipsum.txt");|
+    0'|var R=f.walker(0).walk(11).apply("toChar").concat(); f.close();|, 
+    Void,Void,"Lorem ipsum",__LINE__);
+tester.testSrc(0'|f:=File("Tests/lorem_ipsum.txt");|
+    0'|var R=f.howza(0).walker().walk(11).apply("toChar").concat(); f.close();|, 
+    Void,Void,"Lorem ipsum",__LINE__);
+
+tester.testSrc(0'|f:=File("Tests/lorem_ipsum.txt");|
+    0'|var R=f.walker(1).walk(1)[0]; f.close();|, Void,Void,
+    "Lorem ipsum dolor sit amet, consectetur adipiscing elit.  Nunc ut luctus\n",
+    __LINE__);
+tester.testSrc(0'|f:=File("Tests/lorem_ipsum.txt");|
+    0'|var R=f.howza(1).walker().walk(1)[0]; f.close();|, Void,Void,
+    "Lorem ipsum dolor sit amet, consectetur adipiscing elit.  Nunc ut luctus\n",
+    __LINE__);
+
+tester.testSrc(0'|f:=File("Tests/lorem_ipsum.txt");|
+    0'|var R=f.walker(11).walk(1)[0]; f.close();|, Void,Void,
+    "Lorem ipsum dolor sit amet, consectetur adipiscing elit.  Nunc ut luctus",
+    __LINE__);
+tester.testSrc(0'|f:=File("Tests/lorem_ipsum.txt");|
+    0'|var R=f.howza(11).walker().walk(1)[0]; f.close();|, Void,Void,
+    "Lorem ipsum dolor sit amet, consectetur adipiscing elit.  Nunc ut luctus",
+    __LINE__);
+
+tester.testSrc(0'|f:=File("Tests/lorem_ipsum.txt");|
+    0'|var R=f.walker(2).walk(1)[0]; f.close();|, Void,Void,
+    "Lorem ipsum dolor sit amet, consectetur adipiscing elit.  Nunc ut luctus\n",
+    __LINE__);
+tester.testSrc(0'|f:=File("Tests/lorem_ipsum.txt");|
+    0'|var R=f.howza(2).walker().walk(1)[0]; f.close();|, Void,Void,
+    "Lorem ipsum dolor sit amet, consectetur adipiscing elit.  Nunc ut luctus\n",
+    __LINE__);
+
+tester.testSrc(0'|f:=File("Tests/lorem_ipsum.txt");|
+    0'|var R=f.walker(12).walk(1)[0]; f.close();|, Void,Void,
+    "Lorem ipsum dolor sit amet, consectetur adipiscing elit.  Nunc ut luctus",
+    __LINE__);
+tester.testSrc(0'|f:=File("Tests/lorem_ipsum.txt");|
+    0'|var R=f.howza(12).walker().walk(1)[0]; f.close();|, Void,Void,
+    "Lorem ipsum dolor sit amet, consectetur adipiscing elit.  Nunc ut luctus",
+    __LINE__);
+
+tester.testSrc(0'|f:=File("Tests/lorem_ipsum.txt");|
+    0'|var R=f.walker(3).walk(11).concat(); f.close();|,
+    Void,Void,"Lorem ipsum",__LINE__);
+tester.testSrc(0'|f:=File("Tests/lorem_ipsum.txt");|
+    0'|var R=f.howza(3).walker().walk(11).concat(); f.close();|,
+    Void,Void,"Lorem ipsum",__LINE__);
+
+
+
+tester.stats();
+returnClass(tester);

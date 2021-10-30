@@ -1,0 +1,120 @@
+// -*-c-*-
+// Test methods and propertys
+
+tester := TheVault.Test.UnitTester.UnitTester(__FILE__);
+
+
+			//////////////////////////////////////////// .Method
+tester.testSrc("self.Method(\"foo\");",Void,"NotFoundError",Void,__LINE__);
+tester.testSrc("self.Method(\"name\");",Void,"NotFoundError",Void,__LINE__);
+tester.testSrc("var R = self.Method(\"Method\").toString()",
+	Void,Void,"Method(RootClass#.Method)",__LINE__);
+tester.testSrc("var R = self.Method(\"len\")()",Void,Void,0,__LINE__);
+tester.testSrc("var R = self.Method(\"isType\")(self)",Void,Void,True,__LINE__);
+tester.testSrc("var R = self.Method(\"isType\")(self.fcn)",
+	Void,Void,False,__LINE__);
+tester.testSrc("var R = self.Method(\"isType\").instance.name",
+	Void,Void,"RootClass#",__LINE__);
+
+
+				///////////////////////////////////// .method
+tester.testSrc(0'|self.method("foo");|,Void,"NotFoundError",Void,__LINE__);
+tester.testSrc(0'|var R = self.method("foo",True);|,Void,Void,False,__LINE__);
+tester.testSrc(0'|var R = self.method("foo",False);|,Void,Void,False,__LINE__);
+
+tester.testSrc(0'|var R = self.method("Method").toString()|,
+    Void,Void,"Method(RootClass#.Method)",__LINE__);
+tester.testSrc(0'|var R = self.method("Method",True)|,Void,Void,True,__LINE__);
+tester.testSrc(0'|var R = self.method("Method",False)[1];|,Void,Void,False,__LINE__);
+tester.testSrc(0'|var R = self.method("cook",False)[1];|,Void,Void,True,__LINE__);
+tester.testSrc(0'|var R = self.method("Method",False)[0].isType(1);|,
+    Void,Void,True,__LINE__);
+
+tester.testSrc(0'|var R = self.method("embryo",True)|,Void,Void,True,__LINE__);
+tester.testSrc(0'|var R = self.method("embryo",False)[1];|,Void,Void,True,__LINE__);
+tester.testSrc(0'|var R = self.method("embryo",False)[0].isType(1);|,
+    Void,Void,True,__LINE__);
+
+tester.testSrc(0'|var R = self.method("len")()|,Void,Void,0,__LINE__);
+
+
+			/////////////////////////////////////// .Property
+tester.testSrc(0'|self.Property("foo");|,Void,"NotFoundError",Void,__LINE__);
+tester.testSrc(0'|self.Property("Method");|,Void,"NotFoundError",Void,__LINE__);
+tester.testSrc("var R = self.Property(\"name\").toString();",
+	Void,Void,"Property(RootClass#.name)",__LINE__);
+tester.testSrc("class C { var x; } var R = C.Property(\"x\").toString();",
+	Void,Void,"Var(C.x)",__LINE__);
+tester.testSrc("class C { var x=123;} var R = C.Property(\"x\")();",
+	Void,Void,123,__LINE__);
+tester.testSrc("class C { var x=123;} var R = C.Property(\"x\").value;",
+	Void,Void,123,__LINE__);
+tester.testSrc("class C { var x; } var R = C.Property(\"x\").instance.name;",
+	Void,Void,"C",__LINE__);
+tester.testSrc("var R = Property(\"name\").instance.name;",
+	Void,Void,"RootClass#",__LINE__);
+
+
+			///////////////////////////////////////// .property
+tester.testSrc(0'|class C { var x; } C.property("x");|,Void,"NotFoundError",Void,__LINE__);
+tester.testSrc(0'|self.property("foo");|,Void,"NotFoundError",Void,__LINE__);
+tester.testSrc(0'|self.property("foo",False);|,Void,"NotFoundError",Void,__LINE__);
+tester.testSrc(0'|var R=self.property("foo",True);|,Void,Void,False,__LINE__);
+tester.testSrc(0'|var R=self.property("name",True);|,Void,Void,True,__LINE__);
+tester.testSrc(0'|var R=self.property("name");|,Void,Void,"RootClass#",__LINE__);
+
+
+			///////////////////////////////////////// .unbind
+tester.testSrc(0'|x:=(1).abs.unbind(); var R=x(-5)|,Void,Void,5,__LINE__);
+tester.testSrc(0'|x:=(1).abs.unbind(); var R=x("hoho")|,Void,"NotFoundError",Void,__LINE__);
+tester.testSrc(0'|x:="".len.unbind(); var R=x("hoho")|,Void,Void,4,__LINE__);
+tester.testSrc(0'|x:="".len.unbind(); var R=x(5)|,Void,Void,1,__LINE__);
+tester.testSrc(0'|x:="".translate.unbind().fp1("10","01");|
+    0'|var R=x("a1")|,Void,Void,"a0",__LINE__);
+tester.testSrc(0'|var R=self.BaseClass("toBool").unbind();|,Void,Void,Void,__LINE__);
+tester.testSrc(0'|var R=(1).abs.unbind(); R=(R.id==R.unbind().id);|,
+   Void,Void,True,__LINE__);
+
+tester.testSrc(0'|var R=(55).min.unbind()(4,5);|,Void,Void,4,__LINE__);
+tester.testSrc(0'|var R=(55).min.unbind()(5,4);|,Void,Void,4,__LINE__);
+
+tester.testSrc(0'|var R=Int.isType.unbind(); R=R(12,Int);|,Void,Void,True,__LINE__);
+
+tester.testSrc(0'|var R=T.filter.unbind().fp1("isOdd")([0..4]);|,
+   Void,Void,T(1,3),__LINE__);
+
+tester.testSrc(0'|x:=(1).abs.unbind(); var R=x.instance;|,Void,Void,Void,__LINE__);
+tester.testSrc(0'|x:=(1).abs.unbind(); var R=x.methodName;|,Void,Void,"abs",__LINE__);
+
+
+			///////////////////////////////////////// .methodName
+tester.testSrc(0'|var R="".len.methodName;|,Void,Void,"len",__LINE__);
+tester.testSrc(0'|var R="".len.unbind().methodName;|,Void,Void,"len",__LINE__);
+
+
+			///////////////////////////////////////// .toString
+tester.testSrc(0'|var R="".len.toString();|,Void,Void,"Method(String.len)",__LINE__);
+tester.testSrc(0'|var R="".len.unbind().toString();|,
+   Void,Void,"Method(.len)",__LINE__);
+
+
+			///////////////////////////////////////// .instance
+tester.testSrc(0'|var R="foo".len.instance;|,Void,Void,"foo",__LINE__);
+tester.testSrc(0'|var R="".len.unbind().instance;|,Void,Void,Void,__LINE__);
+
+
+			///////////////////////////////////////// .future
+tester.testSrc(0'|var R="foo".len.future().noop();|,Void,Void,3,__LINE__);
+
+
+			///////////////////////////////////////// .pump
+tester.testSrc(0'|var R=Thread.Pipe(); "hoho".pump(R); R=R.isClosed;|,
+   Void,Void,False,__LINE__);
+tester.testSrc(0'|var R=Thread.Pipe(); "hoho".pump(R.write); R=R.isClosed;|,
+   Void,Void,False,__LINE__);
+
+
+
+
+tester.stats();
+returnClass(tester);

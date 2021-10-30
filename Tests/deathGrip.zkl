@@ -1,0 +1,168 @@
+// -*-c-*-
+// Test deep linking and asm optos
+
+tester      := TheVault.Test.UnitTester.UnitTester(__FILE__);
+compileText := Compiler.Compiler.compileText;
+
+		////// getReg/setReg
+tester.testSrc("fcn f{ a:=5; b:=6; c:=a; } d:=Data(); f.unasm(d);"
+   0'|var R=(d.find("setReg0") and d.find("getReg0")).toBool();|,
+   Void,Void,True,__LINE__);
+
+
+		/////////// parent fcn
+tester.testSrc("class C { fcn f {}} class D(C) { C.f() }"
+   "d:=Data(); D.__constructor.unasm(d);"
+   0'|var R=d.find("fcnNI(1)").isType(1);|,Void,Void,True,__LINE__);
+tester.testSrc("class C { fcn f {}} class D(C) { C.f }"
+   "d:=Data(); D.__constructor.unasm(d);"
+   0'|var R=d.find("fcnNI(1)").isType(1);|, Void,Void,True,__LINE__);
+
+		/////////// 2 parents fcn
+tester.testSrc("class C { fcn f {}} class D(C){} class E(D) { f() }"
+   0'|d:=Data(); E.unasm(d); var R=d.find("fcnNI(1)").isType(1);|,
+   Void,Void,True,__LINE__);
+tester.testSrc("class C { fcn f {}} class D(C){} class E(D) { D.f() }"
+   0'|d:=Data(); E.unasm(d); var R=d.find("fcnNI(1)").isType(1);|,
+   Void,Void,True,__LINE__);
+tester.testSrc("class C { fcn f {}} class D(C){} class E(D) { C.f() }"
+   0'|d:=Data(); E.unasm(d); var R=d.find("fcnNI(1)").isType(1);|,
+   Void,Void,True,__LINE__);
+
+		//////////// reference VM class
+tester.testSrc("fcn f{Exception.BadDay.text}"
+   0'|d:=Data(); f.unasm(d); var R=(d.find("resolve").isType(1));|,
+   Void,Void,True,__LINE__);
+tester.testSrc(0'|c := Compiler.Compiler.compileText(|
+   0'|"fcn f{Exception.BadDay.text}",0,1);|
+   0'|d:=Data(); c.f.unasm(d); var R=(d.find("getVarI(2)").isType(1));|,
+   Void,Void,True,__LINE__);
+tester.testSrc(0'|c := Compiler.Compiler.compileText(|
+   0'|"fcn f{Compiler.Compiler.compileText}",0,1);|
+   0'|d:=Data(); c.f.unasm(d); var R=(d.find("fcnNI(").isType(1));|,
+   Void,Void,True,__LINE__);
+
+tester.testSrc(0'|Compiler.Compiler.compileText(|
+   0'|"Utils.rangeTo().filter",0,1);|
+   0'|var R;|,Void,Void,Void,__LINE__);
+tester.testSrc(0'|Compiler.Compiler.compileText(|
+   0'|"Walker.rangeTo.filter",0,1);|
+   0'|var R;|,Void,"SyntaxError",True,__LINE__);
+
+
+   		///////////// VM parent fcn, not gripped
+tester.testSrc("class W(Exception.Exception) { fcn init { notCatchable(); }}"
+//   0'|d:=Data(); W.init.unasm(d); var R=(d.find("reCall") != Void);|,
+   0'|d:=Data(); W.init.unasm(d); var R=(d.find("callNWZ") != Void);|,
+   Void,Void,True,__LINE__);
+tester.testSrc("class W(Exception.BadDay) { fcn init { BadDay.init(); }}"
+//   0'|d:=Data(); W.init.unasm(d); var R=(d.find("reCall") != Void);|,
+   0'|d:=Data(); W.init.unasm(d); var R=(d.find("callNWZ") != Void);|,
+   Void,Void,True,__LINE__);
+tester.testSrc("class W(Exception.BadDay) { fcn init { BadDay.text; }}"
+   0'|d:=Data(); W.init.unasm(d); var R=(d.find("resolve") != Void);|,
+   Void,Void,True,__LINE__);
+#if 0
+tester.testSrc("class TS(Compiler.Parser.TokenStream) { fcn init{ _n }}"
+   0'|d:=Data(); TS.init.unasm(d); var R=(d.find("parentNI(0)") != Void);|,
+   Void,Void,True,__LINE__);
+#endif
+
+
+   		////////////////// VM parent fcn, gripped
+tester.testSrc(0'|c := Compiler.Compiler.compileText(|
+   0'|"class W(Exception.BadDay) { fcn init { notCatchable(); }}",0,1);|
+   0'|d:=Data(); c.W.init.unasm(d); var R=d.find("fcnNI(3)").isType(1);|,
+   Void,Void,True,__LINE__);
+tester.testSrc(0'|c := Compiler.Compiler.compileText(|
+   0'|"class W(Exception.BadDay) { fcn init { BadDay.init(); }}",0,1);|
+   0'|d:=Data(); c.W.init.unasm(d); var R=d.find("fcnNI(1)").isType(1);|,
+   Void,Void,True,__LINE__);
+
+   		///////////////////// VM parent var, gripped
+tester.testSrc(0'|c := Compiler.Compiler.compileText(|
+   0'|"class W(Exception.BadDay) { fcn init { BadDay.text; }}",0,1);|
+   0'|d:=Data(); c.W.init.unasm(d); var R=d.find("getVarI(2)").isType(1);|,
+   Void,Void,True,__LINE__);
+tester.testSrc(0'|c := Compiler.Compiler.compileText(|
+   0'|"class W(Exception.BadDay) { fcn init { text; }}",0,1);|
+   0'|d:=Data(); c.W.init.unasm(d); var R=d.find("getVarI(2)").isType(1);|,
+   Void,Void,True,__LINE__);
+
+tester.testSrc(0'|c := Compiler.Compiler.compileText(|
+   0'|"class W(Walker.Walker) { fcn init {} Walker.value = 3; }");|
+   0'|c.W.init(); var R=c.W.value;|, Void,"SyntaxError",3,__LINE__);
+tester.testSrc(0'|c := Compiler.Compiler.compileText(|
+   0'|"class W(Walker.Walker) { fcn init {} Walker.value = 3; }",0,1);|
+   0'|c.W.init(); var R=c.W.value;|,  Void,"SyntaxError",3,__LINE__);
+tester.testSrc(0'|c := Compiler.Compiler.compileText(|
+   0'|"class W(Walker.Walker) { fcn init {} _value = 3; }",0,1);|
+   0'|c.W.init(); var R=c.W.Walker.value;|,  Void,"SyntaxError",3,__LINE__);
+
+
+		//////////////////// foreach registers
+/*
+tester.testSrc("fcn f { foreach n in (3){}",
+   0'|d:=Data(); f.unasm(d); var R=d.find("getVarI(????)").isType(1);|,
+   Void,Void,True);
+*/
+
+
+   		//////////////////////////////////////// proxy vars
+class PV { fcn f { 123 } var [proxy] p=f; }
+Vault.add(PV,"Tmp");
+c := compileText("returnClass(TheVault.Tmp.PV.p);",0,True);
+tester.testRun(c.__constructor,Void,123,__LINE__);
+
+
+		//////////////////////////////////////// const vars
+tester.testSrc("class C { fcn f{456}; } var [const] v=C; fcn f{v.f()}"
+   0'|d:=Data(); f.unasm(d); var R=(d.find("fcnNI").toBool());|,
+   Void,Void,False,__LINE__);	//!!!True
+tester.testSrc("class C { fcn f{456}; } var [const mixin] v=C; fcn f{v.f()}"
+   0'|d:=Data(); f.unasm(d); var R=(d.find("fcnNI").toBool());|,
+   Void,Void,False,__LINE__);	//!!!True
+
+
+   		////////////////// parent ordering
+tester.testSrc("class A { var v = 1; } class B(A) {  } class C { var v = 2; }"
+   "class ABC(B,C) {} var R = ABC.v;",Void,Void,2,__LINE__);
+tester.testSrc("class A { var v = 1; } class B(A) {  } class C { var v = 2; }"
+   "class ABC(B,C) { fcn f{v}} var R = ABC.f();",Void,Void,2,__LINE__);
+   
+
+class A{ var v = 1; } class B(A){} class C{ var v = 2; }
+Vault.add(B,"Tmp"); Vault.add(C,"Tmp",__LINE__);
+tester.testSrc("class BC(TheVault.Tmp.B, TheVault.Tmp.C){ fcn f{v} }"
+   "var R = BC.f();",Void,Void,2,__LINE__);
+tester.testSrc("class BC(TheVault.Tmp.B, TheVault.Tmp.C){ fcn f{v} }"
+   "var R = BC().f();",Void,Void,2,__LINE__);
+
+c = compileText("class BC(TheVault.Tmp.B,TheVault.Tmp.C){ fcn f{v} }",0,True);
+tester.testRun(c.BC().f,Void,2,__LINE__);
+tester.testRun(c.BC.f,Void,Void,__LINE__);
+c.__constructor();
+tester.testRun(c.BC.f,Void,2,__LINE__);
+
+
+		/////////////////////// method calls
+tester.testSrc(0'|c := Compiler.Compiler.compileText("\"1\".toAsc();",0,1);|
+   0'|d:=Data(); c.unasm(d); var R=(d.find("callIMethodN").isType(1));|,
+   Void,Void,True,__LINE__);
+tester.testSrc(0'|c := Compiler.Compiler.compileText("\"1\".toAsc;",0,1);|
+   0'|d:=Data(); c.unasm(d); var R=(d.find("callIMethodN").isType(1));|,
+   Void,Void,False,__LINE__);
+tester.testSrc(0'|c := Compiler.Compiler.compileText("\"1\".copy();",0,1);|
+   0'|d:=Data(); c.unasm(d); var R=(d.find("callOMethodN").isType(1));|,
+   Void,Void,True,__LINE__);
+tester.testSrc(0'|c := Compiler.Compiler.compileText("List.len();",0,1);|
+   0'|d:=Data(); c.unasm(d); var R=(d.find("callIMethodN").isType(1));|,
+   Void,Void,True,__LINE__);
+tester.testSrc(0'|c := Compiler.Compiler.compileText("Exception.toBool();",0,1);|
+   0'|d:=Data(); c.unasm(d); var R=(d.find("callIMethodN").isType(1));|,
+   Void,Void,True,__LINE__);
+
+
+
+tester.stats();
+returnClass(tester);

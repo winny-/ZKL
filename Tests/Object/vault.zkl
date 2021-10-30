@@ -1,0 +1,216 @@
+// -*-c-*-
+// Test TheVault
+
+tester := TheVault.Test.UnitTester.UnitTester(__FILE__);
+
+TheVault.BaseClass.add(Exception,"vault.test1");
+
+tester.testSrc(0'|var R = TheVault.BaseClass("");|,Void,"NotFoundError",Void,__LINE__);
+tester.testSrc(0'|var R = TheVault.BaseClass.resolve("");|,
+    Void,Void,TheVault,__LINE__);
+tester.testSrc(0'|var R = TheVault.BaseClass.resolve("Atomic").toString();|,
+    Void,Void,"Atomic",__LINE__);
+tester.testSrc(0'|var R = TheVault.BaseClass.resolve("Time.Clock");|,
+    Void,Void,Time.Clock,__LINE__);
+tester.testSrc(0'|var R = TheVault.BaseClass.resolve("Time.Clock",8);|,
+    Void,Void,True,__LINE__);
+tester.testSrc(0'|var R = TheVault.BaseClass.resolve("Time.Clock",*);|,
+    Void,Void,False,__LINE__);
+tester.testSrc(0'|var R = TheVault.BaseClass.resolve("add",*);|,
+    Void,Void,12,__LINE__);
+tester.testSrc(0'|var R = TheVault.BaseClass.resolve("add",1);|,
+    Void,Void,12,__LINE__);
+tester.testSrc(0'|var R = TheVault.BaseClass.resolve("add",2);|,
+    Void,Void,False,__LINE__);
+tester.testSrc(0'|var R = TheVault.BaseClass.resolve("Time");|,
+    Void,"NotFoundError",Void,__LINE__);
+tester.testSrc(0'|var R = TheVault.BaseClass.resolve("Time",1);|,
+    Void,Void,False,__LINE__);
+
+tester.testSrc(0'|var R = (TheVault.TheVault == TheVault);|,
+    Void,Void,True,__LINE__);
+tester.testSrc(0'|var R = (TheVault.Vault == Vault);|,
+    Void,Void,True,__LINE__);
+tester.testSrc(0'|var R = (TheVault.TheVault == TheVault.Vault);|,
+    Void,Void,False,__LINE__);
+
+tester.testSrc(
+    "var R = TheVault.BaseClass.contents.holds(\"vault.test1.Exception\");",
+    Void,Void,True,__LINE__);
+
+tester.testSrc(
+   "var R = TheVault.BaseClass.resolve(\"vault.test1.Exception\").toString();",
+   Void,Void,"Class(Exception)",__LINE__);
+tester.testSrc("var R = TheVault.vault.test1.Exception.toString();",
+   Void,Void,"Class(Exception)",__LINE__);
+tester.testSrc(
+   0'|var R = TheVault.BaseClass.chase("vault.test1.Exception.BadDay").name|,
+   Void,Void,"BadDay",__LINE__);
+tester.testSrc(		// const
+   "var R = TheVault.BaseClass.resolve(\"vault.test1.Utils.ArgIsString\");",
+   Void,"NotFoundError",Void,__LINE__);
+tester.testSrc("var R = TheVault.BaseClass.resolve(\"vault.test1.hoho\");", 
+   Void,"NotFoundError",Void,__LINE__);
+tester.testSrc("var R = TheVault.BaseClass.resolve(\"vault.test1\");", 
+   Void,"NotFoundError",Void,__LINE__);
+tester.testSrc("var R = TheVault.BaseClass.resolve(\"TheVault\").toString();", 
+   Void,Void,"TheVault",__LINE__);
+tester.testSrc("var R = TheVault.BaseClass.toString();",
+   Void,Void,"TheVault",__LINE__);
+tester.testSrc("var R = TheVault.TheVault.BaseClass.toString();",
+   Void,Void,"TheVault",__LINE__);
+tester.testSrc("var R = TheVault.TheVault.TheVault.BaseClass; R=R.toString();",
+//   "SyntaxError","NotFoundError",Void,__LINE__);
+   Void,Void,"Method(TheVault.BaseClass)",__LINE__);
+tester.testSrc("var R = TheVault.TheVault.TheVault;",
+//   "SyntaxError","NotFoundError",Void,__LINE__);
+   Void,Void,TheVault,__LINE__);
+tester.testSrc("var R = TheVault.TheVault.TheVault.TheVault;",
+   Void,Void,TheVault,__LINE__);
+tester.testSrc(0'|var R = TheVault.resolve("Atomic");|,
+   "SyntaxError","NotFoundError",Void,__LINE__);
+tester.testSrc(0'|var R = TheVault.TheVault.resolve("Atomic");|,
+   "SyntaxError","NotFoundError",Void,__LINE__);
+tester.testSrc(0'|var R = TheVault.TheVault.TheVault.resolve("Atomic");|,
+   "SyntaxError","NotFoundError",Void,__LINE__);
+tester.testSrc(0'|var R = TheVault.TheVault.TheVault.TheVault.resolve("Atomic");|,
+   "SyntaxError","NotFoundError",Void,__LINE__);
+tester.testSrc("TheVault.List = 666;","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var R = TheVault.BaseClass.holds(Exception);",
+	Void,Void,True,__LINE__);
+tester.testSrc("var R = TheVault.BaseClass.holds(TheVault);", Void,Void,True,__LINE__);
+tester.testSrc("var R = TheVault.BaseClass.holds(self);", Void,Void,False,__LINE__);
+tester.testSrc("var R = TheVault.BaseClass.holds(L());", Void,Void,False,__LINE__);
+tester.testSrc("var R = TheVault.BaseClass.holds(\"TheVault\");", Void,Void,False,__LINE__);
+tester.testSrc("var R = TheVault.BaseClass.holds(Console);", Void,Void,True,__LINE__);
+
+tester.testSrc("var R = TheVault.BaseClass.path(self);",Void,Void,Void,__LINE__);
+tester.testSrc("var R = TheVault.BaseClass.path(TheVault);",
+   Void,Void,"TheVault.TheVault",__LINE__);
+tester.testSrc("var R = TheVault.BaseClass.path(Vault);",
+   Void,Void,"TheVault.Vault",__LINE__);
+tester.testSrc("var R = TheVault.BaseClass.path(\"123\");",
+   Void,Void,"TheVault.String",__LINE__);
+tester.testSrc("var R = TheVault.BaseClass.path(String);",
+   Void,Void,"TheVault.String",__LINE__);
+tester.testSrc(0'|var R = TheVault.BaseClass.path("");|,
+   Void,Void,"TheVault.String",__LINE__);
+tester.testSrc("var R = TheVault.BaseClass.path(RegExp);",
+	Void,Void,"TheVault.RegExp",__LINE__);
+#if 0
+tester.testSrc("var R = TheVault.BaseClass.path(RegExp(\"1\"));",
+   Void,Void,"TheVault.RegExp",__LINE__);
+#endif
+		// Test native
+tester.testSrc("var R = TheVault.BaseClass.path(TheVault.Time.Clock);",
+   Void,Void,"TheVault.Time.Clock",__LINE__);
+tester.testSrc("var R = TheVault.BaseClass.path(Console);",
+   Void,Void,"TheVault.Console",__LINE__);
+
+//tester.testSrc("class Foo {} TheVault.BaseClass.add(Foo,\"this.is.a.test\");",
+//   Void,"ValueError");
+tester.testSrc("fcn foo {} TheVault.BaseClass.add(foo,\"this.is.a.test\");",
+   Void,"ValueError",Void,__LINE__);
+
+tester.testSrc(
+   "TheVault.BaseClass.add(self,\"this.is\");"
+   "var R = TheVault.BaseClass.path(self);",
+   Void,Void,"TheVault.this.is.RootClass#",__LINE__);
+
+tester.testSrc("var R = TheVault.BaseClass.add(self,\"this.is.a.test\");",
+	Void,Void,True,__LINE__);
+    // this will fail because self is not the same as the previous self
+tester.testSrc("var R=TheVault.BaseClass.path(self);",Void,Void,Void,__LINE__);
+
+//!!! fix .add to replace existing class
+	// This will check to see if existing RootClass# is replaced by
+	// new RootClass#
+tester.testSrc(
+   "TheVault.BaseClass.add(self,\"this.is.a.test\");"
+   "var R = TheVault.BaseClass.path(self);",
+   Void,Void,"TheVault.this.is.a.test.RootClass#",__LINE__);
+
+tester.testSrc("TheVault.Time().Clock","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("TheVault.TIME","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var R = Exception.__constructor; R=R.toString();",
+   Void,Void,"Fcn(__constructor)",__LINE__);
+tester.testSrc("var R = TheVault.Exception.__constructor; R=R.toString();",
+   Void,Void,"Fcn(__constructor)",__LINE__);
+
+	// Does AKA work?
+tester.testSrc("AKA(vault.Walker); Vault.add(self);"
+   "var R = Vault.path(self);", Void,Void,"TheVault.vault.Walker",__LINE__);
+
+	// see if I can nuke a Node
+tester.testSrc(0'|TheVault.BaseClass.addAs(Exception,"vault.foo");|
+    0'|TheVault.BaseClass.addAs(Import,"vault.foo");|
+    0'|var R = Vault.find("vault.foo").name;|, Void,Void,"Import",__LINE__);
+
+tester.testSrc(0'|TheVault.BaseClass.addAs(class CCC{},"vault.foo");|
+    "var R = TheVault.vault.foo.name;",Void,Void,"CCC",__LINE__);
+
+    	// bestFit
+tester.testSrc("p := \"TheVault\";"
+    "n := TheVault.BaseClass.bestFit(p); var R = p[0,n];",
+    Void,Void,"TheVault",__LINE__);
+tester.testSrc("p := \"Utils\";"
+    "n := TheVault.BaseClass.bestFit(p); var R = p[0,n];",
+    Void,Void,"",__LINE__);
+tester.testSrc("p := \"Exception.\";"
+    "n := TheVault.BaseClass.bestFit(p); var R = p[0,n];",
+    Void,Void,"Exception",__LINE__);
+tester.testSrc("p := \"Utils.Helpers\";"
+    "n := TheVault.BaseClass.bestFit(p); var R = p[0,n];",
+    Void,Void,"Utils.Helpers",__LINE__);
+tester.testSrc("p := \"Utils+Helpers\";"
+    "n := TheVault.BaseClass.bestFit(p); var R = p[0,n];",
+    Void,Void,"",__LINE__);
+tester.testSrc("p := \"Walker+range\";"
+    "n := TheVault.BaseClass.bestFit(p); var R = p[0,n];",
+    Void,Void,"",__LINE__);
+tester.testSrc("p := \"Utils.Helpers.foo\";"
+    "n := TheVault.BaseClass.bestFit(p); var R = p[0,n];",
+    Void,Void,"Utils.Helpers",__LINE__);
+tester.testSrc("p := \"Utils.Helpers.\";"
+    "n := TheVault.BaseClass.bestFit(p); var R = p[0,n];",
+    Void,Void,"Utils.Helpers",__LINE__);
+
+    	// Compiler
+tester.testSrc("TheVault; var R;",Void,Void,Void,__LINE__); // Does TheVault compile?
+tester.testSrc("TheVault();",Void,"NotImplementedError",Void,__LINE__);
+tester.testSrc("TheVault().List;",Void,"NotImplementedError",Void,__LINE__);
+tester.testSrc("var R = TheVault; R=R.toString();",
+    Void,Void,"TheVault",__LINE__);
+tester.testSrc("var R = TheVault.Exception; R=R.toString();",
+    Void,Void,"Class(Exception)",__LINE__);
+tester.testSrc("var R = TheVault.Utils.range; R=R.toString();",
+    Void,Void,"Fcn(range)",__LINE__);
+tester.testSrc("var R = TheVault.Walker.ran;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R = TheVault.wlkr;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R = TheVault.List.toString();",Void,Void,"L()",__LINE__);
+
+	// chase
+tester.testSrc("var R = TheVault.BaseClass.chase(\"TheVault\")",
+    Void,Void,TheVault,__LINE__);
+tester.testSrc("var R = TheVault.BaseClass.chase(\"TheVault.TheVault\")",
+    Void,Void,TheVault,__LINE__);
+tester.testSrc("var R=TheVault.BaseClass.chase(\"Exception.IndexError\").name;",
+    Void,Void,"IndexError",__LINE__);
+tester.testSrc("var R = TheVault.BaseClass.chase(\"Exception\").name;",
+    Void,Void,"Exception",__LINE__);
+tester.testSrc(0'|var R = TheVault.BaseClass.chase("Exception.BadDay.init").name;|,
+    Void,Void,"init",__LINE__);
+tester.testSrc("var R = TheVault.BaseClass.chase("
+    "\"Exception.IndexError.text\").isType(\"\")",Void,Void,True,__LINE__);
+tester.testSrc("TheVault.BaseClass.chase(\"Foo\")",Void,"NotFoundError",Void,__LINE__);
+tester.testSrc("TheVault.BaseClass.chase(\"Foo.Bar\")",Void,"NotFoundError",Void,__LINE__);
+tester.testSrc("TheVault.BaseClass.chase(\"Walker.foo\")",Void,"NotFoundError",Void,__LINE__);
+tester.testSrc("TheVault.BaseClass.chase(\"Walker+range\")",Void,"NotFoundError",Void,__LINE__);
+tester.testSrc("TheVault.BaseClass.chase(\"TheVault.Foo\")",
+    Void,"NotFoundError",Void,__LINE__);
+
+
+tester.stats();
+returnClass(tester);

@@ -1,0 +1,44 @@
+// -*-c-*-
+// zkl.h.zkl: constants and classes for zkl programs
+
+const RESOLVE
+{
+   const ALL		= "*";
+   const METHOD		= 0x01;
+   const PROPERTY	= 0x02;
+   const MOST		= 0x04;
+   const VAR		= 0x08;
+   const PARENT		= 0x10;
+   const FCN		= 0x20;
+   const CLASS		= 0x40;
+}
+
+const FILE
+{
+   const GLOB
+   {
+      const ONLY_ONE		=    1;
+      const NO_PATH		=    2;
+      const NO_TRAILING_SLASH	=    4;
+      const NO_DIRS		=    8;
+      const ONLY_DIRS		= 0x10;
+      const IGNORE_CASE		= 0x20;
+   }
+}
+
+#if 0
+const DATE
+{
+   const MONTH
+   {
+      const JANUARY   = 1, FEBRUARY =  2, MARCH    =  3, APRIL    =  4,
+	    MAY       = 5, JUNE     =  6, JULY     =  7, AUGUST   =  8,
+	    SEPTEMBER = 9, OCTOBER  = 10, NOVEMBER = 11, DECEMBER = 12;
+   }
+   const DAY
+   {
+      const MONDAY = 1, TUESDAY  = 2, WEDNESDAY = 3, THURSDAY = 4,
+            FRIDAY = 5, SATURDAY = 6, SUNDAY    = 7;
+   }
+}
+#endif

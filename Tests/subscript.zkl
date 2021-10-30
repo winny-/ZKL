@@ -1,0 +1,45 @@
+// -*-c-*-
+
+tester := TheVault.Test.UnitTester.UnitTester(__FILE__);
+
+
+tester.testSrc("var R; R = \"\"[0,0];",   Void,Void,"",__LINE__);
+tester.testSrc("var R; R = \"\"[10,10];", Void,Void,"",__LINE__);
+tester.testSrc("var R; R = \"\"[*,*];", Void,Void,"",__LINE__);
+tester.testSrc("var R; R = \"\"[*,1];", Void,Void,"",__LINE__);
+tester.testSrc("var R; R = \"\"[-1,-1];", Void,Void,"",__LINE__);
+
+tester.testSrc("var R; R = \"123\"[0];", Void,Void,"1",__LINE__);
+tester.testSrc("var R; R = \"123\"[1];", Void,Void,"2",__LINE__);
+tester.testSrc("var R; R = \"123\"[2];", Void,Void,"3",__LINE__);
+tester.testSrc("var R; R = \"123\"[-1];", Void,Void,"3",__LINE__);
+tester.testSrc("var R; R = \"123\"[*];", Void,"IndexError",Void,__LINE__);
+tester.testSrc("var R; R = \"123\"[1,**];","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R; R = \"123\"[1,\"**\"];",Void,"ValueError",Void,__LINE__);
+
+tester.testSrc("var R; R = \"123\"[0,100];", Void,Void,"123",__LINE__);
+tester.testSrc("var R; R = \"123\"[0,-1];", Void,Void,"12",__LINE__);
+tester.testSrc("var R; R = \"123\"[0,0];", Void,Void,"",__LINE__);
+tester.testSrc("var R; R = \"123\"[1,0];", Void,Void,"",__LINE__);
+tester.testSrc("var R; R = \"123\"[9,0];", Void,Void,"",__LINE__);
+tester.testSrc("var R; R = \"123\"[1,*];", Void,Void,"23",__LINE__);
+tester.testSrc("var R; R = \"123\"[1,1];", Void,Void,"2",__LINE__);
+tester.testSrc("var R; R = \"123\"[-1,1];", Void,Void,"3",__LINE__);
+tester.testSrc("var R; R = \"123\"[-1,*];", Void,Void,"3",__LINE__);
+
+tester.testSrc("var R; R = \"123\"[\"0\"];", Void,Void,"1",__LINE__);
+tester.testSrc("var R; R = \"123\"[\" 1\"];", Void,"ValueError",Void,__LINE__);
+tester.testSrc("var R; R = \"123\"[\" \"];", Void,"ValueError",Void,__LINE__);
+tester.testSrc("var R; R = \"123\"[\"1x\"];", Void,"ValueError",Void,__LINE__);
+
+tester.testSrc("var R; R = \"123\"[1.23];", Void,Void,"2",__LINE__);
+
+tester.testSrc("var R; R = \"123\"[1,\"*\"];", Void,Void,"23",__LINE__);
+tester.testSrc("var R; R = \"123\"[1,\"5\"];", Void,Void,"23",__LINE__);
+
+tester.testSrc("[0]", "SyntaxError",Void,Void,__LINE__);
+
+
+
+tester.stats();
+returnClass(tester);

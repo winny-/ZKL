@@ -1,0 +1,1106 @@
+//-*-c-*-
+// Test solutions posted to Rosetta Code
+// http://rosettacode.org/wiki/Category:Zkl
+
+var [const] tester = TheVault.Test.UnitTester.UnitTester(__FILE__);
+
+try{ var [const] BI=Import.lib("zklBigNum") } catch{}
+
+
+{				///////////////////// Abundant odd numbers
+fcn oddAbundants(startAt=3){  //--> iterator
+   Walker.zero().tweak(fcn(rn){
+      n:=rn.value;
+      while(True){
+	 sum:=0;
+	 foreach d in ([3.. n.toFloat().sqrt().toInt(), 2]){
+	    if( (y:=n/d) *d != n) continue;
+	    sum += ((y==d) and y or y+d)
+	 }
+	 if(sum>n){ rn.set(n+2); return(n) }
+	 n+=2;
+      }
+   }.fp(Ref(startAt.isOdd and startAt or startAt+1)))
+}
+
+fcn oddDivisors(n){  // -->sorted List
+   [3.. n.toFloat().sqrt().toInt(), 2].pump(List(1),'wrap(d){
+      if( (y:=n/d) *d != n) return(Void.Skip);
+      if (y==d) y else T(y,d)
+    }).flatten().sort()
+}
+fcn printOAs(oas){  // List | int
+   foreach n in (vm.arglist.flatten()){ 
+      ds:=oddDivisors(n);
+      println("%6,d: %6,d = %s".fmt(n, ds.sum(0), ds.sort().concat(" + ")))
+   }
+}
+
+oaw:=oddAbundants();
+
+#<<<#
+println("First 25 abundant odd numbers:");
+oaw.walk(25) : printOAs(_);
+
+println("\nThe one thousandth abundant odd number is:");
+oaw.drop(1_000 - 25).value : printOAs(_);
+#<<<#
+
+##########
+oaw:=oddAbundants();
+t:=oaw.walk(25);
+tester.testRun(t.noop,Void,
+   L(945,1575,2205,2835,3465,4095,4725,5355,5775,5985,6435,6615,6825,7245,
+     7425,7875,8085,8415,8505,8925,9135,9555,9765,10395,11025),__LINE__);
+tester.testRun('wrap{ t.apply(oddDivisors).apply("sum",0) },Void,
+   L(975,1649,2241,2973,4023,4641,5195,5877,6129,6495,6669,7065,7063,
+     7731,7455,8349,8331,8433,8967,8931,9585,9597,10203,12645,11946),__LINE__);
+##########
+
+
+println("\nThe first abundant odd number above one billion is:");
+//printOAs(oddAbundants(1_000_000_000).next());
+
+printOAs(n:=oddAbundants(1_000_000_000).next());  #test
+tester.testRun(n.noop,Void,1000000575,__LINE__);
+tester.testRun(oddDivisors.fp(n),Void,
+   L(1,3,5,7,9,15,21,25,35,45,49,63,75,105,147,175,225,245,315,441,525,735,
+     1225,1575,2205,3675,11025,90703,272109,453515,634921,816327,1360545,
+     1904763,2267575,3174605,4081635,4444447,5714289,6802725,9523815,13333341,
+     15873025,20408175,22222235,28571445,40000023,47619075,66666705,111111175,
+     142857225,200000115,333333525),__LINE__);
+}
+
+
+
+{		//////////// Angles (geometric), normalization and conversion
+//{{trans|Perl6}}
+var [const] 
+   tau=(0.0).pi*2,
+   units=Dictionary(	// code:(name, units in circle)
+      "d", T("degrees", 360.0), "g",T("gradians",400.0),
+      "m", T("mills",  6400.0), "r",T("radians", tau) ),
+   cvtNm="%s-->%s".fmt,
+   cvt=  // "d-->r":fcn(angle){}, "r-->d":fcn(angle){} ...
+      Walker.cproduct(units.keys,units.keys).pump(Dictionary(),fcn([(a,b)]){
+	 return(cvtNm(a,b),  // "d-->r"
+	    'wrap(angle){ angle=angle.toFloat();
+	       u:=units[a][1];
+	       (angle%u)*units[b][1] / u
+	    })
+	  })
+;
+
+#if 0
+codes:=units.keys;
+println("     Angle Unit     ",
+   codes.apply(fcn(k){ units[k][0] }).apply("%11s".fmt).concat(" "));
+
+foreach angle in (T(-2.0,-1, 0, 1, 2, tau, 16, 360.0/tau, 360-1, 400-1, 6400-1, 1_000_000)){
+   println();
+   foreach from in (codes){
+      subKeys:=codes.apply(cvtNm.fp(from)); // ("d-->d","d-->g","d-->m","d-->r")
+      r:=subKeys.pump(List,'wrap(k){ cvt[k](angle) });
+      println("%10g %-8s %s".fmt(angle,units[from][0],
+         r.apply("%12g".fmt).concat(" ")));
+   }   
+}
+#endif
+
+fcn ANCtest(angle,answers){
+   codes,r:=units.keys,List();
+   foreach from in (codes){
+      subKeys:=codes.apply(cvtNm.fp(from)); // ("d-->d","d-->g","d-->m","d-->r")
+      r.append(subKeys.pump(List,'wrap(k){ cvt[k](angle) }));
+   }
+   // verify
+   answers.zip(r).reduce('wrap(s,asrs){ angle;
+      ( s = s and T.zip(asrs.xplode()).reduce(
+            'wrap(s,[(a,r)]){ ( s and r.closeTo(a,0.0001) ) },True) );
+         if(not s) throw(Exception.ValueError(
+		    "Error at angle = %f: %s".fmt(angle,asrs)));
+         s
+      },True)
+}
+
+tester.testRun(ANCtest.fp(0,
+  L( L(0,0,0),
+     L(0,0,0),
+     L(0,0,0),
+     L(0,0,0)) ),
+   Void,True,__LINE__);
+tester.testRun(ANCtest.fp(-2,
+  L( L(-2.0000,     -2.2222,     -35.5556,    -0.0349),
+     L(-1.8000,     -2.0000,     -32.0000,    -0.0314),
+     L(-0.1125,     -0.1250,     -2.0000,     -0.0019635),
+     L(-114.5916,   -127.3240,   -2037.1833,  -2.0000)) ),
+   Void,True,__LINE__);
+tester.testRun(ANCtest.fp(359,
+  L( L(359,             398.8888889,     6382.2222222,    6.2657320),
+     L(323.1000000,     359,             5744,            5.6391588),
+     L(20.1937500,      22.4375000,      359,             0.3524474),
+     L(49.1848452,      54.6498280,      874.3972479,     0.8584375)) ),
+   Void,True,__LINE__);
+tester.testRun(ANCtest.fp(399,
+  L( L(39.0000,     43.3333,     693.3333,    0.6807),
+     L(359.1000000,     399,             6384,            6.2674773),
+     L(22.4438,     24.9375,     399.0000,    0.3917 ),
+     L(181.0160,    201.1289,    3218.0627,   3.1593) )),
+   Void,True,__LINE__);
+tester.testRun(ANCtest.fp(6399,
+  L( L(279.0000,    310.0000,    4960.0000,   4.8695),
+     L(359.1000,    399.0000,    6384.0000,   6.2675),
+     L(359.9438,    399.9375,    6399.0000,   6.2822),
+     L(155.6931,    172.9923,    2767.8774,   2.7174)) ),
+   Void,True,__LINE__);
+tester.testRun(ANCtest.fp(57.2957795,
+  L( L(57.2958,     63.6620,     1018.5916,   1.0000),
+     L(51.5662,     57.2958,     916.7325,    0.9000),
+     L(3.2229,      3.5810,      57.2958,     0.0562),
+     L(42.8063,     47.5626,     761.0018,    0.7471)) ),
+   Void,True,__LINE__);
+}
+
+
+
+{		////////////////////////////////////////// Bell numbers
+fcn bellTriangleW(start=1,wantRow=False){	// --> iterator
+   Walker.zero().tweak('wrap(row){
+      row.insert(0,row[-1]);
+      foreach i in ([1..row.len()-1]){ row[i]+=row[i-1] }
+      wantRow and row or row[-1]
+   }.fp(List(start))).push(start,start);
+}
+
+#<<<#
+println("First fifteen Bell numbers:");
+bellTriangleW().walk(15).println();
+
+println("Rows of the Bell Triangle:");
+bt:=bellTriangleW(1,True); do(11){ println(bt.next()) }
+
+
+//{{libheader|GMP}} GNU Multiple Precision Arithmetic Library
+print("The fiftieth Bell number: ");
+var [const] BI=Import("zklBigNum");  // libGMP
+bellTriangleW(BI(1)).drop(50).value.println();
+#<<<#
+
+tester.testRun(bellTriangleW().walk.fp(15),Void,
+   T(1,1,2,5,15,52,203,877,4140,21147,115975,678570,4213597,27644437,190899322),
+   __LINE__);
+
+if(BI)
+   tester.testRun(fcn{ bellTriangleW(BI(1)).drop(50).value },Void,
+      BI("10726137154573358400342215518590002633917247281"),__LINE__);
+}
+
+
+
+{		////////////////////////////////////// Brazilian numbers
+fcn isBrazilian(n){
+//   if(n<=36) return([2..n-2].filter1('wrap(b){ n.toString(b).unique().len()==1 }));
+   foreach b in ([2..n-2]){
+      f,m := n%b, n/b;
+      while(m){
+	 if((m % b)!=f) continue(2);
+	 m/=b;
+      }
+      return(True);
+   }
+   False
+}
+fcn isBrazilianW(n){ isBrazilian(n) and n or Void.Skip }
+
+#if 0
+println("First 20 Brazilian numbers:");
+[1..].tweak(isBrazilianW).walk(20).println();
+
+println("\nFirst 20 odd Brazilian numbers:");
+[1..*,2].tweak(isBrazilianW).walk(20).println();
+
+println("The 100,00th Brazilian number: ",
+//   [1..].tweak(isBrazilianW).drop(100_000 - 1).next());
+   [1..].tweak(isBrazilianW).drop(100_000).value);
+#endif
+
+tester.testRun([1..].tweak(isBrazilianW).walk.fp(20),Void,
+   L(7,8,10,12,13,14,15,16,18,20,21,22,24,26,27,28,30,31,32,33),__LINE__);
+tester.testRun([1..*,2].tweak(isBrazilianW).walk.fp(20),Void,
+   L(7,13,15,21,27,31,33,35,39,43,45,51,55,57,63,65,69,73,75,77),__LINE__);
+
+
+
+#<<<#
+{{libheader|GMP}} GNU Multiple Precision Arithmetic Library
+Using GMP ( probabilistic primes), 
+because it is easy and fast to generate primes.
+
+[[Extensible prime generator#zkl]] could be used instead.
+#<<<#
+if(BI){
+//var [const] BI=Import("zklBigNum");  // libGMP
+
+println("\nFirst 20 prime Brazilian numbers:");
+#if 0
+p:=BI(1);
+Walker.zero().tweak('wrap{ p.nextPrime().toInt() })
+.tweak(isBrazilianW).walk(20).println();
+#endif
+
+p:=BI(1);  tester.testRun(
+   Walker.zero().tweak('wrap{ p.nextPrime().toInt() })
+   .tweak(isBrazilianW).walk.fp(20), Void,
+   L(7,13,31,43,73,127,157,211,241,307,421,463,601,757,1093,1123,1483,1723,2551,2801)
+   ,__LINE__);
+}
+   
+}
+
+
+
+{			//////////////////////////////// Chemical Calculator
+// Really bad error checking
+fcn molarMass(str,mass=0.0){
+   while(span:=str.span("(",")",False)){  // get inner most () group
+      group:=str[span.xplode()];	  // (CH3)
+      str   =str.del(span.xplode());      // nuke (CH3)
+      w    :=molarMass(group[1,-1],mass); // remove "(" & ")"
+      i,s2 := span[0], str[i,*];
+      if(m.search(s2))			  // well crap, (CH3)2
+         { z:=m.matched[1]; str=str.del(i,z.len()); mass=w*z.toInt() }
+      else mass=w;
+   }
+   ms:=List(mass);	// H2O --> (1.008*2, 15.999).sum()
+   while(str){ 
+#<<<#
+      nm:=atoms.filter1('wrap(a){ a.glob(str,0) });  // case matters
+      if(not nm) 	// H2, didn't match 2, look for 2 now
+	 { m.search(str); nm=m.matched[1]; ms[-1]*=nm.toInt(); }
+      else ms.append(atomicMass[nm=nm[0,-1]]);  // "H*"-->"H"
+      str=str.del(0,nm.len());			// nuke H or 2
+#<<<#
+      if(not atomRE.search(str)) throw(Exception.ValueError);
+      ns,nm,n := atomRE.matched;
+      n=(if(n) n.toInt() else 1);	// H2
+      ms.append(atomicMass[nm]*n);
+      str=str.del(ns.xplode());		// nuke H or H2
+   }
+   ms.reduce('+);
+}
+
+var [const] atomicMass=Dictionary(
+  "Ac",227.000000, "Ag",107.868200, "Al", 26.981538, "Am",243.000000, "Ar", 39.948000, 
+  "As", 74.921595, "At",210.000000, "Au",196.966569, "B" , 10.810000, "Ba",137.327000, 
+  "Be",  9.012183, "Bi",208.980400, "Bk",247.000000, "Br", 79.904000, "C" , 12.011000, 
+  "Ca", 40.078000, "Cd",112.414000, "Ce",140.116000, "Cf",251.000000, "Cl", 35.450000, 
+  "Cm",247.000000, "Co", 58.933194, "Cr", 51.996100, "Cs",132.905452, "Cu", 63.546000, 
+  "Dy",162.500000, "Er",167.259000, "Es",252.000000, "Eu",151.964000, "F" , 18.998403, 
+  "Fe", 55.845000, "Fm",257.000000, "Fr",223.000000, "Ga", 69.723000, "Gd",157.250000, 
+  "Ge", 72.630000, "H" ,  1.008000, "He",  4.002602, "Hf",178.490000, "Hg",200.592000, 
+  "Ho",164.930330, "I" ,126.904470, "In",114.818000, "Ir",192.217000, "K" , 39.098300, 
+  "Kr", 83.798000, "La",138.905470, "Li",  6.940000, "Lu",174.966800, "Mg", 24.305000, 
+  "Mn", 54.938044, "Mo", 95.950000, "N" , 14.007000, "Na", 22.989769, "Nb", 92.906370, 
+  "Nd",144.242000, "Ne", 20.179700, "Ni", 58.693400, "Np",237.000000, "O" , 15.999000, 
+  "Os",190.230000, "P" , 30.973762, "Pa",231.035880, "Pb",207.200000, "Pd",106.420000, 
+  "Pm",145.000000, "Po",209.000000, "Pr",140.907660, "Pt",195.084000, "Pu",244.000000, 
+  "Ra",226.000000, "Rb", 85.467800, "Re",186.207000, "Rh",102.905500, "Rn",222.000000, 
+  "Ru",101.070000, "S" , 32.060000, "Sb",121.760000, "Sc", 44.955908, "Se", 78.971000, 
+  "Si", 28.085000, "Sm",150.360000, "Sn",118.710000, "Sr", 87.620000, "Ta",180.947880, 
+  "Tb",158.925350, "Te",127.600000, "Th",232.037700, "Ti", 47.867000, "Tl",204.380000, 
+  "Tm",168.934220, "U" ,238.028910, "V" , 50.941500, "W" ,183.840000, "Xe",131.293000, 
+  "Y" , 88.905840, "Yb",173.054000, "Zn", 65.380000, "Zr", 91.224000, 
+), m=RegExp("([1-9]+)"),
+   atomRE=fcn{  // sort by name length, build RE: "(Lu|Es|Er..|W|Y)([1-9]*)"
+	 nms:=atomicMass.keys;
+	 ( [(nms.apply("len") : (0).max(_)) .. 1, -1].pump(List, // [2..1]
+	    'wrap(n){ nms.filter('wrap(nm){ nm.len()==n }) }).flatten()
+	   .concat("|","(",")([1-9]*)") )
+	 : RegExp(_);
+      }();
+#<<<#
+   atoms=fcn{  // sort by name length, tack on "*" so "H*" globs H2, HO
+      nms:=atomicMass.keys;
+      [(nms.apply("len") : (0).max(_)) .. 1, -1].pump(List, // 2..1
+         'wrap(n){ nms.filter('wrap(nm){ nm.len()==n }) }).flatten()
+      .apply('+("*"));
+   }(),		// --> (Lu*, Es*, Er*, Eu*, ...  V*, W*, Y*)
+#<<<#
+
+foreach cstr in (T("H","H2","H2O","Na2SO4","C6H12","COOH(C(CH3)2)3CH3"))
+   { println(cstr," --> ",molarMass(cstr)) }
+
+tol:=1e-5;
+tester.testRun('wrap{ molarMass("H").closeTo(1.008,tol) },Void,True,__LINE__);
+tester.testRun('wrap{ molarMass("H2").closeTo(2.016,tol) },Void,True,__LINE__);
+tester.testRun('wrap{ molarMass("H2O").closeTo(18.015,tol) },Void,True,__LINE__);
+tester.testRun('wrap{ molarMass("Na2SO4").closeTo(142.03553856000002,tol) },Void,True,__LINE__);
+tester.testRun('wrap{ molarMass("C6H12").closeTo(84.162,tol) },Void,True,__LINE__);
+tester.testRun('wrap{ molarMass("COOH(C(CH3)2)3CH3").closeTo(186.29499999999996,tol) },Void,True,__LINE__);
+}
+
+
+
+{		//////////////////////////////////////////// Factorions
+//{{trans|C}}
+var facts=[0..12].pump(List,fcn(n){ (1).reduce(n,fcn(N,n){ N*n },1) }); #(1,1,2,6....)
+fcn factorions(base){
+   fs:=List();
+   foreach n in ([1..1_499_999]){
+      sum,j := 0,n;
+      while(j){
+	 sum+=facts[j%base];
+	 j/=base;
+      }
+      if(sum==n) fs.append(n);
+   }
+   fs
+}
+
+#if 0
+foreach n in ([9..12]){
+   println("The factorions for base %2d are: ".fmt(n),factorions(n).concat("  "));
+}
+#endif
+
+tester.testRun(factorions.fp(11),Void,L(1,2,26,48,40472),__LINE__);
+}
+
+
+
+{		/////////// First perfect square in base N with N unique digits
+//{{trans|Julia}}
+fcn squareSearch(B){  // B > 16 overflows 64 bit int
+   basenumerals:=B.pump(String,T("toString",B)); // 13 --> "0123456789abc"
+   highest:=("10"+basenumerals[2,*]).toInt(B);   // 13 --> "10" "23456789abc"
+   foreach n in ([highest.toFloat().sqrt().toInt() .. highest]){
+     ns:=(n*n).toString(B);
+     if(""==(basenumerals - ns) ) return(n.toString(B),ns);
+  }
+  Void
+}
+
+println("Base     Root   N");
+//foreach b in ([2..16])
+//  { println("%2d %10s  %s".fmt(b,squareSearch(b).xplode())) }
+
+tester.testRun(fcn{ [2..12].apply(squareSearch) },Void,
+T( T("10",    "100"),
+   T("22",    "2101"),
+   T("33",    "3201"),
+   T("243",   "132304"),
+   T("523",   "452013"),
+   T("1431",  "2450361"),
+   T("3344",  "13675420"),
+   T("11642", "136802574"),
+   T("32043", "1026753849"),
+   T("111453","1240a536789"),
+   T("3966b9","124a7b538609") ), __LINE__);
+}
+
+
+{		//////////////////////////// Fusc sequence
+fuscs:=List.createLong(2_000, 0); fuscs[1]=1; // we'll just pick a big count
+//fuscs:=List.createLong(1_000_000, 0); fuscs[1]=1; // we'll just pick a big count
+foreach n in ([2..fuscs.len()-1]){		 // and generate
+   fuscs[n]=( if(n.isEven()) fuscs[n/2] else fuscs[(n-1)/2] + fuscs[(n+1)/2] )
+}
+
+println("First 61 terms of the Stern-Brocot sequence:");
+fuscs[0,61].concat(" ").println();
+
+tester.testRun(fuscs.get.fp(0,62),Void,
+   L(0,1,1,2,1,3,2,3,1,4,3,5,2,5,3,4,1,5,4,7,3,8,5,7,2,7,5,8,3,7,4,5,1,6,5,9,
+     4,11,7,10,3,11,8,13,5,12,7,9,2,9,7,12,5,13,8,11,3,10,7,11,4,9),__LINE__);
+
+println("\nIndex and value for first term longer than any previous:");
+println("          Index : Value");
+prevMax:=-1;
+		test:=L();
+foreach n in (fuscs.len()){
+   f,fd := fuscs[n], f.numDigits;
+		if( fd>prevMax) test.append(f);
+   if(fd>prevMax){ println("%15,d : %,d".fmt(n,f)); prevMax=fd }
+}
+
+tester.testRun(test.noop,Void, L(0,11,108),__LINE__);
+}
+
+
+class MayanCalendar{	////////////////////////////////////// Mayan calendar
+//{{trans|Go}}
+
+var [const] 
+  sacred=T("Imix'","Ik'","Ak'bal","K'an","Chikchan","Kimi","Manik'","Lamat","Muluk","Ok",
+           "Chuwen","Eb","Ben","Hix","Men","K'ib'","Kaban","Etz'nab'","Kawak","Ajaw"),
+  civil=T("Pop","Wo'","Sip","Sotz'","Sek","Xul","Yaxk'in","Mol","Ch'en","Yax","Sak'","Keh",
+          "Mak","K'ank'in","Muwan'","Pax","K'ayab","Kumk'u","Wayeb'"),
+  Date=Time.Date,
+  // correlation dates:
+  Creation=T(2012, Date.December, 21),  // 13.0.0.0.0, Mayan day of creation
+  OnePop=T(2019, Date.April, 2),	// 1 Pop in 2019
+;
+
+fcn haab(date){  // (y,m,d)-->("Chum"|Int,month name)
+   diff:=Date.deltaDays(OnePop,date.xplode());	//--> signed int
+   rem:=diff%365;
+   if(rem<0) rem=365 + rem;
+   month,last := civil[(rem+1)/20], 20;
+   if(month==civil[-1]) last=5;
+   d:=rem%20 + 1;
+   if(d<last) return(d, month);
+   return("Chum",month);
+}
+ 
+fcn tzolkin(date){ // (y,m,d)-->(Int,String)
+   diff:=Date.deltaDays(Creation,date.xplode());	//--> signed int
+   rem:=diff % 13;
+   if(rem<0) rem=13 + rem;
+
+   num:=( if(rem<=9) rem + 4 else rem - 9 );
+   rem=diff % 20;
+   if(rem<=0) rem=20 + rem;
+   return(num, sacred[rem-1]);
+} 
+
+fcn longCount(date){  // (y,m,d) --> (5 Ints)
+   diff:=Date.deltaDays(Creation,date.xplode());	//--> signed int
+   diff,baktun    := diff + 13*400*360, diff/(400*360);
+   diff,katun     := diff % (400*360),  diff/(20*360);
+   diff,tun       := diff % (20*360),   diff/360;
+   diff,winal,kin := diff%360,          diff/20,       diff % 20;
+
+   return(baktun, katun, tun, winal, kin)
+}
+
+fcn lord(date){  // (y,m,d) --> String
+   diff:=Date.deltaDays(Creation,date.xplode());	//--> signed int
+   rem:=diff % 9;
+   if(rem<=0) rem=9 + rem;
+   "G%d".fmt(rem)
+}
+ 
+#if 0
+println(" Gregorian   Tzolk'in         Haab'             Long           Lord of");
+println("   Date       # Name       Day Month            Count         the Night");
+println("----------   --------    -------------        --------------  ---------");
+
+#<<<
+"
+1963-11-21 2004-06-19  2012-12-18  2012-12-21  2019-01-19  2019-03-27  
+2020-02-29 2020-03-01  2071-05-16
+".split()
+#<<<
+.pump(Void,fcn(date){
+   ymd:=Date.parseDate(date);
+   println("%10s   %2s %-9s %4s %-10s     %-14s %6s".fmt(date,
+      tzolkin(ymd).xplode(), haab(ymd).xplode(),
+      longCount(ymd).concat("."),
+      lord(ymd)));
+});
+#endif
+}
+
+{
+fcn testMC(date,tzolkin,haab,longCount,lord,__line__){
+   date=Time.Date.parseDate(date);
+   tester.testRun(MayanCalendar.tzolkin.fp(date),Void,tzolkin,__line__);
+   tester.testRun(MayanCalendar.haab.fp(date),Void,haab,__line__);
+   tester.testRun(MayanCalendar.longCount.fp(date),Void,longCount,__line__);
+   tester.testRun(MayanCalendar.lord.fp(date),Void,lord,__line__);
+}
+
+testMC("1963-11-21",T(3,"Eb"),T("Chum", "Keh"),T(12,17,10,3,12),"G9",__LINE__);
+testMC("2004-06-19",T(4, "Ben"),T(16, "Sotz'"),T(12,19,11,6,13),"G7",__LINE__);
+testMC("2012-12-18",T(1 ,"Kaban"),T("Chum", "K'ank'in"),T(12,19,19,17,17),"G6",__LINE__);
+testMC("2012-12-21",T(4, "Ajaw"),T(3,"K'ank'in"),T(13,0,0,0,0),"G9",__LINE__);
+testMC("2019-01-19",T(1, "Ajaw"),T(13 ,"Muwan'"),T(13,0,6,3,0),"G6",__LINE__);
+testMC("2019-03-27",T(3 ,"Manik'"),T("Chum", "Wayeb'"),T(13,0,6,6,7),"G1",__LINE__);
+testMC("2020-02-29",T(4 ,"Kimi"),T(14, "K'ayab"),T(13,0,7,5,6),"G7",__LINE__);
+testMC("2020-03-01",T(5 ,"Manik'"),T(15, "K'ayab"),T(13,0,7,5,7),"G8",__LINE__);
+testMC("2071-05-16",T(1 ,"Ok"),T(18 ,"Sip"),T(13,2,19,4,10),"G9",__LINE__);
+}
+
+
+{    		///////////////////////////////////// N-queens problem
+//Modified from a Haskell version (if I remember correctly) 
+fcn isAttacked(q, x,y) // ( (r,c), x,y ) : is queen at r,c attacked by q@(x,y)?
+   { r,c:=q; (r==x or c==y or r+c==x+y or r-c==x-y) }
+fcn isSafe(r,c,qs) // queen safe at (r,c)?, qs=( (r,c),(r,c)..) solution so far
+   { ( not qs.filter1(isAttacked,r,c) ) }
+fcn queensN(N=8,row=1,queens=T){
+   qs:=[1..N].filter(isSafe.fpM("101",row,queens)) #isSafe(row,?,( (r,c),(r,c)..)
+       .apply(fcn(c,r,qs){ qs.append(T(r,c)) },row,queens);
+   if (row == N) return(qs);
+   return(qs.apply(self.fcn.fp(N,row+1)).flatten());
+}
+queens:=queensN(4);
+println(queens.len()," solution(s):");
+queens.apply2(Console.println);
+
+tester.testRun(queensN.fp(4),Void,
+    T( T(T(1,2),T(2,4),T(3,1),T(4,3)), T(T(1,3),T(2,1),T(3,4),T(4,2)) ),__LINE__);
+
+//------------------- not part of solution
+fcn queensN1(N=8,row=1,queens=T){
+   if(row>N) throw(Exception.Msg(queens));
+   [1..N].filter(isSafe.fpM("1_1",row,queens))
+         .apply(fcn(c,r,qs){ qs+T(r,c) },row,queens)
+	 .apply2(self.fcn.fp(N,row+1));
+}
+
+tester.testRun(
+    fcn{ try { queensN1(4); }catch(Msg) { return(__exception.payload) } },
+    Void,T(T(1,2),T(2,4),T(3,1),T(4,3)),__LINE__);
+}
+
+
+class PQ{	////////////////////////////// Peaceful chess queen armies
+fcn isAttacked(q, x,y) // ( (r,c), x,y ) : is queen at r,c attacked by q@(x,y)?
+   { r,c:=q; (r==x or c==y or r+c==x+y or r-c==x-y) }
+fcn isSafe(r,c,qs) // queen safe at (r,c)?, qs=( (r,c),(r,c)..)
+   { ( not qs.filter1(isAttacked,r,c) ) }
+fcn isEmpty(r,c,qs){ (not (qs and qs.filter1('wrap([(x,y)]){ r==x and c==y })) ) }
+fcn _peacefulQueens(N,M,qa,qb){  //--> False | (True,((r,c)..),((r,c)..) )
+   // qa,qb -->  // ( (r,c),(r,c).. ), solution so far to last good spot
+   if(qa.len()==M==qb.len()) return(True,qa,qb);
+   n, x,y := N, 0,0;
+   if(qa) x,y = qa[-1]; else n=(N+1)/2;  // first queen, first quadrant only
+   foreach r in ([x..n-1]){
+      foreach c in ([y..n-1]){
+	 if(isEmpty(r,c,qa) and isSafe(r,c,qb)){
+	    qc,qd := qa.append(T(r,c)), self.fcn(N,M, qb,qc);
+	    if(qd) return( if(qd[0]==True) qd else T(qc,qd) );
+	 }
+      }
+      y=0
+   }
+   False
+}
+
+fcn peacefulQueens(N=5,M=4){ # NxN board, M white and black queens
+   qs:=_peacefulQueens(N,M, T,T);
+   println("Solution for %dx%d board with %d black and %d white queens:".fmt(N,N,M,M));
+   if(not qs)println("None");
+   else{
+      z:=Data(Void,"-"*N*N);
+      foreach r,c in (qs[1]){ z[r*N + c]="W" }
+      foreach r,c in (qs[2]){ z[r*N + c]="B" }
+      z.text.pump(Void,T(Void.Read,N-1),"println");
+   }   
+}
+peacefulQueens();
+//foreach n in ([4..8]){ peacefulQueens(n,n); }
+}
+
+tester.testRun(PQ._peacefulQueens.fp(2,1, T,T),Void,False,__LINE__);
+tester.testRun(PQ._peacefulQueens.fp(4,4, T,T),Void,False,__LINE__);
+tester.testRun(PQ._peacefulQueens.fp(4,3, T,T),Void,False,__LINE__);
+
+tester.testRun(PQ._peacefulQueens.fp(5,4, T,T),Void,
+  L(True, L(L(0,0),L(0,4),L(4,0),  L(4,4)),L(L(1,2),L(2,1),L(2,3),L(3,2))),__LINE__);
+tester.testRun(PQ._peacefulQueens.fp(6,5, T,T),Void,
+  L(True,L(L(0,0),L(4,0),L(4,1),L(5,0),L(5,3)),
+         L(L(1,2),L(1,5),L(2,4),L(2,5),L(3,4))),  __LINE__);
+
+tester.testRun(PQ._peacefulQueens.fp(6,6, T,T), Void,False, __LINE__);
+tester.testRun(PQ._peacefulQueens.fp(7,7, T,T),Void,
+   L(True, L(L(0,0),L(0,4),L(0,6),L(4,0),L(4,6),L(6,0),L(6,6)),
+           L(L(1,2),L(2,1),L(2,3),L(2,5),L(3,2),L(5,2),L(5,3))),  __LINE__);
+
+tester.testRun(PQ._peacefulQueens.fp(8,8, T,T),Void,
+   L(True, L(L(0,0),L(0,4),L(2,0),L(2,4),L(5,1),L(5,5),L(6,0),L(6,4)),
+           L(L(1,2),L(1,6),L(1,7),L(3,2),L(3,6),L(4,3),L(4,7),L(7,2))),
+  __LINE__);
+
+
+
+{		/////////////////// Permutations with some identical elements
+  // eg ( (2,3,1), "ABC" ) == permute "A","A","B","B","B","C" and remove duplicates
+  //  --> ( "AABBBC", "AABBCB" .. )
+  // this gets ugly lots sooner than it should
+fcn permutationsWithSomeIdenticalElements(ns,abcs){
+//   ns.len().pump(String,'wrap(n){ abcs[n] * ns[n] }) : // "B"*3-->"BBB"
+   ns.zipWith(fcn(n,c){ List.createLong(n,c) },abcs).flatten() : # (3,"B")-->("B","B,"B")
+   Utils.Helpers.permute(_) : Utils.Helpers.listUnique(_)
+   .apply("concat")  // ("A","A","B","B","B","C")-->"AABBCB"
+}
+
+permutationsWithSomeIdenticalElements(T(2,1),"123").println();
+permutationsWithSomeIdenticalElements(T(2,1),L("\u2192","\u2191")).concat("  ").println();
+
+z:=permutationsWithSomeIdenticalElements(T(2,3,1),"ABC");
+println(z.len());
+z.pump(Void,T(Void.Read,9,False),  // print rows of ten items
+	fcn{ vm.arglist.concat("  ").println() });
+
+tester.testRun(permutationsWithSomeIdenticalElements.fp(T(2,1),"123"),Void,
+   L("112","121","211"),__LINE__);
+tester.testRun(permutationsWithSomeIdenticalElements.fp(T(2,1),L("1","2")),Void,
+   L("112","121","211"),__LINE__);
+tester.testRun(z.len,Void,60,__LINE__);
+}
+
+
+
+{			/////////////////////////////// Range consolidation
+fcn consolidate(rs){
+   (s:=List()).append(
+      normalize(rs).reduce('wrap(ab,cd){
+	 if(ab[1]>=cd[0]) L(ab[0],ab[1].max(cd[1])); // consolidate
+	 else{ s.append(ab); cd }		     // no overlap
+      }) )
+}
+fcn normalize(s){ s.apply("sort").sort(fcn(a,b){ a[0]<b[0] }) }
+
+foreach rs in (L(
+   L(L(1.1, 2.2)),    L(L(6.1, 7.2), L(7.2, 8.3)),    L(L(4, 3), L(2, 1)),
+   L(L(4.0, 3.0), L(2.0, 1.0), L(-1.0, -2.0), L(3.9, 10.0)),
+   L(L(1, 3), L(-6, -1), L(-4, -5), L(8, 2), L(-6, -6)),
+ )){ println(ppp(rs),"--> ",ppp(consolidate(rs))) }
+fcn ppp(ll){ ll.pump(String,fcn(list){ list.concat(", ",  "[",  "] ") }) }
+
+fcn rstest(rs){ ppp(consolidate(rs)) }
+tester.testRun(rstest.fp(L(L(1.1, 2.2))),Void, "[1.1, 2.2] ",__LINE__);
+tester.testRun(rstest.fp(L(L(6.1, 7.2), L(7.2, 8.3))),Void, "[6.1, 8.3] ",__LINE__);
+tester.testRun(rstest.fp(L(L(4, 3), L(2, 1))),Void, "[1, 2] [3, 4] ",__LINE__);
+tester.testRun(rstest.fp(L(L(4.0, 3.0), L(2.0, 1.0), L(-1.0, -2.0), L(3.9, 10.0))),
+   Void, "[-2, -1] [1, 2] [3, 10] ",__LINE__);
+tester.testRun(rstest.fp(L(L(1, 3), L(-6, -1), L(-4, -5), L(8, 2), L(-6, -6))),
+   Void, "[-6, -1] [1, 8] ",__LINE__);
+}
+
+
+if(BI){			///////////////////// Suffixation of decimal numbers
+class SDN{
+#<<<#
+{{libheader|GMP}} GNU Multiple Precision Arithmetic Library (big ints)
+Error checking is nonexistent.
+#<<<#
+//var [const] BI=Import.lib("zklBigNum");  // GMP
+var metric, binary, googol=BI("1e100");
+metric,binary = metricBin();
+
+   // suffix: 2 (binary), 10 (metric)
+   // For this task, we'll assume BF numbers and treat everything as a big int
+fcn sufficate(numStr, fracDigits=",", suffix="10"){
+   var [const] numRE=RegExp(0'^\+*(([+-]*\.*\d+)[.]*(\d*)(e*[+-]*\d*))^);
+
+   numRE.search((numStr - " ,").toLower());
+   r:=numRE.matched[1];
+   if(not r.find(".")) r=BI(r); // else ((((0,7),"1.2e101","1","2","e101")
+   else  // convert float ("1.2" or "1.2e10") to big int
+      r=BI(numRE.matched[2,*].concat())/(10).pow(numRE.matched[3].len());
+
+   fracDigits=fracDigits.strip();
+   if(fracDigits==",") fracDigits=0; # "digits past decimal or none, if not specified"
+   else                fracDigits=fracDigits.toInt();
+
+   suffix=suffix.strip().toInt();
+   if(suffix==2) nms,szs :=binary;
+   else if(suffix==10)   nms,szs :=metric;
+   else //throw(Exception.ValueError("Invalid suffix: %s".fmt(suffix)));
+     return("Invalid suffix");
+
+   ar:=r.abs();
+   if(ar<szs[0]) return(r.toString());	// little bitty number
+   i,sz,nm := szs.filter1n('>(ar)) - 1, szs[i], nms[i];  // False - 1 == True
+   if(i==True)  // r > biggest unit
+      if(r>=googol) sz,nm = googol, "googol";   // get out the big hammer
+      else          sz,nm = szs[-1], nms[-1];   //    even if they want n^2
+   fd,m := fracDigits + 4, BI(10).pow(fd);      // int --> float w/extra digits
+   a,f,a := r*m/sz, (a%m).toFloat()/m, f + a/m; // to float for rounding
+   fmt:="%%,.%df%%s".fmt(fracDigits).fmt;	// eg "%,.5f%s"
+   return(fmt(a,nm));
+}
+
+   //-->Metric:(("K", "M",..), (1000,1000000,..))
+   //   Bin:   (("Ki","Mi",..),(1024,1048576,..))
+fcn metricBin{
+   ss,m,b := "K M G T P E Z Y X W V U".split(), List(),List();
+   ss.zipWith(m.append,[3..3*(ss.len()),3].apply(BI(10).pow)); // Metric
+   ss.apply("append","i")
+      .zipWith(b.append,[10..10*(ss.len()),10].apply(BI(2).pow)); // Binary
+   return(m.filter22("".isType), b.filter22("".isType)); # split to ((strings),(nums))
+}
+}
+testCases:=T(
+   "87,654,321",
+   "-998,877,665,544,332,211,000      3",
+   "+112,233                          0",
+   "16,777,216                        1",
+   "456,789,100,000,000",
+   "456,789,100,000,000               2      10",
+   "456,789,100,000,000               5       2",
+   "456,789,100,000.000e+00           0      10",
+   "+16777216                         ,       2",
+   "1.2e101",
+   "446,835,273,728                   1",
+   "1e36",
+   "1e39", // there isn't a big enough suffix for this one but it's less than googol
+   		# Linux df returns Kilobytes by default
+   (1024*System.popen("df /","r").read().text.split()[10]).toString() + " 1 2 \"df /\"",
+   "1122334455 , 666", # bad unit type example
+   "10",  // don't suffix this
+);
+#<<<#
+foreach test in (testCases){
+   test=test.split();
+   "%33s : %s".fmt(test.concat(" "),sufficate(test.xplode())).println();
+}
+#<<<#
+
+
+tester.testRun(SDN.sufficate.fp("87,654,321"),Void, "88M",__LINE__);
+tester.testRun(SDN.sufficate.fp("-998,877,665,544,332,211,000  ","3",),
+   Void, "-997.878E",__LINE__);
+tester.testRun(SDN.sufficate.fp("+112,233","   0",),Void, "112K",__LINE__);
+tester.testRun(SDN.sufficate.fp("16,777,216 ","1",),Void, "16.8M",__LINE__);
+tester.testRun(SDN.sufficate.fp("456,789,100,000,000"),Void, "457T",__LINE__);
+tester.testRun(SDN.sufficate.fp("456,789,100,000,000","2","10"),Void, "456.79T",__LINE__);
+tester.testRun(SDN.sufficate.fp("456,789,100,000,000","5","2"),Void, "415.44727Ti",__LINE__);
+tester.testRun(SDN.sufficate.fp("456,789,100,000.000e+00","0","10"),Void, "457G",__LINE__);
+tester.testRun(SDN.sufficate.fp("+16777216    ", ", ", "2"),Void, "16Mi",__LINE__);
+tester.testRun(SDN.sufficate.fp("1.2e101"),Void, "12googol",__LINE__);
+tester.testRun(SDN.sufficate.fp("446,835,273,728","1",),Void, "446.8G",__LINE__);
+tester.testRun(SDN.sufficate.fp("1e36"),Void, "1U",__LINE__);
+tester.testRun(SDN.sufficate.fp("1e39"),Void, "1,000U",__LINE__);
+tester.testRun(SDN.sufficate.fp( "1122334455", ",", "666"),
+   Void,"Invalid suffix",__LINE__);
+tester.testRun(SDN.sufficate.fp("10"),Void, "10",__LINE__);
+}
+
+
+if(BI){ class NAS{	///////////////// Numerical and alphabetical suffixes
+#<<<#
+{{libheader|GMP}} GNU Multiple Precision Arithmetic Library (big ints)
+Floats are limited to 64 bit IEEE754.
+Error checking is nonexistent.
+#<<<#
+var [const] BI=Import.lib("zklBigNum");  // GMP
+var kRE,kD, aRE,aD;
+
+kRE,kD = ki();
+aRE,aD = abrevCreate();
+
+fcn naSuffixes(numStr){ 
+   var [const]
+     numRE=RegExp(0'^([+-]*\.*\d+[.]*\d*E*[+-]*\d*)^),
+     bangRE=RegExp(0'^(!+)^);
+
+   nstr:=(numStr - " ,").toUpper();
+   numRE.search(nstr);
+   nstr,r := nstr[numRE.matched[0][1],*], numRE.matched[1];
+   if(r.matches("*[.E]*")) r=r.toFloat();  // arg!
+   else 		   r=BI(r);
+
+   reg z;
+   do{
+      z=nstr;	// use this to see if we actually did anything
+      if(aRE.search(nstr)){
+	 ns,k := aRE.matched;	// ((0,3),"SCO")
+	 re,b := aD[k];		// (RegExp("R|RE|RES"),BI(20)), 
+	 nstr  = nstr[ns[1],*];
+	 if(re.search(nstr)) nstr=nstr[re.matched[0][1],*]; # remove abbrev tail
+	 r=r*b;
+         continue;
+      }else if(kRE.search(nstr)){
+	 r*=kD[kRE.matched[1]];	    // "K":1000 ...
+	 nstr=nstr[kRE.matched[0][1],*];
+         continue;
+      }else if(bangRE.search(nstr)){  // floats are converted to int
+	 n,k,z := r.toInt(), bangRE.matched[0][1], n - k;
+	 r,nstr = BI(n), nstr[k,*];
+	 while(z>0){ r.mul(z); z-=k; }
+         continue;
+      }
+   }while(nstr and z!=nstr);
+   r
+
+ // testing
+;if(r.isType(Float)) "%,.3f".fmt(r);
+else		     "%,d".fmt(r);
+}
+
+fcn ki{  // case insensitive: k, ki, 
+   ss:="K M G T P E Z Y X W V U".split();
+   d:=Dictionary();
+   ss.zipWith(d.add,[3..3*(ss.len()),3].apply(BI(10).pow));    # E:1e+18
+   ss.apply("append","I")
+      .zipWith(d.add,[10..10*(ss.len()),10].apply(BI(2).pow)); # EI:1.15292e+18
+   re:="([%s]I\\?)".fmt(ss.concat());  // "([KMGTPEZYXWVU]I\?)"
+   return(RegExp(re),d);
+}
+fcn abrevCreate{
+   var upDown=RegExp("([A-Z]+)(.*)");
+   s:="PAIRs 2; SCOres 20; DOZens 12; GREATGRoss 1728; GRoss 144; GOOGOLs 10e100".split(";");
+   abrevs,re := Dictionary(), Sink(String);
+   foreach an in (s){
+      a,n := an.split();
+      upDown.search(a);
+      u,d := upDown.matched[1,2];
+      d=d.len().pump(List,  // "R|RE|RES"
+         '+(1),d.get.fp(0),"toUpper").reverse().concat("|");
+      abrevs.add(u,T(RegExp(d),BI(n)));
+      re.write(u," ");
+   }
+   // "PAIR|SCO|DOZ|GR|GREATGR|GOOGOL"
+   re=RegExp("(%s)".fmt(re.close().strip().replace(" ","|")));
+   return(re,abrevs);
+}
+
+#<<<#
+foreach na in (T("2greatGRo", "24Gros", "288Doz", "1,728pairs", "172.8SCOre",
+   "1,567", "+1.567k", "0.1567e-2m",
+   "25.123kK", "25.123m", "2.5123e-00002G",
+   "25.123kiKI", "25.123Mi", "2.5123e-00002Gi", "+.25123E-7Ei",
+   "-.25123e-34Vikki", "2e-77gooGols",
+   "9!", "9!!", "9!!!", "9!!!!", "9!!!!!", "9!!!!!!",
+   "9!!!!!!!", "9!!!!!!!!", "9!!!!!!!!!",
+   "9!!!!!!!!!k", ".017k!!", "4 dozensK", "2 dozen pairs")){
+      
+   if((r:=naSuffixes(na)).isType(Float)) println("%16s : %,f".fmt(na,r));
+   else 				 println("%16s : %,d".fmt(na,r));
+}
+#<<<#
+}
+
+tester.testRun(NAS.naSuffixes.fp("2greatGRo"),Void,"3,456",__LINE__);
+tester.testRun(NAS.naSuffixes.fp("24Gros"),Void,"3,456",__LINE__);
+tester.testRun(NAS.naSuffixes.fp("288Doz"),Void,"3,456",__LINE__);
+tester.testRun(NAS.naSuffixes.fp("1,728pairs"),Void,"3,456",__LINE__);
+tester.testRun(NAS.naSuffixes.fp("172.8SCOre"),Void,"3,456.000",__LINE__);
+tester.testRun(NAS.naSuffixes.fp("1,567"),Void, "1,567",__LINE__);
+tester.testRun(NAS.naSuffixes.fp("+1.567k"),Void, "1,567.000",__LINE__);
+tester.testRun(NAS.naSuffixes.fp("0.1567e-2m"),Void, "1,567.000",__LINE__);
+tester.testRun(NAS.naSuffixes.fp("25.123kK"),Void, "25,123,000.000",__LINE__);
+tester.testRun(NAS.naSuffixes.fp("25.123m"),Void, "25,123,000.000",__LINE__);
+tester.testRun(NAS.naSuffixes.fp("2.5123e-00002G"),Void, "25,123,000.000",__LINE__);
+tester.testRun(NAS.naSuffixes.fp("25.123kiKI"),Void, "26,343,374.848",__LINE__);
+tester.testRun(NAS.naSuffixes.fp("25.123Mi"),Void, "26,343,374.848",__LINE__);
+tester.testRun(NAS.naSuffixes.fp("2.5123e-00002Gi"),Void, "26,975,615.844",__LINE__);
+tester.testRun(NAS.naSuffixes.fp("+.25123E-7Ei"),Void, "28,964,846,960.238",__LINE__);
+tester.testRun(NAS.naSuffixes.fp("-.25123e-34Vikki"),Void, "-33,394.195",__LINE__);
+}
+
+
+{                          //////////////////////// Resistance Calculator
+class Resistor{
+   fcn init(resistance_,symbol_="r", a_=Void, b_=Void){
+      var resistance,a,b,symbol, voltage=Void;
+      resistance,symbol,a,b = vm.arglist;
+      resistance=resistance.toFloat();  // deal with strings/ints
+   }
+   fcn res{ 
+      if     (symbol=="+") a.res() + b.res();
+      else if(symbol=="*") 1.0/(1.0/a.res() + 1.0/b.res());
+      else                 resistance
+   }
+   fcn setVoltage(voltage){ 
+      if(symbol=="+"){
+         ra,rb := a.res(), b.res();
+	 a.setVoltage(ra/(ra + rb)*voltage);
+	 b.setVoltage(rb/(ra + rb)*voltage);
+      }
+      else if(symbol=="*") T(a,b).apply2("setVoltage",voltage);
+      self.voltage = voltage.toFloat();
+   }
+   fcn current{ voltage/res()     }
+   fcn effect { current()*voltage }
+//   fcn report(level="",out=Console){
+//   println("%8.3f %8.3f %8.3f %8.3f  %s%s"
+fcn report(level="",out=Console){
+out.writeln("%8.3f %8.3f %8.3f %8.3f  %s%s"
+         .fmt(res(),voltage,current(),effect(),level,symbol));
+      T(a,b).apply2("report",level + "| ",out);  // noop if Void
+out
+   }
+   fcn __opAdd(other){ Resistor(0,"+",self,other) }
+   fcn __opMul(other){ Resistor(0,"*",self,other) }
+}
+
+answer:=File("Tests/resistanceCalc.txt").read();
+
+
+R1,R2,R3,R4,R5,R6,R7,R8,R9,R10 := T(6,8,4,8,4,6,8,10,6,2].apply(Resistor);
+node:=((((R8 + R10)*R9 + R7)*R6 + R5)*R4 + R3)*R2 + R1;  // 19 Resistors
+node.setVoltage(18);
+println("     Ohm     Volt   Ampere     Watt  Network tree");
+//node.report();
+
+tester.testRun(node.report.fp("",Data()),Void, answer,__LINE__);
+
+
+fcn build(rpnStr){
+   stack:=List();
+   foreach symbol in (rpnStr.split()){
+      if(symbol=="+"){
+         a,b:=stack.pop(),stack.pop();
+	 stack.append(Resistor(0,"+",b,a))
+      }
+      else if(symbol=="*"){
+         a,b:=stack.pop(),stack.pop();
+      	 stack.append(Resistor(0,"*",b,a))
+      }
+      else stack.append(Resistor(symbol,"r")); 
+   }
+   stack.pop()	// unevaluated top of circuit
+}
+ 
+node:=build("10 2 + 6 * 8 + 6 * 4 + 8 * 4 + 8 * 6 +");
+node.setVoltage(18);	// 19 Resistors
+println("     Ohm     Volt   Ampere     Watt  Network tree");
+node.report();
+
+tester.testRun(node.report.fp("",Data()),Void, answer,__LINE__);
+}
+
+
+
+class PTN{	/////////////////////////////////// Perfect totient numbers
+//var totients=List.createLong(10_000,0);	// cache
+          var totients=List.createLong(1_000,0);	// cache
+fcn totient(n){ if(phi:=totients[n]) return(phi);
+   totients[n]=[1..n].reduce('wrap(p,k){ p + (n.gcd(k)==1) }) 
+}
+fcn perfectTotientW{	// -->iterator
+   (1).walker(*).tweak(fcn(z){
+      parts,n := 0,z;
+      while(n!=1){ parts+=( n=totient(n) ) }
+      if(parts==z) z else Void.Skip;
+   })
+}
+//perfectTotientW().walk(20).println();
+}
+tester.testRun(fcn{ PTN.perfectTotientW().walk(10) },Void,
+   L(3,9,15,27,39,81,111,183,243,255),__LINE__);
+
+
+{		//////////// Sequence: smallest number with exactly n divisors
+fcn countDivisors(n)
+   { [1.. n.toFloat().sqrt()].reduce('wrap(s,i){ s + (if(0==n%i) 1 + (i!=n/i)) },0) }
+A005179w:=(1).walker(*).tweak(fcn(n){
+   var N=0,cache=Dictionary();
+   if(cache.find(n)) return(cache.pop(n));	// prune, very low ROI
+   while(1){ 
+      if(n == (d:=countDivisors(N+=1))) return(N);
+      if(n<d and not cache.find(d)) cache[d]=N;
+   }
+});
+
+N:=15;
+println("First %d terms of OEIS:A005179".fmt(N));
+    r:=
+A005179w.walk(N).concat(" ").println();
+
+tester.testRun(r.noop,Void,"1 2 4 6 16 12 64 24 36 48 1024 60 4096 192 144",__LINE__);
+}
+
+
+{		//////////////////////////////////// Totient function
+fcn totient(n){ [1..n].reduce('wrap(p,k){ p + (n.gcd(k)==1) }) }
+fcn isPrime(n){ totient(n)==(n - 1) }
+ 
+#<<<#
+foreach n in ([1..25]){
+   println("\u03c6(%2d) ==%3d %s"
+      .fmt(n,totient(n),isPrime(n) and "is prime" or ""));
+}
+
+count:=0;
+foreach n in ([1..10_000]){	// yes, this is sloooow
+   count+=isPrime(n);
+   if(n==100 or n==1000 or n==10_000)
+      println("Primes <= %,6d : %,5d".fmt(n,count));
+}
+#<<<#
+
+tester.testRun(totient.fp(1),Void,1,__LINE__);
+tester.testRun(totient.fp(12),Void,4,__LINE__);
+tester.testRun(totient.fp(25),Void,20,__LINE__);
+
+tester.testRun(isPrime.fp(1),Void,False,__LINE__);
+tester.testRun(isPrime.fp(12),Void,False,__LINE__);
+tester.testRun(isPrime.fp(25),Void,False,__LINE__);
+tester.testRun(isPrime.fp(7),Void,True,__LINE__);
+tester.testRun(isPrime.fp(13),Void,True,__LINE__);
+
+tester.testRun(fcn{
+   count:=0;
+   foreach n in ([1..100]){	// yes, this is sloooow
+      count+=isPrime(n);
+   }
+   count
+},Void,25,__LINE__);
+}
+
+
+{						//////////// Van Eck sequence
+//{{trans|Perl6}}
+fcn vanEck(startAt=0){	// --> iterator
+   (startAt).walker(*).tweak(fcn(n,seen,rprev){
+      prev,t := rprev.value, n - seen.find(prev,n);
+      seen[prev] = n;
+      rprev.set(t);
+      t
+   }.fp1(Dictionary(),Ref(startAt))).push(startAt)
+}
+
+#if 1
+fcn vanEckG(startAt=0){	// --> iterator
+   Utils.Generator(fcn(startAt){
+      seen, prev := Dictionary(), startAt;
+      foreach n in ([startAt..]){
+         t:=n - seen.find(prev,n);
+	 seen[prev] = n;
+	 vm.yield(prev = t)
+      }
+   },startAt).push(startAt)
+}
+#endif
+
+#if 0
+foreach n in (9){
+   ve:=vanEck(n);
+   println("The first ten terms of the Van Eck (%d) sequence are:".fmt(n));
+   println("\t",ve.walk(10).concat(","));
+   println("   Terms 991 to 1000 of the sequence are:");
+   println("\t",ve.drop(990-10).walk(10).concat(","));
+}
+#endif
+
+fcn testVE(n){ 
+  ve,s := vanEck(n), ve.walk(10);
+  s.extend(ve.drop(990-10).walk(10))
+}
+tester.testRun(testVE.fp(0),Void,
+   T(0,0,1,0,2,0,2,2,1,6,  4,7,30,25,67,225,488,0,10,136),__LINE__);
+tester.testRun(testVE.fp(1),Void,
+   T(1,0,0,1,3,0,3,2,0,3,   0,6,53,114,302,0,5,9,22,71),__LINE__);
+tester.testRun(testVE.fp(5),Void,
+   T(5,0,0,1,0,2,0,2,2,1,  60,459,0,7,13,243,0,4,10,211),__LINE__);
+tester.testRun(testVE.fp(8),Void,
+   T(8,0,0,1,0,2,0,2,2,1,   16,183,0,6,21,10,249,0,5,48),__LINE__);
+
+
+fcn testVEG(n){ 
+  ve,s := vanEckG(n), ve.walk(10);
+  s.extend(ve.drop(990-10).walk(10))
+}
+tester.testRun(testVEG.fp(0),Void,
+   T(0,0,1,0,2,0,2,2,1,6,  4,7,30,25,67,225,488,0,10,136),__LINE__);
+tester.testRun(testVEG.fp(1),Void,
+   T(1,0,0,1,3,0,3,2,0,3,   0,6,53,114,302,0,5,9,22,71),__LINE__);
+tester.testRun(testVEG.fp(5),Void,
+   T(5,0,0,1,0,2,0,2,2,1,  60,459,0,7,13,243,0,4,10,211),__LINE__);
+tester.testRun(testVEG.fp(8),Void,
+   T(8,0,0,1,0,2,0,2,2,1,   16,183,0,6,21,10,249,0,5,48),__LINE__);
+
+}
+
+
+
+
+
+tester.stats();
+returnClass(tester);

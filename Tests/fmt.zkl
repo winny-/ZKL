@@ -1,0 +1,188 @@
+// -*-c-*-
+// Test String.fmt
+
+tester := TheVault.Test.UnitTester.UnitTester(__FILE__);
+
+
+tester.testSrc("var R = \"%%\".fmt(1,2,3);", Void,Void,"%",__LINE__);
+tester.testSrc("var R = \"%*\".fmt(1,2,3);", Void,Void,"%*",__LINE__);
+tester.testSrc(0'|var R = "%".fmt(1,2,3);|, Void,Void,"%",__LINE__);
+tester.testSrc(0'|var R = "%".fmt();|,      Void,Void,"%",__LINE__);
+tester.testSrc("var R = \"%02d:%2d:%d\".fmt(1,2,3);", Void,Void,"01: 2:3",__LINE__);
+
+	// decimal ints
+tester.testSrc("var R = \"%+d\".fmt(1);", Void,Void, "+1",__LINE__);
+tester.testSrc("var R = \"%+d\".fmt(-1);", Void,Void,"-1",__LINE__);
+tester.testSrc("var R = \"% d\".fmt(1);", Void,Void, " 1",__LINE__);
+tester.testSrc("var R = \"% d\".fmt(-1);", Void,Void,"-1",__LINE__);
+
+tester.testSrc("var R = \"%5d\".fmt(123);", Void,Void,   "  123",__LINE__);
+tester.testSrc("var R = \"%-5d\".fmt(123);", Void,Void,  "123  ",__LINE__);
+tester.testSrc("var R = \"% -5d\".fmt(123);", Void,Void, " 123 ",__LINE__);
+tester.testSrc("var R = \"% -5d\".fmt(-123);", Void,Void,"-123 ",__LINE__);
+tester.testSrc("var R = \"%+5d\".fmt(123);", Void,Void,  " +123",__LINE__);
+tester.testSrc("var R = \"%+5d\".fmt(-123);", Void,Void, " -123",__LINE__);
+
+tester.testSrc("var R = \"%05d\".fmt(123);", Void,Void,  "00123",__LINE__);
+tester.testSrc("var R = \"%+05d\".fmt(123);", Void,Void, "+0123",__LINE__);
+tester.testSrc("var R = \"% 05d\".fmt(123);", Void,Void, " 0123",__LINE__);
+tester.testSrc("var R = \"%05d\".fmt(-123);", Void,Void, "-0123",__LINE__);
+tester.testSrc("var R = \"%+05d\".fmt(-123);", Void,Void,"-0123",__LINE__);
+
+tester.testSrc("var R = \"%3d\".fmt(123);", Void,Void,   "123",__LINE__);
+tester.testSrc("var R = \"%03d\".fmt(123);", Void,Void,  "123",__LINE__);
+tester.testSrc("var R = \"%+03d\".fmt(123);", Void,Void, "+123",__LINE__);
+tester.testSrc("var R = \"% 03d\".fmt(123);", Void,Void, " 123",__LINE__);
+tester.testSrc("var R = \"%3d\".fmt(-123);", Void,Void,  "-123",__LINE__);
+tester.testSrc("var R = \"%03d\".fmt(-123);", Void,Void, "-123",__LINE__);
+tester.testSrc("var R = \"%+03d\".fmt(-123);", Void,Void,"-123",__LINE__);
+
+tester.testSrc("var R = \"%2d\".fmt(12);", Void,Void,  "12",__LINE__);
+
+tester.testSrc("var R = \"%3d\".fmt(123);", Void,Void,   "123",__LINE__);
+tester.testSrc("var R = \"%-3d\".fmt(123);", Void,Void,  "123",__LINE__);
+tester.testSrc("var R = \"% -3d\".fmt(123);", Void,Void, " 123",__LINE__);
+tester.testSrc("var R = \"% -3d\".fmt(-123);", Void,Void,"-123",__LINE__);
+tester.testSrc("var R = \"%+3d\".fmt(123);", Void,Void,  "+123",__LINE__);
+tester.testSrc("var R = \"%+3d\".fmt(-123);", Void,Void, "-123",__LINE__);
+
+
+	// commas
+tester.testSrc(0'|var R="%,d".fmt(1)|,Void,Void,"1",__LINE__);
+tester.testSrc(0'|var R="%,d".fmt(123)|,Void,Void,"123",__LINE__);
+tester.testSrc(0'|var R="%,d".fmt(1234)|,Void,Void,"1,234",__LINE__);
+tester.testSrc(0'|var R="%,d".fmt(12345)|,Void,Void,"12,345",__LINE__);
+tester.testSrc(0'|var R="%,d".fmt(123456)|,Void,Void,"123,456",__LINE__);
+tester.testSrc(0'|var R="%,d".fmt(1234567)|,Void,Void,"1,234,567",__LINE__);
+tester.testSrc(0'|var R="%,d".fmt(10000000)|,Void,Void,"10,000,000",__LINE__);
+tester.testSrc(0'|var R="%_d".fmt(10000000)|,Void,Void,"10_000_000",__LINE__);
+tester.testSrc(0'|var R="%,d".fmt(1234567890)|,Void,Void,"1,234,567,890",__LINE__);
+tester.testSrc(0'|var R="%,d".fmt(-123)|,Void,Void,"-123",__LINE__);
+tester.testSrc(0'|var R="%,d".fmt(-1234567890)|,Void,Void,"-1,234,567,890",__LINE__);
+tester.testSrc(0'|var R="%,d %d".fmt(12345,67890)|,Void,Void,"12,345 67890",__LINE__);
+
+
+	// %B Base (includes manual examples)
+tester.testSrc("var R = \"%.2B\".fmt(5);", Void,Void,"101",__LINE__);
+tester.testSrc("var R = \"%.2B\".fmt(3.4);", Void,Void,"11",__LINE__);
+tester.testSrc("var R = \"%.2B\".fmt(7);", Void,Void,"111",__LINE__);
+tester.testSrc("var R = \"%5.2B\".fmt(5);", Void,Void,"  101",__LINE__);
+tester.testSrc("var R = \"%-5.2B\".fmt(5);", Void,Void,"101  ",__LINE__);
+tester.testSrc("var R = \"%5.2B\".fmt(5);", Void,Void,"  101",__LINE__);
+tester.testSrc("var R = \"% .2B\".fmt(5);", Void,Void," 101",__LINE__);
+tester.testSrc("var R = \"%+5.2B\".fmt(5);", Void,Void," +101",__LINE__);
+tester.testSrc("var R = \"%05.2B\".fmt(5);", Void,Void,"00101",__LINE__);
+
+tester.testSrc("var R = \"%,.2B\".fmt(5);", Void,Void,"101",__LINE__);
+tester.testSrc("var R = \"%,.2B\".fmt(0x1234);", Void,Void,"1|0010|0011|0100",__LINE__);
+
+tester.testSrc("var R = \"%.8B\".fmt(8);", Void,Void,"10",__LINE__);
+tester.testSrc("var R = \"%.1B\".fmt(8);", Void,"ValueError",Void,__LINE__);
+tester.testSrc("var R = \"%.37B\".fmt(8);", Void,"ValueError",Void,__LINE__);
+
+tester.testSrc(0'|var R = "%.10B".fmt(10);|, Void,Void,"10",__LINE__);
+tester.testSrc(0'|var R = "%.10B".fmt(-10);|, Void,Void,"-10",__LINE__);
+
+tester.testSrc("var R = \"%,.16B\".fmt(0x1234);", Void,Void,"1234",__LINE__);
+
+
+	// %x hex
+tester.testSrc("var R = \"%x\".fmt(15);", Void,Void,"f",__LINE__);
+tester.testSrc("var R = \"%4x\".fmt(32);", Void,Void, "  20",__LINE__);
+tester.testSrc("var R = \"%-4x\".fmt(32);", Void,Void,"20  ",__LINE__);
+tester.testSrc("var R = \"%04x\".fmt(32);", Void,Void,"0020",__LINE__);
+tester.testSrc("var R = \"%04x\".fmt(32);", Void,Void,"0020",__LINE__);
+tester.testSrc("var R = \"% 4x\".fmt(32);", Void,Void,"  20",__LINE__);
+tester.testSrc("var R = \"%+4x\".fmt(32);", Void,Void," +20",__LINE__);
+tester.testSrc("var R = \"%+04x\".fmt(32);", Void,Void,"+020",__LINE__);
+tester.testSrc(0'|var R = "%x".fmt(-1);|, Void,Void,"ffffffffffffffff",__LINE__);
+tester.testSrc(0'|var R = "%x".fmt(-1234);|, Void,Void,"fffffffffffffb2e",__LINE__);
+
+tester.testSrc(0'|var R = "%,x".fmt(0x1234);|, Void,Void,"12|34",__LINE__);
+
+
+	// %b Bool (including manual examples)
+tester.testSrc("var R = \"%b\".fmt(True);", Void,Void,"True",__LINE__);
+tester.testSrc("var R = \"%b\".fmt(1);", Void,Void,"True",__LINE__);
+tester.testSrc("var R = \"%b\".fmt(0);", Void,Void,"False",__LINE__);
+tester.testSrc("var R = \"%b\".fmt(ROList);", Void,Void,"False",__LINE__);
+tester.testSrc("var R = \"%7b\".fmt(1);", Void,Void,"   True",__LINE__);
+tester.testSrc("var R = \"%-7b\".fmt(1);", Void,Void,"True   ",__LINE__);
+
+tester.testSrc(0'|var R = "%b,%b,%b,%b".fmt(3,L(),L(1),Void)|,
+    Void,Void,"True,False,True,False",__LINE__);
+
+
+	// %c character
+tester.testSrc("var R = \"%c\".fmt(0x31);", Void,Void,"1",__LINE__);
+tester.testSrc("var R = \"%c\".fmt(\"123\");", Void,Void,"1",__LINE__);
+tester.testSrc("var R = \"%4c\".fmt(\"abc\");", Void,Void, "   a",__LINE__);
+tester.testSrc("var R = \"%-4c\".fmt(\"abc\");", Void,Void,"a   ",__LINE__);
+
+
+	// %s strings
+tester.testSrc("var R = \"%s\".fmt(self);", Void,Void,"Class(RootClass#)",__LINE__);
+tester.testSrc("var R = \"%s\".fmt(123);", Void,Void,   "123",__LINE__);
+tester.testSrc("var R = \"%4s\".fmt(123);", Void,Void,  " 123",__LINE__);
+tester.testSrc("var R = \"%.4s\".fmt(123);", Void,Void, "123",__LINE__);
+tester.testSrc("var R = \"%4.4s\".fmt(123);", Void,Void," 123",__LINE__);
+tester.testSrc("var R = \"%4.2s\".fmt(123);", Void,Void,"  12",__LINE__);
+tester.testSrc("var R = \"%.2s\".fmt(123);", Void,Void, "12",__LINE__);
+tester.testSrc("var R = \"%2.5s\".fmt(123);", Void,Void,"123",__LINE__);
+
+tester.testSrc("var R = \"%5.0s\".fmt(123);", Void,Void,  "     ",__LINE__);
+tester.testSrc("var R = \"%05s\".fmt(123);", Void,Void,   "00123",__LINE__);
+tester.testSrc("var R = \"%-5s\".fmt(123);", Void,Void,   "123  ",__LINE__);
+tester.testSrc("var R = \"%-5.2s\".fmt(123);", Void,Void, "12   ",__LINE__);
+tester.testSrc("var R = \"%0-5.2s\".fmt(123);", Void,Void,"12   ",__LINE__);
+
+tester.testSrc(0'|var R="% s".fmt("abc");|, Void,Void," abc",__LINE__);
+tester.testSrc(0'|var R="% s".fmt("");|, Void,Void,"",__LINE__);
+
+
+	// %f float
+tester.testSrc("var R = \"%f\".fmt(123);", Void,Void,  "123.000000",__LINE__);
+tester.testSrc("var R = \"%f\".fmt(1.23);", Void,Void,   "1.230000",__LINE__);
+tester.testSrc("var R = \"%f\".fmt(0.123);", Void,Void,  "0.123000",__LINE__);
+tester.testSrc("var R = \"%f\".fmt(0.00123);", Void,Void,"0.001230",__LINE__);
+
+tester.testSrc("var R = \"%10f\".fmt(1.23);", Void,Void,	"  1.230000",__LINE__);
+tester.testSrc("var R = \"%10.1f\".fmt(1.23);", Void,Void,	"       1.2",__LINE__);
+tester.testSrc("var R = \"%-10.4f\".fmt(1.23);", Void,Void,	"1.2300    ",__LINE__);
+tester.testSrc("var R = \"% 10.4f\".fmt(-1.23);", Void,Void,	"   -1.2300",__LINE__);
+tester.testSrc("var R = \"%-10.4f\".fmt(-1.23);", Void,Void,	"-1.2300   ",__LINE__);
+tester.testSrc("var R = \"%+10.4f\".fmt(-1.23);", Void,Void,	"   -1.2300",__LINE__);
+tester.testSrc("var R = \"%+10.4f\".fmt(1.23);", Void,Void,	"   +1.2300",__LINE__);
+tester.testSrc("var R = \"%+-10.4f\".fmt(1.23);", Void,Void,	"+1.2300   ",__LINE__);
+
+tester.testSrc(0'|var R = "%2.4F".fmt(1.23);|, Void,Void,	" 1.2300",__LINE__);
+
+	// %e
+if (System.isWindows and "%e".fmt(123)=="1.230000e+002") // WinXP
+{
+   tester.testSrc("var R = \"%e\".fmt(123);", Void,Void,   "1.230000e+002",__LINE__);
+   tester.testSrc("var R = \"%e\".fmt(1.23);", Void,Void,  "1.230000e+000",__LINE__);
+   tester.testSrc("var R = \"%e\".fmt(0.0123);", Void,Void,"1.230000e-002",__LINE__);
+}
+else
+{
+   tester.testSrc("var R = \"%e\".fmt(123);", Void,Void,   "1.230000e+02",__LINE__);
+   tester.testSrc("var R = \"%e\".fmt(1.23);", Void,Void,  "1.230000e+00",__LINE__);
+   tester.testSrc("var R = \"%e\".fmt(0.0123);", Void,Void,"1.230000e-02",__LINE__);
+}
+
+	// %g
+tester.testSrc("var R = \"%g\".fmt(123);", Void,Void,	"123",__LINE__);
+tester.testSrc("var R = \"%g\".fmt(1.23);", Void,Void,	"1.23",__LINE__);
+tester.testSrc("var R = \"%g\".fmt(0.0123);", Void,Void,"0.0123",__LINE__);
+
+
+			////////////////////////// manual examples
+tester.testSrc(0'|var R = "%s %s %s".fmt(self,self.fcn,123)|,
+    Void,Void,"Class(RootClass#) Fcn(__constructor) 123",__LINE__);
+tester.testSrc(0'|var R = "%02d:%02d:%02d".fmt(2,3,4);|,Void,Void,"02:03:04",__LINE__);
+tester.testSrc(0'|var R = "%d%I%d".fmt(1,2,3);|,Void,Void,"13",__LINE__);
+
+
+tester.stats();
+returnClass(tester);

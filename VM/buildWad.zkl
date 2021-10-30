@@ -1,0 +1,19 @@
+//-*-c-*-
+// buildWad.zkl : Built the zkl wad
+
+Attributes(script);
+Wad := Import("Utils.Wad");
+
+var manifest = L(
+  "exception.zsc",	// this is always first
+  "minImport.zsc","Utils/helpers.zsc",
+  "thread.zsc","Utils/argh.zsc",
+  L("Compiler/compiler.zsc",100),	// a package
+  "import.zsc", "Test/unitTester.zsc", T("Test/testThemAll.zsc",False),
+  "Time/date.zsc","Utils/inspector","Utils.Wad",
+  T("startup.zsc",False),  // False-->run from main.c, True-->run from wad
+);
+
+wad := Wad.buildWad(manifest);
+Wad.verifyWad(wad);		// verify wad
+Wad.wadToC(wad,File("wad.c","wb"));

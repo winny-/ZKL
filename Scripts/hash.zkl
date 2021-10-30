@@ -1,0 +1,50 @@
+//-*-c-*-
+// Print the hash (MD5, SHA-256, etc) of one or more files
+// zkl hash filename ...
+
+var [const] MsgHash=Import("zklMsgHash");
+var cmp, hx, hasher=MsgHash.toSink.fp("MD5"), hashName="MD5";
+argh := Utils.Argh(
+   T("+cmp2Hash","","hash file --cmp2Hash hash: Compare file hash to arg",
+      fcn(arg) { hx = arg }),
+   T("256","","Use SHA-256 (default is MD5)", fcn{ 
+      hasher,hashName = MsgHash.toSink.fp("SHA256"), "SHA-256" }),
+   T("cmp","","hash file --cmp file: Compare 2 files", fcn{ cmp=True })
+);
+
+argh.parse(vm.arglist);
+filenames := argh.loners;
+println();
+
+hashes:=filenames.apply(File.glob);
+if(False!=(n:=hashes.filter1n('!))){
+   argh.usage(String("Could not glob \"",filenames[n],
+	"\"\nhash [options] fileName(s)/glob(s)"));
+   System.exit(1);
+}
+
+var [const] buffer = Data(0d100_000);  // CYA for BIG files, eg video
+hashes:=hashes.flatten().apply(fcn(fileName){
+   len,_,date := File.info(fileName);
+   date := "%d-%02d-%02d".fmt(Time.Clock.tickToTock(date)[0,3].xplode());
+   bits := File(fileName,"rb");
+   hs   := hasher();	 // create a new hash sink
+   bits.pump(buffer,hs); // chunk the file through buffer
+   hash := hs.close();
+   bits.close();      // more "proper" than waiting for GC to take care of it
+   println("%s:\n  %s; %,d bytes; %s: %s"
+      .fmt(fileName,date,len,hashName,hash));
+   hash
+});
+
+fcn cmpHashs(h1,h2){
+   if (h1==h2) "%s hashes are the same".fmt(hashName).println();
+   else        "%s hashes differ".fmt(hashName).println();
+}
+if(hx) cmpHashs(hx,hashes[0]);
+
+if(cmp){
+   if(hashes.filter1('!=(hashes[0])))
+      "\nHashes differ:\n%s".fmt(filenames.concat("\n")).println();
+   else "Hashes match".println();
+}

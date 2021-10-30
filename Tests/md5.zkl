@@ -1,0 +1,25 @@
+// -*-c-*-
+
+tester := TheVault.Test.UnitTester.UnitTester(__FILE__);
+
+/* These tests are from RFC 1321 */
+// These tests are also in ZKL/LibSrc/MsgHash/testMsgHash.zkl
+
+tester.testRun(Utils.MD5.fp(\"\"),Void,"d41d8cd98f00b204e9800998ecf8427e",__LINE__);
+tester.testRun(Utils.MD5.fp(\"a\"),Void,"0cc175b9c0f1b6a831c399e269772661",__LINE__);
+tester.testRun(Utils.MD5.fp("abc"),Void,"900150983cd24fb0d6963f7d28e17f72",__LINE__);
+tester.testRun(Utils.MD5.fp("message digest"),Void,"f96b697d7cb7938d525a2f31aaf161d0",__LINE__);
+tester.testRun(Utils.MD5.fp("abcdefghijklmnopqrstuvwxyz"),
+    Void, "c3fcd3d76192e4007dfb496cca67e13b",__LINE__);
+tester.testRun(Utils.MD5.fp("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"),
+    Void, "d174ab98d277d9f5a5611c2c9f419d9f",__LINE__);
+tester.testRun(Utils.MD5.fp("12345678901234567890123456789012345678901234567890123456789012345678901234567890"),
+    Void,"57edf4a22be3c955ac49da2e2107b67a",__LINE__);
+
+tester.testRun(Utils.MD5.fp(Data() + "message digest"), 
+    Void,"f96b697d7cb7938d525a2f31aaf161d0",__LINE__);
+
+
+
+tester.stats();
+returnClass(tester);

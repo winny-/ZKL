@@ -1,0 +1,881 @@
+// -*-c-*-
+// Test var and reg 
+
+tester := TheVault.Test.UnitTester.UnitTester(__FILE__);
+compileText := Compiler.Compiler.compileText;
+
+tester.testSrc("var R; R.r",Void,"NotFoundError",Void,__LINE__);
+tester.testSrc("{var R;} R;",Void,Void,Void,__LINE__);
+
+tester.testSrc("var R=\"OK\";",Void,Void,"OK",__LINE__);
+tester.testSrc("var R=\"OK\"; var a,b,c;",Void,Void,"OK",__LINE__);
+tester.testSrc("var R=\"OK\"; var a,b,;",Void,Void,"OK",__LINE__);
+tester.testSrc("var R=\"OK\"; var a,b=1;",Void,Void,"OK",__LINE__);
+tester.testSrc("var R=\"OK\"; var a=1,b,;",Void,Void,"OK",__LINE__);
+
+tester.testSrc("var self.fcn;", "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var init;",     "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var x.y.z;",    "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var x,x;",      "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var x; reg x",  "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("reg x,x",	"SyntaxError",Void,Void,__LINE__);
+tester.testSrc("reg x; reg x",	"SyntaxError",Void,Void,__LINE__);
+tester.testSrc("reg x; { var x; }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("reg x; class C { var x; } var R;",Void,Void,Void,__LINE__);
+tester.testSrc("R=123; { self.R = 9; }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("R=123; { self.R = R; }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R; var v; var v; R=\"OK\"","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var print; var R=\"OK\";",Void,Void,"OK",__LINE__);
+
+
+classX := "class X { foo := \"foobar\"; }";
+tester.testSrc(classX + "X.foo = 456;var R=x.foo;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc(classX + "x:=X; x.foo = 456; var R=x.foo;",Void,"NameError",Void,__LINE__);
+
+classX = "var R; class X { var foo; foo = \"foobar\"; }";
+tester.testSrc(classX + "X.foo = 456;R=X.foo;",Void,Void,456,__LINE__);
+tester.testSrc(classX + "x:=X; x.foo = 123;R=x.foo;",Void,Void,123,__LINE__);
+
+tester.testSrc(
+   "var R; R = \"\";"
+   "{"
+   "   reg a; a = 1;"
+   "   {"
+   "      reg a; a = 2;"
+   "      {"
+   "	     reg a; a = 3; R += a;"
+   "      }"
+   "      R += a;"
+   "   }"
+   "   R += a;"
+   "}"
+   ,Void,Void,"321",__LINE__);
+
+tester.testSrc(		// check register rollups
+   0'|var R="";|
+   "{ reg r2=3; { reg r3=2; { reg r4=1; R += r4; } R+=r3; }"
+   "{ { reg r4b=4,r4c=5; R+=r4b; R+=r4c; } }"
+   "{ { reg r4d=6,r4e=7; R+=r4d; R+=r4e; } }"
+   "R+=r2;}",Void,Void,"1245673",__LINE__);
+
+
+tester.testSrc("var a; var b; var x = 123; var y = 456,c,d=1; fcn { x; }"
+  "var R; R = \"OK\"",Void,Void,"OK",__LINE__);
+
+tester.testSrc("x = 123; fcn { x; }","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("a:=2; reg b='wrap(){a}; var R=b();",Void,Void,2,__LINE__);
+tester.testSrc("a:=2; var b='wrap  {a}; var R=b();",Void,Void,2,__LINE__);
+
+
+		///////////////////////////// List assignment
+tester.testSrc("a,b,c != L(1,2,3);","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("a,b;c = L(1,2,3);","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("a,b,c := L(1,2);",Void,"IndexError",Void,__LINE__);
+tester.testSrc("a,b,c :=\"12\";", Void,"IndexError",Void,__LINE__);
+
+tester.testSrc("var R; a,b,c := L(1,2,3); R=a+b+c;",Void,Void,6,__LINE__);
+tester.testSrc("var R; a,b,c :=\"12345678\"; R=c+b+a;", Void,Void,"321",__LINE__);
+//tester.testSrc("var R; a,b,c := 0x123456; R=\"%x %x %x\".fmt(a,b,c);",
+//	Void,Void,"56 34 12",__LINE__);
+
+tester.testSrc("a,b,c:=L(4,5,6);   var R = c",Void,Void,6,__LINE__);
+tester.testSrc("a,b,c:=L(4,5,6,7); var R = c",Void,Void,6,__LINE__);
+tester.testSrc(0'|a,b,c:="abc"; var R = c|,Void,Void,"c",__LINE__);
+tester.testSrc("class C { fcn __sGet(n){n+5}} a,r,c:=C; var R=r;",Void,Void,6,__LINE__);
+
+tester.testSrc(0'|a[0],b="abc";|,"SyntaxError",Void,Void,__LINE__);
+tester.testSrc(0'|a,b[0]="abc";|,"SyntaxError",Void,Void,__LINE__);
+tester.testSrc(0'|a[0],b[0]="abc";|,"SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var a,b,c; a = b,c = L(1,2)","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var a,b,c; a,b = c = L(1,2); var R=a;",Void,Void,1,__LINE__);
+tester.testSrc("var a,b,c; a,b = c = L(1,2); var R=b;",Void,Void,2,__LINE__);
+tester.testSrc("var a,b,c; a,b = c = L(1,2); var R=c;",Void,Void,L(1,2),__LINE__);
+tester.testSrc("var a,b,c,d,e; a,b = c = d,e = L(1,2);","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc(0'|var R; a,b,c:=Deferred("","HOHO"); R=a;|,Void,Void,"H",__LINE__);
+
+		////////////////////// _
+tester.testSrc("var a,b; a,b,_ = T(5,6,7); var R = (a+b);", Void,Void,11,__LINE__);
+tester.testSrc("var a,b; a,_,b = T(5,6,7); var R = (a+b);", Void,Void,12,__LINE__);
+tester.testSrc("var a,b; _,a,b = T(5,6,7); var R = (a+b);", Void,Void,13,__LINE__);
+tester.testSrc("var a,b; a,_,_ = T(5,6,7); var R = (a);",   Void,Void,5,__LINE__);
+tester.testSrc("var a,b; _,a,_ = T(5,6,7); var R = (a);",   Void,Void,6,__LINE__);
+tester.testSrc("var a,b; _,_,a = T(5,6,7); var R = (a);",   Void,Void,7,__LINE__);
+tester.testSrc("var a,b; _,_,_ = T(5,6,7); var R;",Void,Void,Void,__LINE__);
+
+		////////////////////// a,b,c=1,2,3
+tester.testSrc(0'|var R; a,b,c:=1,2,3; R=T(a,b,c);|,Void,Void,T(1,2,3),__LINE__);
+tester.testSrc(0'|var R; a,b,c:=1,2+3,4; R=T(a,b,c);|,Void,Void,T(1,5,4),__LINE__);
+tester.testSrc(0'|var R; a,b,c:=1,2; R=T(a,b,c);|,"SyntaxError",Void,Void,__LINE__);
+tester.testSrc(0'|var R; reg [const] b; a,b,c:=1,2,3; R=T(a,b,c);|,"SyntaxError",Void,Void,__LINE__);
+tester.testSrc(0'|var R; a,b,c:=1,a,b; R=T(a,b,c);|,Void,Void,T(1,1,1),__LINE__);
+
+tester.testSrc(0'|var R; a,b,c:=[1..100].walk(99); R=T(a,b,c);|,
+   Void,Void,T(1,2,3),__LINE__);
+tester.testSrc(0'|var R; a,b,c:=123; R=T(a,b,c);|,
+   Void,"NotImplementedError",0,__LINE__);
+
+		////////////////////// a=b=c=x
+tester.testSrc(0'|var R; a:=b:=c:=123; R=T(a,b,c);|,
+   Void,Void,T(123,123,123),__LINE__);
+   		//////////// look at ordering
+tester.testSrc("class C{ var left,right; } c:=C(); c.left=C(); c.right=C();"
+   "c.left.right=c.left = 123; var R=T(c.left,c.left.right)", // clobber c.left
+   Void,"TypeError",Void,__LINE__);
+tester.testSrc("class C{ var left,right; } c:=C(); d:=c.left=C(); c.right=C();"
+   "c.left=c.left.right = 123; var R=T(c.left,d.right)",
+   Void,Void,T(123,123),__LINE__);
+
+
+		///////////////////////// assignment
+tester.testSrc("a := 1; b := 2; var R; R = a + b;",Void,Void,3,__LINE__);
+tester.testSrc("a := 1; b := 2; var R = a==b;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("a := 1; b := 2; var R = (a==b);",Void,Void,False,__LINE__);
+tester.testSrc("a := 1; b := 2; var x = a==b, R=a!=b;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("a := 1; b := 2; var x = (a==b), R=a!=b;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("a := 1; b := 2; var x = (a==b), R=(a!=b);",Void,Void,True,__LINE__);
+
+tester.testSrc("init,x = \"123\";","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("init = 1;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("init = fcn {};","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class Foo { init = fcn {  } }","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc(0'|var R,f = fcn { }; R=f.toString().matches("Fcn(__fcn#1*");|,
+	Void,Void,True,__LINE__);
+tester.testSrc(0'|var f = fcn { }, R=f.toString().matches("Fcn(__fcn#1*");|,
+	Void,Void,True,__LINE__);
+
+tester.testSrc("L=5","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("      var v=fcn{123} v ","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn  {var v=fcn{123} v}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn f{var v=fcn{123} v}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn f{var v=fcn{666}; var g=fcn {v} g};",
+    "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("v:=fcn{123} v","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var v=class{} v ","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("v:=class{} v ","SyntaxError",Void,Void,__LINE__);
+
+
+		////////////////////// :=
+tester.testSrc("var v; v := 5; var R;", "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("v := 5; var R,v;", "SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("r := 5; var R = r;", Void,Void,5,__LINE__);
+tester.testSrc("r := 5; var R = vm.registers[2];", Void,Void,5,__LINE__);
+tester.testSrc("r := 5; var r;", "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var r=555,R; {r := 5; R=r; }", Void,Void,5,__LINE__);
+tester.testSrc("var R; reg r; {r := 5; R=vm.registers[2,*]; }",
+    Void,Void,T(Void,5),__LINE__);
+tester.testSrc("r := 2; r:=5; var R = r;", Void,Void,5,__LINE__);
+tester.testSrc("r := 2; r:=5; var R = vm.registers[2,*];", Void,Void,T(5),__LINE__);
+tester.testSrc("var R; a,R := T(1,2); R=R+a;", "SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("fcn f(r){r := 5} var R=f();", "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn f(r){{r := 5}} var R=f();", Void,Void,5,__LINE__);
+tester.testSrc("fcn f(r){{r := 5} vm.registers[2,*]} var R=f();",
+    Void,Void,T(5),__LINE__);
+tester.testSrc("fcn f{r:=5} var R=r;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn f{} f(r:=5); var R = r;",Void,Void,5,__LINE__);
+tester.testSrc("r := 5; var R; { R=r; }", Void,Void,5,__LINE__);
+
+tester.testSrc("fcn f{} f:=5", "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn f{} reg f;", "SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("class C{var v} C.v:=5", "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class C{} C:=5", "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class C{} reg C;", "SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("a := b := 5; var R = (a+b);", Void,Void,10,__LINE__);
+
+tester.testSrc("var R; if ((r:=R)==Void) R=5;", Void,Void,5,__LINE__);
+
+tester.testSrc("var R; fcn f{5} while(r:=f()) {R=r; break;}", Void,Void,5,__LINE__);
+tester.testSrc("var R; foreach a,b in (T(T(1,2))) { R=(a+b);}",Void,Void,3,__LINE__);
+tester.testSrc("var R=0; foreach a in (T(T(1,2))) { a,b:=a; R+=(a+b) }",
+   Void,Void,3,__LINE__);
+tester.testSrc("var R; n:=5;do(i:=n) {} R=i", Void,Void,5,__LINE__);
+tester.testSrc("var R=0; n:=5; do(i:=n) {R+=1} R=i", Void,Void,5,__LINE__);
+
+tester.testSrc("a,b := T(5,6); var R = (a+b);", Void,Void,11,__LINE__);
+
+tester.testSrc("var v; v=r:=5; var R=(v+r);",Void,Void,10,__LINE__);
+tester.testSrc("var v; v:=r:=5; var R=(v+r);","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var R=0; r:=2; {r:=3; R+=r;} R+=r;",Void,Void,5,__LINE__);
+
+//!!! should be compile time error
+tester.testSrc("var R; if (n:=3){n-1; if(n:=4){} }",
+   Void,"NotImplementedError",Void,__LINE__);
+
+tester.testSrc("a:=2; b:='wrap{ a }; var R=b();",Void,Void,2,__LINE__);
+
+
+		////////////////////// _
+tester.testSrc("a,b,_ := T(5,6,7); var R = (a+b);", Void,Void,11,__LINE__);
+tester.testSrc("a,_,b := T(5,6,7); var R = (a+b);", Void,Void,12,__LINE__);
+tester.testSrc("_,a,b := T(5,6,7); var R = (a+b);", Void,Void,13,__LINE__);
+tester.testSrc("a,_,_ := T(5,6,7); var R = (a);",   Void,Void,5,__LINE__);
+tester.testSrc("_,a,_ := T(5,6,7); var R = (a);",   Void,Void,6,__LINE__);
+tester.testSrc("_,_,a := T(5,6,7); var R = (a);",   Void,Void,7,__LINE__);
+tester.testSrc("_,_,_ := T(5,6,7); var R;",Void,Void,Void,__LINE__);
+
+
+	//////////////////////////////// var/reg const
+tester.testSrc("var [const] x_; x_ = 4; ","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var [const] x_; var x_ = 4; ","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var [const] x_; var x_; x_ = 4; ","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var [const] x_=4; var R = x_",Void,Void,4,__LINE__);
+//tester.testSrc("var [const] _=4; var R=_",Void,Void,4);
+tester.testSrc("var [const] x_=4; x_=5","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var [const] R=4;",Void,Void,4,__LINE__);
+tester.testSrc("var [const] x_=4; class C { x_ = 4; }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var [const] x_; class C { x_ = 4; }",  "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var [const] x_; var [const] x_;","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var [const] R=4;",Void,Void,4,__LINE__);
+tester.testSrc("var [const] x=4; x = 4","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("Utils.Helpers.upperLetters = 5;",	// compiled const
+    "SyntaxError","AssertionError",Void,__LINE__);
+tester.testSrc("Import.Compiler = 5;",		// compiled protected
+    "SyntaxError","AssertionError",Void,__LINE__);
+tester.testSrc("Utils.Helpers.DevNull.fileName = 5;","SyntaxError","AssertionError",Void,__LINE__);
+tester.testSrc("Import.init = 5;","SyntaxError","NameError",Void,__LINE__);
+tester.testSrc("Utils.Helpers.Generator = 5;","SyntaxError","NameError",Void,__LINE__);
+tester.testSrc("Compiler.Asm.typeTable.id = 4;",Void,"TypeError",Void,__LINE__);
+
+tester.testSrc("var [const] w = Import; w.foo","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("reg [const] w = Import; w.foo","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var [const] w = Utils.rangeTo; w.foo","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("reg [const] w = Utils.rangeTo; w.foo","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var [const]c = class{}; c.foo","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("reg [const]c = class{}; c.foo","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var [const]R,c = class{}; c.addClass",Void,Void,Void,__LINE__);
+
+tester.testSrc("var [const]f = fcn{}; f.foo","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("reg [const]f = fcn{}; f.foo","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var [const]f = fcn{},R; f.build",Void,Void,Void,__LINE__);
+tester.testSrc("var [const]f = fcn{}; f.addClass","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var [const]f = List; f.foo","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var [const]f = List,R; f.apply;",Void,Void,Void,__LINE__);
+tester.testSrc(0'|var [const]s="foo"; s.foo|,"SyntaxError",Void,Void,__LINE__);
+tester.testSrc(0'|var [const]b=True;  b.foo|,"SyntaxError",Void,Void,__LINE__);
+tester.testSrc(0'|var [const]b=False; b.foo|,"SyntaxError",Void,Void,__LINE__);
+tester.testSrc(0'|var [const]b=False; var R=b.name|,Void,Void,"Bool",__LINE__);
+
+tester.testSrc(0'|var [const mixin=T]m=T(1,2); var R=m.len()|,Void,Void,2,__LINE__);
+tester.testSrc(0'|var [const mixin=T]m=T(1,2); var R=m.ln()|,"SyntaxError",Void,3,__LINE__);
+tester.testSrc(0'|var [const mixin=T]m=""; var R;|,Void,Void,Void,__LINE__);
+tester.testSrc(0'|var [const mixin=T]m=""; var R=m.fmt;|,"SyntaxError",Void,3,__LINE__);
+tester.testSrc(0'|var [const mixin=T]m=1.0; var R=m.filter;|,Void,"NotFoundError",Void,__LINE__);
+
+tester.testSrc(0'|var [const] v=5; v.bitOr; var R;|,Void,Void,Void,__LINE__);
+
+tester.testSrc(0'|var [mixin=T]R;|,Void,Void,Void,__LINE__);
+tester.testSrc(0'|var [mixin=T]R=Data;R = R.name;|,Void,Void,"Data",__LINE__);
+tester.testSrc(0'|var [mixin]R;|,Void,Void,Void,__LINE__);
+tester.testSrc(0'|var [mixin]R=Data;R = R.name;|,Void,Void,"Data",__LINE__);
+
+
+		//////////////// vars in init
+tester.testSrc("var R; var [const] v_; fcn f{ v_=1 }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R; class { var [const] v_; fcn f{ v_=1 } }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R; var [const] v_; class { fcn init{ v_=1 } }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R; var [const] v_; fcn init{ { v_=1 } }","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var R; var [const] v_=1; fcn init{ v_=1 }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R=C().v_; class C {fcn init{ var [const] v_=1;}}",
+    Void,Void,1,__LINE__);
+tester.testSrc("var R=D.C().v_; class D{class C {fcn init{ var [const] v_=1;}}}",
+    Void,Void,1,__LINE__);
+
+tester.testSrc("var R=C().v; class C {fcn init{ var v=1;}}",
+    Void,Void,1,__LINE__);
+
+tester.testSrc("class C { fcn init { var [const] v; }} c:=C(); c.v=5;",
+    Void,"AssertionError",Void,__LINE__);
+
+    // !!! ick, const isn't
+tester.testSrc("class C { fcn init(n) { var [const] v = n; }}"
+    "c := C(4); c.fcns[c.theInitFcnIs](654); var R = c.v;", Void,Void,654,__LINE__);
+
+tester.testSrc("var R; class C { fcn init { var [const] v = 123 } R=v; }",
+    Void,Void,Void,__LINE__);
+tester.testSrc("var R; class C { fcn init { var [const] v = 123 } R=v; } C();",
+    Void,Void,Void,__LINE__);
+
+
+		////////////////// fcn vars
+tester.testSrc("var R=C().v; class C {fcn f{ var v=1;}}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R; fcn f{ var [const] v; v=1 }","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("class C{ var b; fcn f{ var v=b; v+=1 } class D{ b = 123 }}"
+    "C.f(); var R = C.f()",Void,"NotImplementedError",Void,__LINE__);
+tester.testSrc("class C{ var b; fcn f{ var v=b; v+=1 } class D{ b = 123 }}"
+    "C.__constructor();C.__constructor(); var R = C.f()",Void,Void,124,__LINE__);
+
+tester.testSrc("class C { var b; fcn f { var v=b; v+=1 }"
+    "class D { f(); b = 123 }}",Void,"NotImplementedError",Void,__LINE__);
+
+tester.testSrc("fcn f{ var a=4, b=a; b } var R=f();", Void,Void,4,__LINE__);
+tester.testSrc("fcn f{ var a=4; var b=a; b } var R=f();", Void,Void,4,__LINE__);
+tester.testSrc("class C{ reg r; fcn f{ var v=r }}","SyntaxError",Void,4,__LINE__);
+
+tester.testSrc("class C{ var cv=5; fcn f{ var v=cv; v }} R=C().f()",
+    "SyntaxError",Void,Void,__LINE__);
+
+		// some funkiness
+tester.testSrc("foreach j in (3) {var [const] R = j}",Void,Void,2,__LINE__);
+tester.testSrc("var R; foreach j in (3) {reg [const] r = j; R=r;}",
+   Void,Void,2,__LINE__);
+tester.testSrc("fcn f(p) { var v=p; }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn f(p) { r:=4; var v=r; }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn f(p) { reg r=4; var v=r; }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R; fcn f(p) { var v; v = p; v }"
+   "foreach n in (3) { R=f(n) }",Void,Void,2,__LINE__);
+
+tester.testSrc("class C{var v=self} C.v.v=5; var R=C.v;",Void,Void,5,__LINE__);
+tester.testSrc("class C{var v=self} C.v.v.v=5; var R=C.v;",Void,Void,5,__LINE__);
+tester.testSrc("class C{var [const] v=self} C.v.v=5; var R=C.v;",
+    "SyntaxError","AssertionError",5,__LINE__);
+tester.testSrc("class C{var v=self} C.v.z=5; var R=C.v;",
+    Void,"NameError",5,__LINE__);
+tester.testSrc("class C{var v=4} C.v.z=5; var R=C.v;",
+    Void,"TypeError",5,__LINE__);
+
+
+    		///////////////////////
+tester.testSrc("class C{ var [const] v; fcn f(x){v = x}}","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var R; class C { var [const] v=3; } c:=C(); c.v=5;",
+    Void,"AssertionError",Void,__LINE__);
+
+
+		//////////////
+tester.testSrc("reg [const] x=4; var R = x",Void,Void,4,__LINE__);
+tester.testSrc("reg [const] x=4; x=4","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("reg [const] x=4; reg [const] x=5;","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("class { fcn init{ reg [const] v; v=1 } }","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc(0'|foreach j in ("123") { __jWalker = 4 }|,"SyntaxError",Void,Void,__LINE__);
+tester.testSrc(
+   "foreach j in (\"123\") { } foreach j in (\"123\") { __jWalker = 4}",
+   "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("foreach j in (\"123\") { } foreach j in (\"123\") { } var R",Void,Void,Void,__LINE__);
+
+
+	//////////////////////////////// private
+tester.testSrc("class C { var [private] x; } C.x = 4; var R;",Void,Void,Void,__LINE__);
+tester.testSrc("class C { var [private] x; } class B(C) { C.x = 4; } var R;",Void,Void,Void,__LINE__);
+tester.testSrc("var R; class C { var [private] x; } class B(C) { x = 4; R=x}",
+   Void,Void,4,__LINE__);
+tester.testSrc("var [private] x; class C { x = 4; } var R=x",Void,Void,4,__LINE__);
+tester.testSrc("var R; class C { var [private]x; class C2 { x = 5; R=x} }",
+   Void,Void,5,__LINE__);
+tester.testSrc("class C { var [private]v; } var c = C; c.v;",
+   Void,"NotFoundError",Void,__LINE__);
+
+
+	//////////////////////////////// protected
+tester.testSrc("var [protected] R; R = 4;",Void,Void,4,__LINE__);
+tester.testSrc("class C { var [protected] v; } C.v = 4; var R=C.v;",
+    "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class C { var [protected] v; } c := C; c.v = 4;",
+    Void,"AssertionError",Void,__LINE__);
+tester.testSrc("class C { fcn init { var [protected] v; }} c:=C(); c.v=5;",
+    Void,"AssertionError",Void,__LINE__);
+
+		// parents
+tester.testSrc("class C(File.DevNull) { fcn init {} DevNull.fileName = 3 }",
+    "SyntaxError","AssertionError",Void,__LINE__);
+tester.testSrc("class C(File.DevNull) { fcn init {} fileName = 3 }",
+    "SyntaxError","AssertionError",Void,__LINE__);
+
+try {	// deathgrip that variable
+c := compileText("class C(Thread.Timer) { fcn init {} Timer.stop = 3 }"
+   "returnClass(C.stop);",0,True);
+tester.testRun(c,Void,3,__LINE__);
+c := compileText("class C(Thread.Timer) { fcn init {} stop = 3 }"
+   "returnClass(C.stop);",0,True);
+tester.testRun(c,Void,3,__LINE__);
+}catch { tester.testRun(fcn{"2 tests didn't compile"},Void,Void,__LINE__); }
+
+	// a little more depth
+tester.testSrc("Compiler.Parser.TokenStream.n = 3;","SyntaxError","AssertionError",Void,__LINE__);
+#if 0
+c := compileText("Compiler.Parser.TokenStream.n = 3;"
+   "returnClass(Compiler.Parser.TokenStream.n);",0,1);
+tester.testRun(c,Void,3,__LINE__);
+#endif
+
+tester.testSrc("class C { var [protected]x; } class B(C) { C.x = 4; }"
+  "var R=B.x;",Void,Void,4,__LINE__);
+tester.testSrc("class C { var [protected]x; } class D(C){}"
+   "class E(D) { C.x = 4; } var R=E.x;",Void,Void,4,__LINE__);
+tester.testSrc("class C { var [protected]x; } class B(C) {x=4} var R=B.x",
+   Void,Void,4,__LINE__);
+
+tester.testSrc("var [protected] x; class C { x = 4; } var R=x","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class C { var [protected]x; class C2 { x = 5 } } var R=C.x",
+   "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class C { C2.x = 3; class C2 { var [protected]x = 5; }}"
+   "var R=C.C2.x;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class B { var x = 4 }; class C { var [protected]b=B; }"
+   "var R=C.b.x",Void,Void,4,__LINE__);
+
+//tester.testSrc("fcn f { var [protected]x; } var R=(f.x=4);",Void,Void,4);
+tester.testSrc("fcn f { var [protected]x; } f2:=f; f2.x=4",
+    Void,"TypeError",Void,__LINE__);
+//tester.testSrc("fcn f { var [protected]x=4; } f(); var R = f.x",Void,Void,4);
+
+
+	//////////////////////////////// proxy vars
+tester.testSrc("var [proxy]p=f; fcn f{123} var R=p;",Void,Void,123,__LINE__);
+tester.testSrc("var [proxy]p=f; fcn f{123} var R=p(4);",Void,Void,4,__LINE__);
+
+		// class vars
+tester.testSrc("class C { var [proxy]p=f; fcn f{123}} var R=C.p;",
+   Void,Void,123,__LINE__);
+tester.testSrc("class C { var [proxy]p=f; fcn f{123}} var c=C, R=c.p;",
+   Void,Void,123,__LINE__);
+tester.testSrc(0'|class C { var [proxy]p=f; fcn f{"123"}}|
+   "var c=C, R=c.p.len();",Void,Void,3,__LINE__);
+tester.testSrc(0'|class C { var [proxy]p=f; fcn f{"123"}}|
+   "var R=C.p.len();",Void,Void,3,__LINE__);
+tester.testSrc("class C{var v = fcn{666}; var [proxy] g=fcn {v}} var R=C.g();",
+    Void,Void,666,__LINE__);
+tester.testSrc("var R;"
+    "class C { var [proxy] p=fcn{456}; class D { fcn f{p}}} R=C.D.f();",
+    Void,Void,456,__LINE__);
+
+    		// in parents
+tester.testSrc("var R;class C{ var [proxy] p=fcn{456}; }class D(C){} R=D.p;",
+    Void,Void,456,__LINE__);
+tester.testSrc("var R;class C{ var [proxy] p=fcn{456}; }class D(C){} D.p=5;"
+    "R=D.p;",Void,Void,5,__LINE__);
+tester.testSrc(0'|var R;class C{var [proxy] p=fcn{"foo"};}class D(C){}|
+    "R=D.p.len()",Void,Void,3,__LINE__);
+tester.testSrc("class C{ var [proxy] p=fcn{456}; }class D(C){}class E(D){}"
+    "var R=E.p;",Void,Void,456,__LINE__);
+
+class PV { var [proxy] p = fcn { 123} }
+Vault.add(PV,"Tmp.Var");
+tester.testSrc("class C(Tmp.Var.PV){} var R=C.p",Void,Void,123,__LINE__);
+tester.testSrc("class C(Tmp.Var.PV){} fcn f{8} C.p=f; var R=C.p",Void,Void,8,__LINE__);
+try {
+c := compileText(
+	"class C(Tmp.Var.PV){} C.p=fcn{8}; returnClass(C.p);",0,True);
+tester.testRun(c,Void,8,__LINE__);
+}catch(SyntaxError) { tester.testRun(fcn{"Test didn't compile"},Void,Void,__LINE__); }
+
+   		// fcn proxy vars
+tester.testSrc("var R; fcn f{var [proxy]p=g; R=p}(); fcn g{123}",
+    Void,Void,123,__LINE__);
+tester.testSrc("var R;class C {var [proxy] p=f; fcn f{123}"
+    "class C2 { fcn f {R=p}}} C.C2.f()",Void,Void,123,__LINE__);
+
+tester.testSrc("class C { fcn f{123} class C2 { var [proxy] p=f; }}"
+    "var R=C.C2.p;",Void,Void,123,__LINE__);
+tester.testSrc("class C { fcn f{123} fcn g{var [proxy] p=f; }(); }"
+    "var R=C.g.p;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class C { fcn f{123} fcn g{var [proxy] p=f; p }(); }"
+    "var R=C.g();",Void,Void,123,__LINE__);
+
+tester.testSrc("fcn f{var v=fcn{666}; var [proxy] g=fcn {v}}(); var R=f.g();",
+    "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn f{ var v=fcn{ 666 }; var [proxy] g=fcn{ v }; g }"
+    "var R=f()();", Void,Void,666,__LINE__);
+
+
+tester.testSrc("reg [proxy]p=f; fcn f{123} var R=p;",Void,Void,123,__LINE__);
+tester.testSrc("reg [proxy]p=f; fcn f{123} var R; try { R = p; }catch{}",
+    Void,Void,123,__LINE__);
+
+tester.testSrc("reg [proxy]p=f; fcn f{g} fcn g{123} var R=p();",Void,Void,123,__LINE__);
+tester.testSrc("var [proxy]p=f; fcn f{self} var R=p.varNames.len();",
+    Void,Void,2,__LINE__);
+
+tester.testSrc("var _n=0; var[proxy]N=fcn{ _n+=1 }; var a=N, R=N;",
+    Void,Void,2,__LINE__);
+tester.testSrc("class C{ var _n=0; var[proxy]N=fcn{ _n+=1 }; var a=N, b=N; }"
+    "var R=C.b;",Void,Void,2,__LINE__);
+tester.testSrc(
+    "class C{ { var _n=0; var[proxy]N=fcn{ _n+=1 }; } var a=N, b=N; }"
+    "var R=C.b;",Void,Void,2,__LINE__);
+
+tester.testSrc("class C{ { var[private]N; } } var R=C.vars;",
+   Void,Void,T(T("",Void)),__LINE__);
+tester.testSrc("class C{ { var[const proxy]N; } } var R=C.varBits;",
+   Void,Void,T("1","1"),__LINE__);
+tester.testSrc("class C{ { var[protected]N; } } var R=C.varBits;",
+   Void,Void,T("1",""),__LINE__);
+
+
+    	// not so good proxy vars
+tester.testSrc("var [proxy]p=4; var R=p;",Void,Void,4,__LINE__);
+tester.testSrc("class C { var [proxy]p=4; } var R=C.p;",Void,Void,4,__LINE__);
+tester.testSrc("class C { var [proxy]p=4; } c:=C; var R=c.p;",Void,Void,4,__LINE__);
+tester.testSrc(0'|class C{var [proxy]p="12".len;} var R=C.p;|,Void,Void,2,__LINE__);
+tester.testSrc(0'|class C{var [proxy]p="12".len;} c:=C; var R=c.p;|,Void,Void,2,__LINE__);
+
+	// chained proxies
+tester.testSrc("fcn f{123} var [proxy] f1=f, f2=f1; var R = f1;",Void,Void,123,__LINE__);
+tester.testSrc(0'|fcn f{123} var [proxy] f1=f, f2=Property("f1");|
+   "var R = f2;", Void,Void,123,__LINE__);
+tester.testSrc("class C {fcn f{123} var [proxy] f1=f, f2=f1; }"
+   "var R = C.f1;",Void,Void,123,__LINE__);
+tester.testSrc(0'|class C {fcn f{123} var [proxy] f1=f, f2=Property("f1"); }|
+   "var R = C.f2;",Void,Void,123,__LINE__);
+
+	// Property
+tester.testSrc(0'|class C{var [proxy]v=fcn {123};} p:=C.Property("v");|
+   "var R=p();",Void,Void,123,__LINE__);
+
+
+   	//////////////////////////////////// register migration
+tester.testSrc("r := 1; { a := 2; } z := r; var R;",Void,Void,Void,__LINE__);
+tester.testSrc("r := 1; { a := 2; } z := a; var R;","SyntaxError",Void,Void,__LINE__);
+
+		/////////////// Register roll up bug
+tester.testSrc(
+   "var R;fcn {"
+   "   reg codeQue = 5; {"
+   "      thing := 5; op := 5;"
+   "      if (1) {"
+   "         if (4) {"
+   "            code := \"\"; b := 666; bPushed :=777; a := 5;"
+   "	        if (0) { label = 4; }"
+   "         }"
+   "      }"
+   "      else if (4) { if (x := 5) { dr := 5; code,x := 6; } }"
+   "      else { x := 5; }"
+   "      R = op;"
+   "   }"
+   "}();",Void,Void,5,__LINE__);
+
+
+   		//////////////////// automatic register bug
+tester.testSrc("r := 1; { L(r = 5); } var R = r;",Void,Void,5,__LINE__);
+tester.testSrc("r := 1; { L(r := 5); } var R = r;",Void,Void,1,__LINE__);
+tester.testSrc("L(r := 5); var R=r;",Void,Void,5,__LINE__);
+tester.testSrc("{L(r := 5)} var R=r;","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("AKA(bug); { L(bug = 5); }","SyntaxError",Void,Void,__LINE__);
+
+
+   		///////////////////////// VoidPlus
+tester.testSrc("n := T(0).xplode(); var R=((Void).id == n.id)",Void,Void,True,__LINE__);
+tester.testSrc("n := L(0).xplode(); var R=((Void).id == n.id)",Void,Void,True,__LINE__);
+
+tester.testSrc("var R; fcn (a,b){R = vm.pasteArgs(); }(1,2);"
+    "R=((Void).id == R.id)",Void,Void,True,__LINE__);
+
+
+    		////////////////////////////////////// name conflicts
+tester.testSrc("reg r; class r{}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("reg r; fcn   r{}","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var v; reg v;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var v; class v{}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var v; fcn v{}","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("fcn f{} class f{}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn f(r){reg r; r = 5;}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn f(r){{reg r; r = 5;}} var R=f();",Void,Void,5,__LINE__);
+tester.testSrc("reg r; var r;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var r; reg r;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn f{var r; reg r;}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn f{reg r; var r;}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn f(r){try{reg r;}catch{}} var R;",Void,Void,Void,__LINE__);
+tester.testSrc("reg r; try{reg r;}catch{}; var R",Void,Void,Void,__LINE__);
+
+tester.testSrc("fcn f(r){var r;}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn f(r){reg r;}","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("try{reg [mixin]r=L; r.aply}catch{};","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("try{reg [mixin]r=L; r.apply}catch{}; var R;",Void,Void,Void,__LINE__);
+
+tester.testSrc("{ onExitBlock(fcn{}); reg [mixin]r=L; r.apply } var R;",Void,Void,Void,__LINE__);
+tester.testSrc("{ onExitBlock(fcn{}); reg [mixin]r=L; r.aply }","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("class C{var C=3} var R=C.C",Void,Void,3,__LINE__);
+
+tester.testSrc("class A{} class B(A){A:=3}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class A{} class B(A){var A;}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class A{} class B(A){class A{}}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class A{} class B(A){fcn A{}}","SyntaxError",Void,Void,__LINE__);
+
+
+			///////// static class bug
+tester.testSrc(0'|AKA(Root); var wr;|
+    0'|class C { class D { fcn init { Root.wr = 123; } } }|
+    "C.D(); var R = wr;",Void,Void,123,__LINE__);
+tester.testSrc(0'|AKA(Root); var wr;|
+    0'|class [static] C { class D { fcn init { Root.wr = 123; } } }|
+    "C.D(); var R = wr;","SyntaxError",Void,123,__LINE__);
+
+
+    			//////////////////////////////////////// mixins
+tester.testSrc("reg[mixin]v=4; var R=v.name;",Void,Void,"Int",__LINE__);
+tester.testSrc("reg[mixin]v=4; var R=v.abss;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("reg[mixin]op='+;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc(0'|reg[mixin]op=Op("+");|,"SyntaxError",Void,Void,__LINE__);
+tester.testSrc(0'|reg[mixin=Op]op=Op("+"); var R;|,Void,Void,Void,__LINE__);
+tester.testSrc("var[mixin]v=True; var R;",Void,Void,Void,__LINE__);
+tester.testSrc("var[mixin]v=True; v.Name;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var[mixin]v=True; var R=v.name;",Void,Void,"Bool",__LINE__);
+tester.testSrc("var[mixin]v=L(); var R;",Void,Void,Void,__LINE__);
+tester.testSrc("var[mixin]v=L(); v.aply;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var[mixin]v=File.DevNull; v.foo;", "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("reg[mixin]v=File.DevNull; v.foo;", "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var[mixin]v=File.DevNull; v=L().walker(); v.foo;", 
+    "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var[mixin]v=Exception.BadDay; v=class{fcn text{4}};"
+    "var R=v.text();", Void,Void,4,__LINE__);
+tester.testSrc("var[mixin]v=L(4).walker(); var R=v.next();", 
+    "SyntaxError",Void,4,__LINE__);
+tester.testSrc("var[const mixin]v=Exception.BadDay; v=L(4).walker();", 
+    "SyntaxError",Void,4,__LINE__);
+tester.testSrc("var[mixin]v=Exception.BadDay; v=class{var text=4};"
+    " var R=v.text;", Void,Void,4,__LINE__);
+tester.testSrc("var [mixin] v=class{var n=4}; fcn f{v.n} var R=f();", 
+    Void,Void,4,__LINE__);
+tester.testSrc("var [mixin] v=File.DevNull; v.fileName=4;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class W{var Compiler}var [mixin] v=W;v=Import;v.Compiler = 4;", 
+    Void,"AssertionError",Void,__LINE__);
+
+tester.testSrc("var[mixin=]m;","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("class C{class M{var m} class D{var [mixin] v=M; v.z}}", 
+    "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R;class C{class M{var m=1} class D{var[mixin]v=M; R=v.m}}", 
+    Void,Void,1,__LINE__);
+tester.testSrc("var R;class C{class M{var m} class D{var[mixin]v=M; R=v.name}}", 
+    Void,Void,"M",__LINE__);
+tester.testSrc("var R;class C{class M{var m} class D{var[mixin]v=M; R=v.len()}}", 
+    Void,Void,0,__LINE__);
+tester.testSrc("class C{class M{var[const] m} class D{var[mixin] v=M; v.m=4}}", 
+    "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class C{var c} class D{var d}"
+    "var [mixin] v=C; v=D; var R=v.c", Void,"NotFoundError",Void,__LINE__);
+
+tester.testSrc("class A{var a=123} class B{var[mixin]b=A}"
+    "var [mixin] v=B; var R = v.b.a;",  Void,Void,123,__LINE__);
+tester.testSrc("class A{var a=123} class B{var[mixin]b=A}"
+    "var [mixin] v=B; var R = v.b.z;",  "SyntaxError",Void,123,__LINE__);
+tester.testSrc("var [mixin] v=B; var R = v.b.a;"
+    "class A{var a=123} class B{var[mixin]b=A}","SyntaxError",Void,123,__LINE__);
+tester.testSrc("var [mixin] v=B; var R = v.b.z;"
+    "class A{var a=123} class B{var[mixin]b=A}","SyntaxError",Void,123,__LINE__);
+
+tester.testSrc(		// after classes constructed
+    "class A{var a=123} class B{var[mixin]b=A} class C{var[mixin]c=B}"
+    "var R = C.c.b.a;",Void,Void,123,__LINE__);
+tester.testSrc(
+    "class A{var a=123} class B{var[mixin]b=A} class C{var[mixin]c=B}"
+    "var R = C.c.b.z;","SyntaxError",Void,123,__LINE__);
+
+tester.testSrc("var R = C.c.b.a;"	// before classes constructed
+    "class A{ var a=123 } class B{ var[mixin]b=A } class C{ var[mixin]c=B }",
+    Void,"NotFoundError",Void,__LINE__);
+tester.testSrc(
+    "class A{ var a=123 } class B{ var[mixin]b=A } class C{ var[mixin]c=B }"
+    "var R = C.c.b.a;",Void,Void,123,__LINE__);
+tester.testSrc("var R = C.c.b.z;"
+    "class A{ var a=123 } class B{ var[mixin]b=A } class C{ var[mixin]c=B }",
+    Void,"NotFoundError",123,__LINE__);
+
+tester.testSrc(
+    "class A{var a=123} class B{fcn[mixin=A]f{A}} var R=B.f().a;",
+    Void,Void,123,__LINE__);
+tester.testSrc(
+    "class A{var a=123} class B{fcn[mixin=A]f{A}} var R=B.f().b;",
+    "SyntaxError",Void,123,__LINE__);
+
+tester.testSrc("class C {} var [mixin] v=C; C.foo()","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class C {} var [mixin] v=C; v.foo()","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var [mixin] w = File.DevNull; w.foo","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("reg [mixin] w = File.DevNull; w.foo","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var [mixin] w = Utils.rangeTo; w.foo","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("reg [mixin] w = Utils.rangeTo; w.foo","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var [mixin]f = class{}; f.foo","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("reg [mixin]f = class{}; f.foo","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var [mixin]f = fcn{}; f.foo","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("reg [mixin]f = fcn{}; f.foo","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var [mixin]f = T; f.foo","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var [mixin] Compiler=TheVault.Compiler.Compiler;"
+    "Compiler.specialOps.find; var R;",Void,Void,Void,__LINE__);
+tester.testSrc("var [mixin] Compiler=TheVault.Compiler.Compiler;"
+    "Compiler.specialOps.find(4); var R;",Void,Void,Void,__LINE__);
+
+tester.testSrc("class C{var v=5} class D(C){} var[mixin]d=D; var R=d.v;",
+    Void,Void,5,__LINE__);
+tester.testSrc("class C{var v=5} class D(C){} var[mixin]d=D; var R=d.foo;",
+    "SyntaxError",Void,5,__LINE__);
+tester.testSrc("var[mixin]d=D; class C{ var v=5 } class D(C){} var R=d.v;",
+    Void,Void,5,__LINE__);
+tester.testSrc("var[mixin]d=D; var R=d.foo; class C{var v=5} class D(C){}",
+    "SyntaxError",Void,5,__LINE__);
+
+tester.testSrc("class C{var[mixin] w = File.DevNull}"
+    "class D(C){} var[mixin]d=D; var R=d.w.foo", "SyntaxError",Void,5,__LINE__);
+tester.testSrc(0'|class C{var [mixin]v=""}  class D(C) { v.bitOr }|
+    "var R;", "SyntaxError",Void,Void,__LINE__);
+tester.testSrc(0'|class C{var [mixin]v=""}  class D(C) {}|
+    "var R=D.v.bitOr;", "SyntaxError",Void,Void,__LINE__);
+tester.testSrc(0'|class C{var [mixin]v=5}  class D(C) {}|
+    "var R=D.v.bitAnd(1);", Void,Void,1,__LINE__);
+tester.testSrc(0'|class C{var [const]v=""}  class D(C) {}|
+    "var R=D.v.bitOr;", "SyntaxError",Void,Void,__LINE__);
+tester.testSrc(0'|class C{var [const]v=5}  class D(C) {}|
+    "var R=D.v.bitAnd(1);", Void,Void,1,__LINE__);
+
+tester.testSrc("class C{var v=4;} var[mixin=C.v]m;","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var R; var [mixin=class] c; c.embryo;",Void,"NotFoundError",Void,__LINE__);
+tester.testSrc("var R; var [mixin=class] c; c.embro;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R; class C{ var v; } var [mixin=class] c=C; c.v;","SyntaxError",Void,Void,__LINE__);
+
+
+tester.testSrc("class C { var [private] v } var [mixin=C] c; c.v;",
+    "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("class C { fcn [private] f{} } var [mixin=C] c; c.f;",
+    "SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var [const mixin=TheVault.Compiler.Parser.DataRef]P;"
+    "P.objs; var R;",Void,"NotFoundError",Void,__LINE__);
+tester.testSrc("var [const mixin] P=TheVault.Compiler.Parser.DataRef;"
+    "P.objs; var R;",Void,Void,Void,__LINE__);
+
+
+    			////// fcn mixins
+tester.testSrc("var R; fcn [mixin=List] f{List} f().apply",Void,Void,Void,__LINE__);
+tester.testSrc("var R; fcn [mixin=List] f{List} f().aply","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R; fcn [mixin=fcn] f{} ",Void,Void,Void,__LINE__);
+
+
+tester.testSrc("fcn f([TheVault.Compiler.Parser.DataRef]d){d.objs} var R;",
+    Void,Void,Void,__LINE__);
+tester.testSrc("var [const mixin] P=TheVault.Compiler.Parser;"
+    "fcn f([P.DataRef]d){d.objs} var R;",Void,Void,Void,__LINE__);
+
+
+    			////// arg mixins
+tester.testSrc("fcn [mixin=T] f{T} var [mixin] v=f(); v.aply;",
+    "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R; fcn f([List]a){a.apply}",Void,Void,Void,__LINE__);
+tester.testSrc("var R; fcn f([List]a){a.aply}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R; fcn f([fcn]a){}",Void,Void,Void,__LINE__);
+
+
+    			//////////////////// mixins in const space
+tester.testSrc("var R; const { var K=class { var v}} var[mixin=K] m; m.v;",
+    Void,"NotFoundError",Void,__LINE__);
+tester.testSrc("var R; const { class K { var v}} var[mixin=K] m; m.v;",
+    Void,"NotFoundError",Void,__LINE__);
+tester.testSrc("var R; const { var K=Import } var[mixin=K] m; m.import;",
+    Void,"NotFoundError",Void,__LINE__);
+tester.testSrc("var R; const { class K { var v}} var[mixin=K] m; m.v;",
+    Void,"NotFoundError",Void,__LINE__);
+tester.testSrc("const { class K { var v}} var[mixin=K] R; R.v=5;",
+    Void,"TypeError",Void,__LINE__);
+
+
+
+    		//////////////////////////////////////////
+tester.testSrc(0'|class C{fcn f{""}} var R=C.f().strip();|,Void,Void,"",__LINE__);
+
+
+    		////////////////////////////////////////// reg and wrap
+tester.testSrc("fcn{reg z; T.pump(Void,'wrap(){T.apply('wrap(){ z }) })}"
+   "var R;", Void,Void,Void,__LINE__);
+tester.testSrc("fcn{z:=4; T.pump(Void,'wrap(){T.apply('wrap(){ z }) })}"
+   "var R;", Void,Void,Void,__LINE__);
+tester.testSrc("fcn{x,z:=4; T.pump(Void,'wrap(){T.apply('wrap(){ z }) })}"
+   "var R;", "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn{z,x:=4; T.pump(Void,'wrap(){T.apply('wrap(){ z }) })}"
+   "var R;", "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn{x:=z:=4; T.pump(Void,'wrap(){T.apply('wrap(){ z }) })}"
+   "var R;", Void,Void,Void,__LINE__);
+
+tester.testSrc("fcn f{foo:=fcn(a){a+1}(5);}"
+   "var R=f();", Void,Void,6,__LINE__);
+tester.testSrc("fcn f{reg foo=fcn(a){a+1}(5);}"
+   "var R=f();", Void,Void,6,__LINE__);
+
+tester.testSrc("fcn f{ reg foo='wrap(a){ a+1 }; foo(5); } var R=f();", 
+    Void,Void,6,__LINE__);
+tester.testSrc("fcn f{ foo:='wrap(a){ a+1 }(5) } var R=f();",
+    Void,Void,6,__LINE__);
+tester.testSrc("fcn f{ reg foo='wrap(a){ a+1 }(5) } var R=f();",
+    Void,Void,6,__LINE__);
+
+tester.testSrc("fcn f{ foo:='wrap(a){ a+1 } } var R=f()(5);",
+    Void,Void,6,__LINE__);
+tester.testSrc("fcn f{ x:=3; foo:='wrap(a){ x; a+1 }(5) } var R=f();",
+    Void,Void,6,__LINE__);
+
+
+   	//////////////////////////////////// math set: += -= *= /= %= 
+tester.testSrc("var R=L(1,L(2,L(3,4,5),6),7); R[0]+=5;",Void,
+   Void,T(6,L(2,L(3,4,5),6),7),__LINE__);
+tester.testSrc("var R=L(1,L(2,L(3,4,5),6),7); R[0]-=7;",Void,
+   Void,T(-6,L(2,L(3,4,5),6),7),__LINE__);
+
+tester.testSrc("var R=L(1,L(2,L(3,4,5),6),7); R[1]+=5;",Void,
+   Void,T(1,L(2,L(3,4,5),6,5),7),__LINE__);
+tester.testSrc("var R=L(1,L(2,L(3,4,5),6),7); R[1]-=2;",Void,
+   Void,T(1,L(L(3,4,5),6),7),__LINE__);
+
+tester.testSrc("var R=L(1,L(2,L(3,4,5),6),7); R[1][2]+=3;",Void,
+   Void,T(1,L(2,L(3,4,5),9),7),__LINE__);
+tester.testSrc("var R=L(1,L(2,L(3,4,5),6),7); R[1][2]-=3;",Void,
+   Void,T(1,L(2,L(3,4,5),3),7),__LINE__);
+
+tester.testSrc("var R=L(1,L(2,L(3,4,5),6),7); R[1][1][2]+=3;",Void,
+   Void,T(1,L(2,L(3,4,8),6),7),__LINE__);
+tester.testSrc("var R=L(1,L(2,L(3,4,5),6),7); R[1][1][2]-=3;",Void,
+   Void,T(1,L(2,L(3,4,2),6),7),__LINE__);
+
+tester.testSrc("var R=L(1,L(2,L(3,4,5),6),7); x:=1; R[x][x*1][x+1]+=3;",Void,
+   Void,T(1,L(2,L(3,4,8),6),7),__LINE__);
+tester.testSrc("var R=L(1,L(2,L(3,4,5),6),7); fcn f{1}"
+   " R[f()][f()*1][1+f()]+=3;",Void,Void,T(1,L(2,L(3,4,8),6),7),__LINE__);
+tester.testSrc("var R=L(1,L(2,L(3,4,5),6),7); fcn f{1}"
+   " R[f(1+3)][f(4)*1][1+f(4)]+=3;",Void,Void,T(1,L(2,L(3,4,8),6),7),__LINE__);
+
+tester.testSrc("var R=L(1,L(2,L(3,4,5),6),7); R[1][1][2,3]+=3;",
+   "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R=L(1,L(2,L(3,4,5),6),7); R[1,2][1]+=3;",
+   "SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var R=Dictionary(1,4); R[1]+=3; R=R[1];",Void,Void,7,__LINE__);
+
+
+#if 0
+		/////////////////////// var used before declaration
+tester.testSrc("R; var R;","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("class C{ class D{v.n;} var [mixin] v=class{var _n=4}};","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var [mixin] v; var R=v.a;", "SyntaxError",Void,4,__LINE__);
+tester.testSrc("v._n; var [mixin] v=class{var _n=4};","SyntaxError",Void,Void,__LINE__);
+#endif
+
+
+
+tester.stats();
+returnClass(tester);

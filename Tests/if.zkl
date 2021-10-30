@@ -1,0 +1,251 @@
+// -*-c-*-
+// test if syntax, other testing in expression
+
+var tester = TheVault.Test.UnitTester.UnitTester(__FILE__);
+
+tester.testSrc("var R = (if (1)123else456);","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R = (if (1)123;else456);","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R = (if (1)123;else 456);",Void,Void,123,__LINE__);
+tester.testSrc("var R = if (0)123 else 456;",Void,Void,456,__LINE__);
+
+tester.testSrc("var R; if (1) R = 1; else R = 2;",Void,Void,1,__LINE__);
+tester.testSrc("var R; if (1) R = 1 else R = 2;",Void,Void,1,__LINE__);
+
+tester.testSrc("var R; if (if (1) 0) R = 1 else R = 2;",Void,Void,2,__LINE__);
+
+	// test expression
+	// break, continue
+tester.testSrc("if (1) break;",   "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("if (1) continue;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("if (0) {} else break;",   "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("if (0) {} else continue;","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var R; fcn x{1} while(1) { if (x()) break }",Void,Void,Void,__LINE__);
+tester.testSrc("var R; fcn x{1} do(1) { if (x()) continue }",Void,Void,Void,__LINE__);
+
+tester.testSrc("var R; fcn x{0} while(1) { if (x()) {} else break }",Void,Void,Void,__LINE__);
+tester.testSrc("var R; fcn x{0} do(1) { if (x()) {} else continue }",Void,Void,Void,__LINE__);
+
+	// other expressions
+tester.testSrc("var R; if (1) critical {}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R; if (1) {critical {}}",Void,Void,Void,__LINE__);
+tester.testSrc("var R; if (1) try { R=2} catch {}",Void,Void,2,__LINE__);
+//tester.testSrc("var R; if (0) { try {} catch {} fallthrough R=3 } else R=4",Void,Void,4);
+tester.testSrc("var R; if (0) { try {} catch {} fallthrough { R=3 }} else R=4",
+		Void,Void,4,__LINE__);
+//tester.testSrc("var R; if (0) try {} catch {} fallthrough R=3 else R=4",Void,Void,4);
+tester.testSrc("var R; if (0) try {} catch {} fallthrough { R=3 } else R=4",
+	Void,Void,4,__LINE__);
+//tester.testSrc("var R=666; if (0) try {} catch {} fallthrough R=3",Void,Void,666);
+tester.testSrc("var R=666; if (0) try {} catch {} fallthrough { R=3 }",Void,Void,666,__LINE__);
+
+tester.testSrc("if (1) throw(Exception.BadDay)",Void,"BadDay",Void,__LINE__);
+
+tester.testSrc("if (1) do(0){}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("if (1) while(0){}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("if(1) AKA foo;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("if(1) fence {} exit {}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("if(1) const x = 2;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("if(1) var x;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("if(1) reg x;","SyntaxError",Void,Void,__LINE__);
+
+	// test control
+tester.testSrc("var R; if (try { 1 } catch {0}) R=3 else R=4",Void,Void,3,__LINE__);
+tester.testSrc("var R; if (try { 1/0 } catch {0}) R=3 else R=4",Void,Void,4,__LINE__);
+
+tester.testSrc("if (do(0){}) 1;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("if (while(0){}) 1;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("if (throw(Exception.BadDay)) 1;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("if(while(0) {}) 1;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("if(do(0) {}) 1;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("if(AKA foo) 1;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("if(critical ()) 1;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("if(fence {} exit {}) 1;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("if(continue) 1;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("if(break) 1;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("if(var x);","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("if(reg x);","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn { if(return(1)) {} }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("if(returnClass(1)) {}","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var R=False; if (R=(True).isType(R)) R=True;",Void,Void,True,__LINE__);
+tester.testSrc("var R; fcn g{1} fcn f{2} if (f((R=g()),2,3)) {}",Void,Void,1,__LINE__);
+
+	// conditional compile/code elimination
+tester.testSrc("if (1)    { foo(); }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("if (True) { foo(); }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("const yes=1; if (yes) { foo(); }","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var R; if (0)     { foo(); }",Void,Void,Void,__LINE__);
+tester.testSrc("var R; if (False) { foo(); }",Void,Void,Void,__LINE__);
+
+tester.testSrc("var R; if (1) {} else{foo}",Void,Void,Void,__LINE__);
+
+tester.testSrc("var R; if (1) {} else if(1) { foo }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R; if (1) {} else if(0){} else { foo }","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("if (0) {} else{foo}","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("if (0) {} else if(1) { foo }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("if (0) {} else if(0){}else { foo }","SyntaxError",Void,Void,__LINE__);
+
+
+tester.testSrc("var A=1,B=2,C=3,R; if (not A) R = B else R = C;",Void,Void,3,__LINE__);
+tester.testSrc("var A=0,B=2,C=3,R; if (not A) R = B else R = C;",Void,Void,2,__LINE__);
+tester.testSrc("var A=1,B=2,C=3,R; R = if (not A) B else C;",Void,Void,3,__LINE__);
+tester.testSrc("var A=0,B=2,C=3,R; R = if (not A) B else C;",Void,Void,2,__LINE__);
+
+
+			//////////////////////////////////// opto
+tester.testSrc("fcn f { reg x; if(x) { x + 1 }}"
+    "var R = f.unasm(Data()).find(\"createBlock\");",Void,Void,Void,__LINE__);
+tester.testSrc("fcn f { reg x; if(x) {} else { x+1 }}"
+    "var R = f.unasm(Data()).find(\"createBlock\");",Void,Void,Void,__LINE__);
+tester.testSrc(0'|fcn f { if(1) 4; if(True) 4; }|
+    0'|var R = f.unasm(Data()).find("hop");|,Void,Void,Void,__LINE__);
+tester.testSrc(0'|fcn f { if(0) 4; if(False) 4; }|
+    0'|var R = f.unasm(Data()).find("0:  0 done").isType(1);|,Void,Void,True,__LINE__);
+
+
+    			/////////////////////////////////// switch
+tester.testSrc("switch(2){ case(1){} else{} case(4){}}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("switch(2){ else{} case(4){}}","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("switch(2){ case(4){} else{} else{} }","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("switch(2){ else{} case(4){} else{} }","SyntaxError",Void,Void,__LINE__);
+
+fcn testTwice(src,result,line=Void)	// check for crap left on the stack
+{
+   tester.testSrc("var R; R = {%s};".fmt(src),Void,Void,result,line);
+   tester.testSrc("var R,__z=vm.size[1]; %s; R = vm.size[1] - __z;".fmt(src),
+      Void,Void,0,line);
+}
+
+testTwice("switch(1){case(1){11} case(2,3){23} case(){44} case(5){55} else{666}}",
+    11,__LINE__);
+testTwice("switch(2){case(1){11} case(2,3){23} case(){44} case(5){55}else{666}}",
+    23,__LINE__);
+testTwice("switch(3){case(1){11} case(2,3){23} case(){44} case(5){55}else{666}}",
+    23,__LINE__);
+testTwice("switch(4){case(1){11} case(2,3){23} case(){44} case(5){55}else{666}}",
+    666,__LINE__);
+testTwice("switch(5){case(1){11} case(2,3){23} case(){44} case(5){55}else{666}}",
+    55,__LINE__);
+testTwice("switch(6){case(1){11} case(2,3){23} case(){44} case(5){55}else{666}}",
+    666,__LINE__);
+testTwice("switch(6){case(1){11} case(2,3){23} case(){44} case(5){55} else{666}}",
+    666,__LINE__);
+
+tester.testSrc("var R; R = switch(6){case(1){11} case(2,3){23} else 666}",
+    Void,Void,666,__LINE__);
+tester.testSrc("var R; R = switch(1){case(1)11 case(2,3){23} else 666}",
+    "SyntaxError",Void,Void,__LINE__);
+
+testTwice("switch(1){ case(1){11}  case(2,3){23} case(){44} case(5){55}}",
+    11,__LINE__);
+testTwice("switch(2){ case(1){11}  case(2,3){23} case(){44} case(5){55}}",
+    23,__LINE__);
+testTwice("switch(0){ case(1){11}  case(2,3){23} case(){44} case(5){55}}",
+    0,__LINE__);
+testTwice("c:=L(1,2);switch(1){ case(c[0]){11}  case(c[1]){23}}",11,__LINE__);
+
+tester.testSrc("switch(0){ case(2,3){23} case {44} case(5){55}}",
+    "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("switch(0){ foo(2,3){23}", "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("switch { case(2,3){23}", "SyntaxError",Void,Void,__LINE__);
+tester.testSrc("switch(2) { case(2,3){23} foo(3)}", "SyntaxError",Void,Void,__LINE__);
+
+testTwice("switch(2) { case(2){ try {throw(Exception.BadDay)}catch {R=1}}}",1,__LINE__);
+
+testTwice("switch(7){case(1){11} case(2,3){23} }",7,__LINE__);
+testTwice("switch(12) {}",12,__LINE__);
+testTwice("switch(2) { else 55}",55,__LINE__);
+
+tester.testSrc(0'|var R; switch("."){case(".")[fallthrough]{}else R=1}|,
+   Void,Void,1,__LINE__);
+
+	// stack underflow bug
+tester.testSrc(0'|var R; switch("."){case(".") {}}|,Void,Void,Void,__LINE__);
+tester.testSrc(0'|var R; switch("."){case(".","") {}}|,Void,Void,Void,__LINE__);
+
+	// don't know when to stop expression issues
+tester.testSrc(0'|var R; if(1) switch(3){case(4) {}}; x:=1; R=x;|,
+    Void,Void,1,__LINE__);
+tester.testSrc(0'|var R; if(1) switch(3){case(4) {}} x:=1; R=x;|,
+    "SyntaxError",Void,1,__LINE__);
+
+tester.testSrc(0'|var R; if(1) 2 else switch(3){case(4) {}}; x:=1; R=x;|,
+    Void,Void,1,__LINE__);
+tester.testSrc(0'|var R; if(1) 2 else switch(3){case(4) {}} x:=1; R=x;|,
+    Void,Void,Void,__LINE__);
+tester.testSrc(0'|var R; if(0) 2 else switch(3){case(4) {}} x:=1; R=x;|,
+    "SyntaxError",Void,1,__LINE__);
+tester.testSrc(0'|var R; if(11) 2 else switch(3){case(4) {}} x:=1; R=x;|,
+    "SyntaxError",Void,1,__LINE__);
+tester.testSrc(0'|var R; if(1) 2 else if(3) 4 else switch(5){case(6){}}; x:=1;|
+   "R=x;",Void,Void,1,__LINE__);
+tester.testSrc(0'|var R; if(1) 2 else if(3) 4 else switch(5){case(6){}} x:=1;|
+   "R=x;","SyntaxError",Void,1,__LINE__);
+
+
+		///////////// fallthrough
+testTwice("switch(1){ case(1)[fallthrough]{R=11}case(2){R+=1} }",12,__LINE__);
+testTwice("switch(2){ case(1){R=11}case(2)[fallthrough]{R=1}}",1,__LINE__);
+tester.testSrc("var R=5;"
+   "switch(2){ case(1){R=11}case(2)[fallthrough]{R+=1} }",Void,Void,6,__LINE__);
+
+testTwice("switch(1){ case(1)[fallthrough]{R=11}case(2){R+=1} else{R=3}}",12,__LINE__);
+testTwice("switch(2){ case(1){R=11}case(2)[fallthrough]{R=22} else{R+=3}}",25,__LINE__);
+
+testTwice("switch(25){"
+   "case(1){R=11}case(2)[fallthrough]{R=22} case(3){R=33} else{R=66} }",66,__LINE__);
+testTwice("switch(3){"
+   "case(1){R=11}case(2)[fallthrough]{R=22} case(3){R=33}  else{R=66} }",33,__LINE__);
+testTwice("switch(2){"
+   "case(1){R=11} case(2)[fallthrough]{R=22} case(3){R+=33} else{R+=66} }",55,__LINE__);
+testTwice("switch(3){"
+   "case(1){R=11} case(2){R=22} case(3)[fallthrough]{R=33} else{R+=66} }",99,__LINE__);
+testTwice("switch(2){"
+   "case(1){R=11} case(2)[fallthrough]{R=22}case(3)[fallthrough]{R+=33}"
+   "else{R+=66} }",121,__LINE__);
+
+tester.testSrc("switch(2){ case(1){R=11} else[fallthrough]{R+=3}}",
+    "SyntaxError",Void,Void,__LINE__);
+
+		// test break/continue/return code removal
+tester.testSrc("var R=0; foreach n in (L(1,2,3,4,5)) { "
+    "switch(n){case(1){R+=11; continue; } case(2){R+=22; break;} else{R=4}}}",
+    Void,Void,33,__LINE__);
+tester.testSrc("var R=0; foreach n in (L(1,2,3,4,5)) { "
+    "switch(n){case(1)[fallthrough]{R+=11; continue; }"
+    "case(2){R+=22; break;} else{R=4}}}",
+    Void,Void,33,__LINE__);
+tester.testSrc("var R; R = f(); fcn f{switch(3){case(3){return(4)}}}",
+    Void,Void,4,__LINE__);
+testTwice("while(1){switch(1){case(2){}case(1){6;break}case(0){}}}",6,__LINE__);
+
+
+    			///// see also: switch [arglist] in VM tests
+testTwice("fcn{switch[arglist]{case(1){11} case(List){23}}}(5)",11,__LINE__);
+testTwice("fcn{switch[arglist]{case(1){11} case(List){23}}}(L(3))",23,__LINE__);
+testTwice("fcn{switch[arglist]{case(1){11} else{23}}}(Void)",23,__LINE__);
+
+tester.testSrc("reg b=5; var R;"
+    "if (b)    if (b) R = 7; else R = 8;"
+    "if (b) R = 9;",Void,Void,9,__LINE__);
+tester.testSrc("b := 5; var R;"
+    "if (b) { if (b) R = 7; else R = 8; }"
+    "if (b) R = 9;",Void,Void,9,__LINE__);
+tester.testSrc("reg b=5; var R;"
+    "if (b)    if (b) R = 7; else R = 8;;"
+    "if (b) R = 9;",Void,Void,9,__LINE__);
+tester.testSrc("var b=5,R;"
+    "if (b) (if (b) R = 7; else R = 8); if (b) R = 9;",Void,Void,9,__LINE__);
+
+
+tester.testSrc("var R; if(5){R=7} else {x:=6}",Void,Void,7,__LINE__);
+tester.testSrc("var R; if(5){R=7}",Void,Void,7,__LINE__);
+tester.testSrc("var R; if(5) 7",Void,Void,Void,__LINE__);
+
+
+tester.stats();
+returnClass(tester);

@@ -1,0 +1,88 @@
+//-*-c-*-
+// zgrep: Kinda like "find ... | xargs egrep ... " for those of us on Windows
+
+include(zkl.h.zkl);
+
+var re, recurse, pattern, fileSpec, only1=False;
+
+argh := Utils.Argh(
+//   ROList("re","","Pattern is a regular expression", fcn(arg) { re = True; }),
+   T("+R","R","Recurse into subdirectories, starting at <arg>",
+	fcn(arg) { recurse = arg }),
+   T("1","1","Don't show matching lines", fcn(arg) { only1 = True; }),
+);
+
+argh.parse(vm.arglist);
+   // List[n,N] always returns a list, [0] will error if empty
+try { pattern = argh.loners[0]; (fileSpec = argh.loners[1,*])[0]; }
+catch
+{
+   argh.usage(
+"zgrep: A sorta combined find ... | xargs fgrep",
+"zgrep [options] <pattern> <fileSpec>",
+"zgrep [options] <pattern> -R<dir> <fileSpec>",
+"eg zgrep -R. .glob *.zkl, zgrep .glob Src/*.zkl, zgrep .glob [ST]*/*.zkl",
+"or zgrep [-R<dir>] -- <-pattern> <fileSpec> if you want a leading -",
+);
+   System.exit(1);
+}
+
+//if (re) re = RegExp(pattern);
+
+fcn grep(fileName)
+{
+   reg f, data;
+   try { f = File(fileName,"rb"); data = f.read(); f.close(); }
+   catch	// eg locked file or don't have permissions
+   {
+      File.stderr.writeln("Ignoring %s: %s".fmt(fileName,__exception));
+      return();
+   }
+#if 0
+   if (re)
+   {
+      if (re.search(data,True))
+	 if (only1) println(fileName);
+	 else
+	 {
+	    println(fileName,":");
+	    println(re.matched[?]);
+	 }
+   }
+   else
+#endif
+   reg n;
+   if (Void != (n = data.find(pattern)))
+   {
+      if (only1) println(fileName);
+      else
+      {
+	 println(fileName,":");
+	 do
+	 {
+	    data.seek(n); data.inlineCursor(0);
+	    println("   ",data.readln().strip()); 
+	 } while(Void != (n = data.find(pattern,data.cursor)));
+	 println();
+      }
+   }
+}
+
+fcn grepAllTheWayDown
+{
+   done := Atomic.Bool();
+   pipe := Thread.Pipe();
+   fcn(pipe,done)            // running in a new thread
+   {
+      pipe.pump(grep);
+      done.set();
+   }.launch(pipe,done);
+   fileSpec.apply2('wrap(name){ 
+	File.globular(recurse,name,True,FILE.GLOB.NO_DIRS,pipe) });
+   done.wait();    // stall mother thread; don't exit to shell 'til done
+}
+
+if (recurse) grepAllTheWayDown();
+else
+   fileSpec.apply2(fcn(name)
+      { File.glob(name,FILE.GLOB.NO_DIRS).apply2(grep); });

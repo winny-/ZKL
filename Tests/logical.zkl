@@ -1,0 +1,51 @@
+/* -*-c-*-
+ * logical: test logical expressions
+ */
+
+tester := TheVault.Test.UnitTester.UnitTester(__FILE__);
+
+
+tester.testSrc("var R = 1 and 2;",		Void,Void,2,__LINE__);
+tester.testSrc("var R = 0 and 2;",		Void,Void,0,__LINE__);
+tester.testSrc("var R = 1 and 0;",		Void,Void,0,__LINE__);
+
+tester.testSrc("var R = 1 or 2;",		Void,Void,1,__LINE__);
+tester.testSrc("var R = 0 or 2;",		Void,Void,2,__LINE__);
+tester.testSrc("var R = 1 or 0;",		Void,Void,1,__LINE__);
+
+tester.testSrc("var R = 1 and 2 or 3;",		Void,Void,2,__LINE__);
+tester.testSrc("var R = 0 and 2 or 3;",		Void,Void,3,__LINE__);
+tester.testSrc("var R = 1 and 0 or 3;",		Void,Void,3,__LINE__);
+tester.testSrc("var R = 1 and 2 or 3;",		Void,Void,2,__LINE__);
+tester.testSrc("var R = 1 and 2 or 0;",		Void,Void,2,__LINE__);
+tester.testSrc("var R = 0 and 0 or 0;",		Void,Void,0,__LINE__);
+
+tester.testSrc("var R = 0 and 2 and 3;",	Void,Void,0,__LINE__);
+tester.testSrc("var R = 1 and 0 and 3;",	Void,Void,0,__LINE__);
+tester.testSrc("var R = 1 and 2 and 0;",	Void,Void,0,__LINE__);
+tester.testSrc("var R = 1 and 2 and 3;",	Void,Void,3,__LINE__);
+
+tester.testSrc("var R = 0 or 2 or 3;",		Void,Void,2,__LINE__);
+tester.testSrc("var R = 1 or 0 or 3;",		Void,Void,1,__LINE__);
+tester.testSrc("var R = 1 or 2 or 0;",		Void,Void,1,__LINE__);
+tester.testSrc("var R = 1 or 2 or 3;",		Void,Void,1,__LINE__);
+
+tester.testSrc("var R = (1 and 2) or 3;",	Void,Void,2,__LINE__);
+tester.testSrc("var R = 1 and (2 or 3);",	Void,Void,2,__LINE__);
+tester.testSrc("var R = 1 or (2 or 3);",	Void,Void,1,__LINE__);
+tester.testSrc("var R = 1 or (2 and 3);",	Void,Void,1,__LINE__);
+tester.testSrc("var R = 5 + 2 and 3;",		Void,Void,3,__LINE__);
+tester.testSrc("var R = 5 + (2 and 3);",	Void,Void,8,__LINE__);
+tester.testSrc("var R = (5 + 2) and 3;",	Void,Void,3,__LINE__);
+
+tester.testSrc("var R = ( (1 == 2) and (3 == 4) ) or ( (5 != 6) and 7 );",
+	Void,Void,7,__LINE__);
+
+
+tester.testSrc("var R = (self) and 3;",	Void,Void,3,__LINE__);
+tester.testSrc("var R = (self and 3);",	Void,Void,3,__LINE__);
+
+
+
+tester.stats();
+returnClass(tester);

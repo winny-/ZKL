@@ -1,0 +1,254 @@
+// -*-c-*-
+// dataref.zkl: Data references
+
+tester := TheVault.Test.UnitTester.UnitTester(__FILE__);
+
+
+tester.testSrc("var R=True.name;",Void,Void,"Bool",__LINE__);
+tester.testSrc("True.foo;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("List.foo;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("TheVault.List.foo;","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("x.ask;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("x.();","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("x.y.(foo).z;","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("x.ask;","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("x.ask();","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("123.foo;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("123.foo();","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("foo();","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("(1).self;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("(1).self();","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("x = (123+456)...........methods;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("self..NullClass;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("self. .NullClass; var R;",Void,Void,Void,__LINE__);
+tester.testSrc("self. NullClass;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("self .NullClass; var R;",Void,Void,Void,__LINE__);
+tester.testSrc("self. .fcn. .container; var R;",Void,Void,Void,__LINE__);
+tester.testSrc("self. . .container;","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("x.(3);","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("(1).(3);","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("(1). (3);","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("(1) .(3);","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("(1+2).();","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("self.methods.();","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var R; R=self.methods();",Void,Void,L(),__LINE__);
+
+classX := 0'|var R; class X { var foo; foo = "foobar"; }|;
+tester.testSrc(classX + "x:=X; x.foo = 456; R = X.foo;",Void,Void,456,__LINE__);
+tester.testSrc(classX + 
+    0'|x := L(X); x[0].foo = "hoho"; R = X.foo;|,Void,Void,"hoho",__LINE__);
+
+tester.testSrc("self;var R;R=\"OK\"",Void,Void,"OK",__LINE__);
+tester.testSrc("self();","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R = self.fcn.toString();",Void,Void,"Fcn(__constructor)",__LINE__);
+tester.testSrc("self.fcn();","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("fcn f {return(self.fcn.properties.len());} var R = (f() > 0);",
+    Void,Void,True,__LINE__);
+
+tester.testSrc("x := (1+2).self;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("x := (1+2).self.fcn;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("x := (1+2).self();","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("x() = 456;","SyntaxError",Void,Void,__LINE__);
+
+	// don't know how to catch this error
+tester.testSrc("var x; x.y = 123;",Void,"TypeError",Void,__LINE__);
+	// this is the same as x().y, is that OK? NO! missing ";" makes a mess
+tester.testSrc("x()y = 123;","SyntaxError",Void,Void,__LINE__);
+	// can't catch this one at compile time:
+tester.testSrc("var x; x().y = 123;",Void,"TypeError",Void,__LINE__);
+
+tester.testSrc("var x; x().y() = 123;","SyntaxError",Void,Void,__LINE__);
+	// can't catch this one at compile time
+tester.testSrc("var x; x().y().foo = 123;",Void,"NotFoundError",Void,__LINE__);
+
+tester.testSrc("var x; x.123 = 456;","SyntaxError",Void,Void,__LINE__);	// error
+
+tester.testSrc(classX+"X.x;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc(classX+"X.x = 123;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc(classX+"x := X; x.foo = 321; R=X.foo;",Void,Void,321,__LINE__);
+
+	// can't really test this 'cause x() is history
+tester.testSrc(classX+"x=X; x()foo = \"uncle\";","SyntaxError",Void,Void,__LINE__);
+tester.testSrc(classX+"X().foo = 123;R=555;",Void,Void,555,__LINE__);
+
+tester.testSrc("self() = 123;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("self = 123;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("self.fcn = 123;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("self.fcn() = 123;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("self.fcn.foo = 123;","SyntaxError",Void,Void,__LINE__);
+
+func :=
+"var R; R = \"\";"
+"x := fcn(a=True) { "
+"   R += (\"*\");"
+"   if (a) return(Void);"
+"   self.fcn;"
+"   self.fcn();"
+"   z := 123;"
+"   R += z;"
+"}; x(False)";
+tester.testSrc(func,Void,Void,"**123",__LINE__);
+
+func =
+"var R;"
+"fcn foo { "
+"   R = self.fcn.name;"
+"} foo()";
+tester.testSrc(func,Void,Void,"foo",__LINE__);
+
+func = "fcn { var x; self.fcn.x; }";
+tester.testSrc(func,"SyntaxError",Void,Void,__LINE__);
+
+func = "fcn { var x; self.fcn.x = 333; }";
+tester.testSrc(func,"SyntaxError",Void,Void,__LINE__);
+
+func = "fcn { self.fcn = 333; }";
+tester.testSrc(func,"SyntaxError",Void,Void,__LINE__);
+
+func = "fcn { (1+2).self.fcn; }";
+tester.testSrc(func,"SyntaxError",Void,Void,__LINE__);
+
+func = "var R; fcn foo { R = self.fcn; } foo(); R = R.toString();";
+tester.testSrc(func,Void,Void,"Fcn(foo)",__LINE__);
+
+	// not the expected SyntaxError error ...
+tester.testSrc("fcn { X = 123; fcn { X; } }","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("123=456;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("\"123\"=456;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("123.toString()= \"X\";","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("123.toString= \"X\";","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("(\"123\").toInt= 456;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("\"123\".toInt= 456;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R = (123).toString();",Void,Void,"123",__LINE__);
+
+tester.testSrc("L(\"HOHO\")[0] = 1;var R;R=123",Void,Void,123,__LINE__);
+tester.testSrc("\"%s\".fmt(\"hoho\");var R;R=123;",Void,Void,123,__LINE__);
+tester.testSrc("x := y := 1;var R;R=123;",Void,Void,123,__LINE__);
+
+tester.testSrc("x := x := 11;var R;R=123;",Void,Void,123,__LINE__);
+
+	// can't catch this at compile time
+tester.testSrc("var x; x(666).y = 123;",Void,"TypeError",Void,__LINE__);
+
+tester.testSrc("var R;R = (\"123\" + \"456\").walker().toString();",Void,Void,
+    "Walker",__LINE__);
+tester.testSrc("var R;R = \"123\".walker().toString();",Void,Void,
+    "Walker",__LINE__);
+
+tester.testSrc("var R;R = (\"123\" + \"456\").toInt().toString();",Void,Void,
+    "123456",__LINE__);
+
+	// can't catch this at compile time
+tester.testSrc("self.exceptions[2].catchable[3] = False;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R; self.R = 999;",Void,Void,999,__LINE__);
+
+   
+TE := 
+"class TE(Exception.Exception) {"
+"  const TEXT = \"Tokenizer Error\"; text = TEXT;"
+"   fcn init(msg = TEXT) { Exception.init(msg); } }";
+
+tester.testSrc(TE+"te:=TE(\"hoho\"); te.text=\"HOHO\"; var R=te.text;",
+    Void,Void,"HOHO",__LINE__);
+tester.testSrc(TE+"x:=TE(\"foo\"); var R;R=x.toString();",Void,Void,
+    "TE(foo)",__LINE__);
+
+
+Boom := "var R; try { R.thisWontBeFound; } ";
+tester.testSrc(Boom+"catch {__exception.text=\"HOHO\";R=\"OK\";}",
+    Void,Void,"OK",__LINE__);
+tester.testSrc(Boom+"catch{__exception.text=\"HOHO\";R=__exception.text;}",
+    Void,Void,\"HOHO\",__LINE__);
+
+tester.testSrc("var R = L(\"HOHO\"); R[0] = 123; R = R.toString();",
+    Void,Void,"L(123)",__LINE__);
+tester.testSrc("var R; reg x; R = x = 123; R = R + x;",Void,Void,246,__LINE__);
+tester.testSrc("var R; reg x;  x = R = L(\"HOHO\")[0] = 5;",
+    Void,Void,5,__LINE__);
+tester.testSrc("var R; reg x; R = x = L(\"HOHO\")[0] = 5;",
+    Void,Void,5,__LINE__);
+tester.testSrc("var R; reg x; x = L(\"HOHO\")[0] = R = 5;",Void,Void,5,__LINE__);
+
+
+	/* BaseClass test. Some duplicates here but hey, more testing is
+	 * better testing, right?
+	 */
+tester.testSrc("BaseClass;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("BaseClass();","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("self.BaseClass();","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("self.BaseClass.d.e.f.g;",Void,"NotFoundError",Void,__LINE__);
+
+tester.testSrc("var R = self.BaseClass; R = R.toString();",
+    Void,Void,"Method(RootClass#.BaseClass)",__LINE__);
+tester.testSrc("var R = self.BaseClass(\"embryo\").toString();",
+    Void,Void,"Method(RootClass#.embryo)",__LINE__);
+tester.testSrc("var R = self.BaseClass.embryo.toString();",
+    Void,Void,"Method(RootClass#.embryo)",__LINE__);
+tester.testSrc("var R = self.BaseClass.fcns[0].name;",
+    Void,Void,"__constructor",__LINE__);
+tester.testSrc("class C {} var R = C.BaseClass.name;",Void,Void,"C",__LINE__);
+tester.testSrc("var R = self.BaseClass.topdog.BaseClass.fcns[0].name;",
+    Void,Void,"__constructor",__LINE__);
+tester.testSrc("var R = self.BaseClass.topdog.BaseClass; R = R.toString();",
+    Void,Void,"Method(RootClass#.BaseClass)",__LINE__);
+
+tester.testSrc("var R = addFcn; R=R.toString();",
+    Void,Void,"Method(RootClass#.addFcn)",__LINE__);
+tester.testSrc("var R = self.BaseClass; R=R.toString();",
+    Void,Void,"Method(RootClass#.BaseClass)",__LINE__);
+
+tester.testSrc("var R = self.BaseClass.fcns; R=R.toString();", 
+	Void,Void,"L(Fcn(__constructor))",__LINE__);
+
+tester.testSrc("var R = self.BaseClass(\"varBits\");",Void,Void,T("",""),__LINE__);
+tester.testSrc("var R = self.BaseClass.theInitFcnIs;",Void,Void,0,__LINE__);
+tester.testSrc("self.BaseClass(theInitFcnIs);",Void,"TypeError",Void,__LINE__);
+
+tester.testSrc("var R = \"addFcn\"; R = self.BaseClass(R);"
+    "R=R.toString();", Void,Void,"Method(RootClass#.addFcn)",__LINE__);
+
+tester.testSrc("var R;R=123.toInt();","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R;R=(123).toInt();",Void,Void,123,__LINE__);
+
+	// A "fcn call stomps X" bug
+tester.testSrc("class C { var x; } fcn find { 1+1; return(C); }"
+    "find().x = 123; var R = C.x",Void,Void,123,__LINE__);
+
+	// DataRef bug if not finalized
+tester.testSrc("var R; x := L(0,1); x[1] = (not self.isScript);",Void,Void,Void,__LINE__);
+
+
+tester.testSrc("Utils.rangeTo(0,1).filter; var R;",Void,Void,Void,__LINE__);
+tester.testSrc("Utils.rangeTo.filter; var R;","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R=Utils.rangeTo.name;",Void,Void,"rangeTo",__LINE__);
+
+
+			////////////////////// weird shit
+tester.testSrc("var R; Compiler.Parser.Block.BaseClass.isInstanceOf;",
+    Void,Void,Void,__LINE__);
+tester.testSrc("var R; Compiler.Parser.Block.isInstanceOf;",
+    Void,Void,Void,__LINE__);
+tester.testSrc("var R = Compiler.Parser.Block.BaseClass.isEve;",
+    Void,Void,True,__LINE__);
+tester.testSrc("var R = Compiler.Parser.Block.isEve;",Void,Void,True,__LINE__);
+tester.testSrc("var R = Compiler.Parser.Block.master;",Void,Void,Void,__LINE__);
+tester.testSrc("var R; Compiler.Parser.Block.findRootClass;",Void,Void,Void,__LINE__);
+tester.testSrc("var R=Compiler.Parser.Block.Base.BaseClass.name;",
+    Void,Void,"Base",__LINE__);
+
+
+
+
+tester.stats();
+returnClass(tester);

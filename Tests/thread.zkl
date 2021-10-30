@@ -1,0 +1,355 @@
+// -*-c-*-
+// Test Atomic, Atomics and threads
+// See also: fence
+
+tester := TheVault.Test.UnitTester.UnitTester(__FILE__);
+
+/* ******************************************************************** */
+/* ****************************** Events ****************************** */
+/* ******************************************************************** */
+
+tester.testSrc(		// test splashdown & sync'ing with locks 
+0'|var lock = Atomic.Lock(), event=Atomic.Bool(), go=Atomic.Bool(), R="";|
+  "class One"
+  "{"
+  "   fcn init(n) { self.launch(n); }"
+  "   fcn liftoff(n)"
+  "   {"
+  "      lock.acquire();"		// released on thread exit
+  "      R += n; go.set(); "
+  "      if (R.len() == 2) event.set();"
+  "   }"
+  "   fcn splashdown { lock.release(); }}"
+  "One(1); go.wait(2); One(2); R+=event.wait(5);", Void,Void,"12True",__LINE__);
+
+tester.testSrc(		// test onExit & sync'ing with locks 
+0'|var lock = Atomic.Lock(), event=Atomic.Bool(), go=Atomic.Bool(), R="";|
+  "class One {"
+  "   fcn init(n) { self.launch(n); }"
+  "   fcn liftoff(n){"
+  "      lock.acquire();"		// released on thread exit
+  "	 onExit(lock.release);"
+  "      R += n; go.set(); "
+  "      if (R.len() == 2) event.set();"
+  "   }}"
+  "One(1); go.wait(2); One(2); R+=event.wait(5);", Void,Void,"12True",__LINE__);
+
+/* ******************************************************************** */
+/* *********************************  ********************************* */
+/* ******************************************************************** */
+
+thread := 
+"var R, R2, R3=666, R4 = 999;"
+"var event = Atomic.Bool();"
+"class Thread {"
+"   fcn init(a,b,c) { self.launch(a,b,c); event.wait(10); R = 1; }"
+"   fcn liftoff(a,b,c)"
+"   {"
+"      R2 = vm.arglist.toString();"
+"      if (a == 4) throw(Exception(\"BOOM\"));"
+"   }"
+"   fcn splashdown(happyDeath,e)"
+"   {"
+"      R3 = e.toString();"
+"      if (e) R4 = e.toString();"
+"      event.set();"
+"}}";
+
+tester.testSrc(thread + "(1,2,3);",Void,Void,1,__LINE__);
+tester.testSrc(thread + "(1,2,3); R=R2",Void,Void,"L(1,2,3)",__LINE__);
+tester.testSrc(thread + "(1,2,3); R=R3",Void,Void,"Void",__LINE__);
+tester.testSrc(thread + "(1,2,3); R=R4",Void,Void,999,__LINE__);
+
+tester.testSrc(thread + "(4,5,6);",Void,Void,1,__LINE__);
+tester.testSrc(thread + "(4,5,6); R=R2",Void,Void,"L(4,5,6)",__LINE__);
+tester.testSrc(thread + "(4,5,6); R=R3",Void,Void,"Exception(BOOM)",__LINE__);
+
+tester.testSrc(
+"var R, event = Atomic.Bool();"
+"class Bar{"
+"   fcn splashdown(happyDeath,e){"
+"      R = e.toString(); event.set();"
+"   }}"
+
+"class Foo(Bar){"
+"   fcn init { self.launch(); event.wait(10); }"
+"   fcn liftoff { throw(Exception(\"BOOM\")); }"
+"}();", Void,Void,"Exception(BOOM)",__LINE__);
+
+
+	/////////////////////// StrawBoss
+tester.testSrc("s := Thread.StrawBoss(fcn {},3); s.done();"
+    "var R = s.wait(1)",Void,Void,True,__LINE__);
+tester.testSrc("s := Thread.StrawBoss(fcn {},1); s.done(); s.wait(1);"
+    "var R = s.theWorkers.len()",Void,Void,1,__LINE__);
+tester.testSrc(
+    "var N = Atomic.Int(); s := Thread.StrawBoss(fcn { N.inc(); },1);"
+    "s.write(1); s.done(); s.wait(1); var R = N.value;",
+    Void,Void,1,__LINE__);
+tester.testSrc(
+    "var R = 0; s := Thread.StrawBoss(fcn(n) { R += n; },1);"
+    "s.write(1); s.write(2); s.write(3); s.done(); s.wait(1);",
+    Void,Void,6,__LINE__);
+tester.testSrc(
+    "var N = Atomic.Int(); s := Thread.StrawBoss(fcn { N.inc(); },3);"
+    "s.write(1); s.write(2); s.write(3); s.done(); s.wait(1);"
+    "var R = N.value;",
+    Void,Void,3,__LINE__);
+tester.testSrc(
+    "var R; s := Thread.StrawBoss(fcn { throw(Exception.BadDay) },1);"
+    "s.write(1); s.done(); R = s.wait(1);",Void,Void,True,__LINE__);
+
+
+	/////////////////////// Semaphore
+tester.testSrc("s := Thread.Semaphore(4); s.acquire();"
+    "var R = s.available();",Void,Void,3,__LINE__);
+tester.testSrc("s := Thread.Semaphore(4); s.acquire(); s.acquire();"
+    "var R = s.available();",Void,Void,2,__LINE__);
+tester.testSrc("s := Thread.Semaphore(4); s.acquire();"
+    "var R = s.value();",Void,Void,1,__LINE__);
+tester.testSrc("s := Thread.Semaphore(4); s.acquire(); s.release();"
+    "var R = s.value();",Void,Void,0,__LINE__);
+tester.testSrc("s := Thread.Semaphore(4); s.acquire(); s.release();"
+    "s.available(); var R = s.available();",Void,Void,4,__LINE__);
+tester.testSrc("s := Thread.Semaphore(1); var R = s.acquire(False);",
+    Void,Void,True,__LINE__);
+tester.testSrc("s := Thread.Semaphore(1); s.acquire(); var R = s.acquire(False);",
+    Void,Void,False,__LINE__);
+
+
+	////////////////////////////////////////// VMs
+		////////// does thread die?
+tester.testSrc("var R=1, a=Atomic.Bool();"
+    "class T { fcn liftoff { R=vm } fcn splashdown { a.set() }}.launch();"
+    "a.wait(1); R=R.isDead;",	Void,Void,True,__LINE__);
+tester.testSrc("var R=vm, a=Atomic.Bool();"
+    "class T {"
+    "   fcn liftoff { R=vm; throw(Exception.BadDay) }"
+    "   fcn splashdown { a.set() } }.launch();"
+    "a.wait(10); R=R.isDead;",	Void,Void,True,__LINE__);
+tester.testSrc("var R=vm, a=Atomic.Bool();"
+    "fcn f { R=vm; throw(Exception.BadDay) }"
+    "class T { "
+    "   fcn liftoff(a=f()) {}"		// default arg pukes
+    "   fcn splashdown { a.set(); } }.launch();"
+    "a.wait(10); R=R.isDead;",	Void,Void,True,__LINE__);
+
+
+tester.testSrc("var R, a=Atomic.Bool();"
+    "fcn f { throw(Exception.BadDay) }"
+    "class T { "
+    "   fcn liftoff(a=f()) {}"
+    "   fcn splashdown(h,e) { R=e.name; a.set(); } }.launch();"
+    "a.wait(10);",	Void,Void,"BadDay",__LINE__);
+tester.testSrc("var R, a=Atomic.Bool();"
+    "class T { "
+    "   fcn liftoff(a=L()[100]) {}"
+    "   fcn splashdown(h,e) { R=e.name; a.set(); } }.launch();"
+    "a.wait(10);",	Void,Void,"IndexError",__LINE__);
+
+
+#if 0
+    	/////////////////////////////////////////// Phones
+class P1
+{
+   var R,b = Atomic.Bool(),b2 = Atomic.Bool();
+   fcn liftoff(phone)
+   {
+      b2.set();
+      R = phone.write("P1");
+      b.set();
+   }
+}
+class P2
+{
+   var b = Atomic.Bool();
+   fcn liftoff(phone)
+   {
+      b.set();
+      msg := phone.read();
+      phone.reply("P2:"+msg);
+   }
+}
+
+tester.testRun(
+   fcn { p := Thread.Phone(); p1 := P1(); p1.launch(p); p1.b2.wait(2);
+   	 P2.launch(p); p1.b.wait(10); p1.R }, Void, "P2:P1",__LINE__);
+tester.testRun(
+   fcn { p := Thread.Phone(); p2 := P2(); p2.launch(p); p2.b.wait();
+         p1 := P1(); p1.launch(p); 
+   	 p1.b.wait(10); p1.R }, Void, "P2:P1",__LINE__);
+
+class P3
+{
+   var R,b = Atomic.Bool();
+   fcn liftoff(phone)
+   {
+      R = phone.write("P1");
+      R = phone.write("P3");
+      b.set();
+   }
+}
+class P4
+{
+   fcn liftoff(phone)
+   {
+      msg := phone.read();
+      phone.reply("P2:"+msg);
+      msg = phone.read();
+      phone.reply("P4:"+msg);
+   }
+}
+tester.testRun(
+   fcn { p := Thread.Phone(); p1 := P3(); p1.launch(p);
+   	 P4.launch(p); p1.b.wait(10); p1.R }, Void, "P4:P3",__LINE__);
+
+class P5
+{
+   fcn liftoff(phone)
+   {
+      phone.write("P1");	// block until P6 replies
+      r := phone.read(); phone.reply(r+"P5");
+   }
+}
+class P6
+{
+   var R,b = Atomic.Bool();
+   fcn liftoff(phone)
+   {
+      msg := phone.read();
+      phone.reply("P2:"+msg);
+      R = phone.write("P6:");
+      b.set();
+   }
+}
+tester.testRun(
+   fcn { p := Thread.Phone(); P5.launch(p);
+   	 p1 := P6(); p1.launch(p); p1.b.wait(10); p1.R }, Void, "P6:P5",__LINE__);
+
+class P7
+{
+   var R,b = Atomic.Bool();
+   fcn liftoff(phone)
+   {
+      R = phone.write("P1");
+      b.set();
+   }
+}
+class P8
+{
+   var R,b = Atomic.Bool();
+   fcn liftoff(phone)
+   {
+      phone.reply("P8");
+      b.set();
+   }
+}
+tester.testRun(		// reply before write OK?
+   fcn { p := Thread.Phone(); p2 := P8(); p2.launch(p); p2.b.wait(10);
+	 p1 := P7(); p1.launch(p); p1.b.wait(10); p1.R }, Void, "P8",__LINE__);
+
+
+tester.testSrc("p := Thread.Phone(); p.hangup(); p.write();",Void,"TheEnd",__LINE__);
+tester.testSrc("p := Thread.Phone(); p.hangup(); p.read();", Void,"TheEnd",__LINE__);
+
+#endif
+
+
+			/////////////////////////////// splashdown
+tester.testSrc("var R; var stop=Atomic.Bool();"
+    "class T { fcn liftoff { R=1 } fcn splashdown { R=2; stop.set(); } }"
+    "T.launch(); stop.wait(10);",Void,Void,2,__LINE__);
+tester.testSrc("var R; var stop=Atomic.Bool();"
+    "class T { fcn liftoff {}"
+    "    fcn splashdown { R=self.fcn.name; stop.set(); }}"
+    "T.launch(); stop.wait(10);",Void,Void,"splashdown",__LINE__);
+
+tester.testSrc("var R; var stop=Atomic.Bool();"
+    "class T { fcn liftoff { throw(Exception.KissOfDeath); }"
+    "fcn splashdown(h,e) { R=e.name; stop.set(); }}"
+    "T.launch();stop.wait(10);",Void,Void,"KissOfDeath",__LINE__);
+
+    	// launch sets class, runs splashdown in that class, not child
+tester.testSrc("var R; var stop=Atomic.Bool();"
+    "class T { fcn liftoff { R=1 } fcn splashdown { R=2; stop.set(); } }"
+    "class T2(T) { fcn splashdown { R=3; stop.set(); } }"
+    "T2.T.launch(); stop.wait(10);",Void,Void,2,__LINE__);
+tester.testSrc("var R; var stop=Atomic.Bool();"
+    "class T {fcn go{launch()}fcn liftoff{R=1}fcn splashdown{R=2;stop.set();}}"
+    "class T2(T) { fcn splashdown { R=3; stop.set(); } }"
+    "T2.go(); stop.wait(10);",Void,Void,2,__LINE__);
+tester.testSrc("var R; var stop=Atomic.Bool();"
+    "class T {fcn go{topdog.launch()}fcn liftoff{R=1}"
+    "   fcn splashdown{R=2;stop.set();}}"
+    "class T2(T) { fcn splashdown { R=3; stop.set(); } }"
+    "T2.go(); stop.wait(10);",Void,Void,3,__LINE__);
+
+	// is GC is OK during splashdown?
+tester.testSrc("var R; var stop=Atomic.Bool();"
+    "class T { fcn liftoff {}"
+    "fcn splashdown(h,e) { do(3) { GarbageMan.collect() }"
+    "   R = self.fcn.name; stop.set(); }}"
+    "T.launch(); stop.wait(15);",Void,Void,"splashdown",__LINE__);
+
+    		/////////// splashdown in parent
+tester.testSrc("var R; var stop=Atomic.Bool();"
+    "class T { fcn splashdown { R=self.fcn.name; stop.set(); }}"
+    "class T2(T) { fcn liftoff { R=1 }}"
+    "T2.launch(); stop.wait(10);",Void,Void,"splashdown",__LINE__);
+
+		/////////// liftoff/splashdown in a parent class
+tester.testSrc("var R; var stop=Atomic.Bool();"
+    "class T { fcn liftoff { R=1 } fcn splashdown { R=2; stop.set(); } }"
+    "class T2(T) { fcn splashdown { R=3; stop.set(); } }"
+    "T2.launch(); stop.wait(10);",Void,Void,3,__LINE__);
+tester.testSrc("var R; var stop=Atomic.Bool();"
+    "class T {fcn liftoff{R=1} fcn splashdown{R=2;stop.set();}}"
+    "class T2(T) { var n=0; "
+    "  fcn splashdown { R+=10; "
+    "     if (n==0) { n=1; launch(); } else stop.set(); } }"
+    "T2.launch(); stop.wait(10);",Void,Void,11,__LINE__);
+
+    		// tailcalls
+tester.testSrc("var R; var stop=Atomic.Bool(); fcn g{R=1;stop.set();}"
+    "class T { fcn liftoff {} fcn splashdown {return(g())} }"
+    "T.launch(); stop.wait(10);",Void,Void,1,__LINE__);
+
+    		// exceptions in splashdown
+tester.testSrc("var R, s=Thread.Straw();"
+    "class T { fcn liftoff {} fcn splashdown {s.write(vm); 1/0;} }"
+    0'|T.launch(); R=Atomic.waitFor(s.read().Property("isDead"),5);|,
+    Void,Void,True,__LINE__);
+
+#if 0
+tester.testSrc("var R; var n=Atomic.Int();"
+    "class T { fcn f{n.set(1)} fcn splashdown{n.set(2)} }"
+    "T.f.launch(); stop.wait(10);",Void,Void,1,__LINE__);
+#endif
+
+    		//////////////////////// error checking
+//tester.testSrc("class T { fcn liftoff(d) { d.len() } } T.launch(Data());",
+//    Void,"AccessError");
+
+//tester.testSrc("var R=vm.isThread;", Void,Void,False);
+tester.testSrc("var R, done=Atomic.Bool();"
+    "class T { fcn liftoff { R=vm.isThread; done.set() }}"
+    "T.launch(); done.wait(1);", Void,Void,True,__LINE__);
+tester.testSrc("var R, done=Atomic.Bool();"
+    "fcn f { R=vm.isThread; done.set() }"
+    "class T { fcn liftoff { vm.createFiber(f) }}"
+    "T.launch(); done.wait(1);", Void,Void,True,__LINE__);
+
+
+    		///////////////////////////////////////////////// GC
+tester.testSrc("var p=Thread.Straw(); fcn{p.write(vm)}.launch();"
+   "GarbageMan.collect(); var R=p.read().isDead;", Void,Void,True,__LINE__);
+#if 0
+tester.testSrc("var p=Thread.Straw(); fcn{p.write(vm.name)}.launch();"
+   0'|vm.vms.apply("name").index(p.read());|,  // bad as names are recycled
+   Void,"IndexError",True,__LINE__);
+#endif
+
+
+
+tester.stats();
+returnClass(tester);

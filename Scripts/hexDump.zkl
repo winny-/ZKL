@@ -1,0 +1,48 @@
+/* -*-c-*-
+ * hexDump.zkl : Convert binary data to text
+ * zkl Scripts.hexDump filename, hexDump(f) or hexDump(Data)
+ * zkl hexDump <file> | less
+ * 
+ * Copyright (c) 2006, 2007, 2008, 2018 Craig Durland craigd@zenkinetic.com
+ * License: The zlib/libpng License,
+ * 	http://www.opensource.org/licenses/zlib-license.php
+ */
+
+/* hexDump: Dump a byte stream:
+ *   0: 20 20 7a 6b 4a 00 00 22 | 31 2e 30 00 5a 4b 4c 20     zkJ...1.0.ZKL
+ *  16: 53 65 72 69 61 6c 69 7a | 65 64 20 43 6c 61 73 73   Serialized Class
+ *  32: 00 73 74 61 72 74 75 70 | 00 00 02 00 00 62 2b 61   .startup.....b+a
+ */
+
+AKA(Utils.HexDump);  // where to put in the Vault (on Import)
+Attributes(static);
+
+   // if run as script: zkl hexDump file
+   // Using stdin as default is nice for: "cat file | zkl hexDump", ie Unix
+fcn __main__{
+   if(System.isUnix)
+	f:=(if(vm.numArgs) File(vm.arglist[0],"rb");
+	    else           File.stdin);	// ^Z in stdin is a problem on windows
+   else f:=File(vm.arglist[0],"rb");
+
+   hexDump(f);
+}
+
+fcn hexDump(in, out=File.stdout){
+   var [const] hexFmt="%02.x ".fmt, NFmt="%6d: ".fmt;
+
+   N,buf,text := 0,Data(),Data();	    // buffers we'll reuse
+   buf.howza(Int);			    // treat buf as bytes
+   while(in.read(16,buf,False)){	    // repeat until end of file
+      sz:=buf.len();			    // bytes read
+      buf.pump(text.clear(NFmt(N)),hexFmt); // "2d 0a 0a 70 72"
+      if(sz>8) text.insert(32,"| ")	    // "3b 09 | 2f"
+      else     text.append("  ");	    // no | so pad
+      text.append("   "*(16-sz));	    // pad to start of text
+      buf.pump(text,			    // "foo.bar..."
+         fcn(c){ if(0x20<=c<=0x7E) c.toChar() else "." });
+      out.writeln(text.text);
+      N+=16;
+   }
+   out					    // return value
+}

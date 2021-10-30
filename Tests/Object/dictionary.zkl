@@ -1,0 +1,356 @@
+// -*-c-*-
+// Test Dictionary
+
+tester := Test.UnitTester(__FILE__);
+const BigD="Compiler.Asm.opCodeTable";	// a big dictionary
+
+tester.testSrc("d:=Dictionary(T(T(1,2),T(3,4))); var R=d.values.sort();",
+   Void,Void,T(2,4),__LINE__);
+tester.testSrc("d:=Dictionary(T(1,2, 3,4)); var R=d.values.sort();",
+   Void,Void,T(2,4),__LINE__);
+
+tester.testSrc("d:=Dictionary(1,2, 3,4); var R=d.values.sort();",
+   Void,Void,T(2,4),__LINE__);
+
+tester.testSrc("d:=Dictionary();    var R=d.values.sort();", Void,Void,T,__LINE__);
+tester.testSrc("d:=Dictionary(100); var R=d.values.sort();", Void,Void,T,__LINE__);
+
+tester.testSrc("d:=L(T(1,2),T(3,4)).toDictionary(); var R=d.values.sort();",
+   Void,Void,T(2,4),__LINE__);
+tester.testSrc("d:=T(L(1,2),L(3,4)).toDictionary(); var R=d.values.sort();",
+   Void,Void,T(2,4),__LINE__);
+tester.testSrc("d := L(1,2, 3,4).toDictionary(); var R=d.values.sort();",
+   Void,Void,T(2,4),__LINE__);
+tester.testSrc("d := T(1,2, 3,4).toDictionary(); var R=d.values.sort();",
+   Void,Void,T(2,4),__LINE__);
+
+
+	//////////////////////////////////////// __sGet
+tester.testSrc("d:=Dictionary(); d[1]=1; var R=d[1]",Void,Void,1,__LINE__);
+tester.testSrc(0'|d:=Dictionary("",0); var R=d[""]|,Void,Void,0,__LINE__);
+tester.testSrc(0'|d:=%s; var R=d["done"];|.fmt(BigD),Void,Void,L(0,Void),__LINE__);
+tester.testSrc("d:=%s; var R=d[Void];".fmt(BigD),Void,"NotFoundError",Void,__LINE__);
+
+tester.testSrc(0'|d:=SD("1",2); var R=d["1"]|,Void,Void,2,__LINE__);
+tester.testSrc(0'|d:=SD("1",2); var R=d["2"]|,Void,"NotFoundError",2,__LINE__);
+tester.testSrc(0'|d:=SD("1",2); var R=d[1]|,  Void,"NotFoundError",2,__LINE__);
+tester.testSrc(0'|d:=SD("1",2); var R=d[Void]|, Void,"NotFoundError",2,__LINE__);
+tester.testSrc(0'|d:=SD("",0);  var R=d[""]|,Void,Void,0,__LINE__);
+
+tester.testSrc(0'|d:=PolyGraph("1"); var R=d["1"]|,Void,Void,True,__LINE__);
+tester.testSrc(0'|d:=PolyGraph("1"); var R=d["2"]|,Void,Void,False,__LINE__);
+tester.testSrc(0'|d:=PolyGraph("1"); var R=d[1]|,Void,Void,False,__LINE__);
+
+
+	////////////////////////////////////// __sSet
+tester.testSrc("d:=Dictionary(); d[1]=1; d[1] = 2; var R=d[1]",Void,Void,2,__LINE__);
+tester.testSrc("d:=Dictionary(); d[1]=L(L(1)); d[1]=d[1].append(L(2));"
+    "var R=d[1]",Void,Void,L(L(1),L(2)),__LINE__);
+tester.testSrc("Dictionary[1]=1;",Void,"AccessError",Void,__LINE__);
+tester.testSrc("Dictionary().makeReadOnly()[1]=1;",Void,"AccessError",Void,__LINE__);
+
+
+    	//////////////////////////////////// .len
+tester.testSrc("var R=Dictionary.len()",Void,Void,0,__LINE__);
+tester.testSrc("d:=Dictionary(); var R=d.len()",Void,Void,0,__LINE__);
+tester.testSrc(0'|var R=Dictionary("a",1).len()|,Void,Void,1,__LINE__);
+
+tester.testSrc("var R=SD().len()",Void,Void,0,__LINE__);
+tester.testSrc(0'|var R=SD("a",1).len()|,Void,Void,1,__LINE__);
+
+tester.testSrc("var R=PolyGraph().len()",Void,Void,0,__LINE__);
+tester.testSrc(0'|var R=PolyGraph("a").len()|,Void,Void,1,__LINE__);
+
+
+    	//////////////////////////////////// .toBool
+tester.testSrc("var R=Dictionary.toBool();",Void,Void,False,__LINE__);
+tester.testSrc("d:=Dictionary(); var R=d.toBool()",Void,Void,False,__LINE__);
+tester.testSrc("d:=%s; var R=d.toBool();".fmt(BigD),Void,Void,True,__LINE__);
+tester.testSrc(0'|d:=Dictionary("one",1); var R=d.toBool()|,Void,Void,True,__LINE__);
+
+tester.testSrc("var R=SD().toBool();",Void,Void,False,__LINE__);
+tester.testSrc(0'|d:=SD("a",1); var R=d.toBool()|,Void,Void,True,__LINE__);
+
+
+    	//////////////////////////////////// .find
+tester.testSrc(0'|d:=%s; var R=d.find("done");|.fmt(BigD),Void,Void,L(0,Void),__LINE__);
+tester.testSrc(0'|d:=%s; var R=d.find("FOO");|.fmt(BigD),Void,Void,Void,__LINE__);
+tester.testSrc(0'|d:=%s; var R=d.find("FOO",1);|.fmt(BigD),Void,Void,1,__LINE__);
+
+tester.testSrc(0'|d:=SD("a",1); var R=d.find("a")|,Void,Void,1,__LINE__);
+tester.testSrc(0'|d:=SD("a",1); var R=d.find("b")|,Void,Void,Void,__LINE__);
+tester.testSrc(0'|d:=SD("a",1); var R=d.find(123)|,Void,Void,Void,__LINE__);
+tester.testSrc(0'|d:=SD("a",1); var R=d.find("b",2)|,Void,Void,2,__LINE__);
+
+tester.testSrc(0'|d:=PolyGraph("a"); var R=d.find("a")|,Void,Void,True,__LINE__);
+tester.testSrc(0'|d:=PolyGraph("a"); var R=d.find("b")|,Void,Void,Void,__LINE__);
+tester.testSrc(0'|d:=PolyGraph("a"); var R=d.find(123)|,Void,Void,Void,__LINE__);
+tester.testSrc(0'|d:=PolyGraph("a"); var R=d.find("b",2)|,Void,Void,2,__LINE__);
+
+
+    	//////////////////////////////////// .holds
+tester.testSrc(0'|d:=%s; var R=d.holds("done");|.fmt(BigD),Void,Void,True,__LINE__);
+tester.testSrc(0'|d:=%s; var R=d.holds(1);|.fmt(BigD),Void,Void,False,__LINE__);
+tester.testSrc(0'|d:=%s; var R=d.holds();|.fmt(BigD),Void,"MissingArg",Void,__LINE__);
+
+tester.testSrc(0'|d:=SD("a",1); var R=d.holds("a")|,Void,Void,True,__LINE__);
+tester.testSrc(0'|d:=SD("a",1); var R=d.holds("b")|,Void,Void,False,__LINE__);
+tester.testSrc(0'|d:=SD("a",1); var R=d.holds(123)|,Void,Void,False,__LINE__);
+tester.testSrc(0'|d:=SD("a",1); var R=d.holds(self)|,Void,Void,False,__LINE__);
+tester.testSrc(0'|d:=SD("a",1); var R=d.holds()|,Void,"MissingArg",False,__LINE__);
+
+tester.testSrc(0'|d:=PolyGraph("a"); var R=d.holds("a")|,Void,Void,True,__LINE__);
+tester.testSrc(0'|d:=PolyGraph("a"); var R=d.holds("b")|,Void,Void,False,__LINE__);
+tester.testSrc(0'|d:=PolyGraph("a"); var R=d.holds(123)|,Void,Void,False,__LINE__);
+tester.testSrc(0'|d:=PolyGraph("fcn","class","catch","critical", "break");|
+    0'|var R=d.holds("fcn")|,Void,Void,True,__LINE__);
+tester.testSrc(0'|d:=PolyGraph(|
+    0'|"for","foreach","while","do","break","continue",|
+    0'|"include","var","reg","const",|
+    0'|"fcn","class", "True","False","Void","self",|
+    0'|"try","catch","throw",|
+    0'|"critical","onExit","onExitBlock",|
+    0'|"_debug_","AKA","return","returnClass","Attributes",);|
+    0'|var R=d.holds("try")|,Void,Void,True,__LINE__);
+
+
+	//////////////////////////////////// .toList
+tester.testSrc(0'|d:=Dictionary("one",1,"two",2); var R=d.toList().makeReadOnly();|
+    "R=R.sort(fcn(a,b) { a[0] < b[0] });",
+    Void,Void,T(T("one",1),T("two",2)),__LINE__);
+tester.testSrc(0'|d:=Dictionary("one",1,"two",2); var R=d.toList().copy();|
+    "R=R.sort(fcn(a,b) { a[0] < b[0] });",
+    Void,Void,T(T("one",1),T("two",2)),__LINE__);
+
+tester.testSrc(0'|d:=SD("one",1,"two",2); var R=d.toList().makeReadOnly();|,
+    Void,Void,T(T("one",1),T("two",2)),__LINE__);
+tester.testSrc(0'|d:=SD("one",1,"two",2); var R=d.toList().copy();|,
+    Void,Void,T(T("one",1),T("two",2)),__LINE__);
+
+tester.testSrc(0'|d:=PolyGraph("one","two"); var R=d.toList()|,
+    Void,Void,T(T("one",True),T("two",True)),__LINE__);
+
+tester.testSrc(0'|d:=Dictionary("one",1,"two",2); var R=(d.toList() : SD(_));|
+    "R=R.keys;", Void,Void,T("one","two"),__LINE__);
+tester.testSrc(0'|d:=Dictionary("one",1,"two",2); var R=(d.pump(List) : SD(_));|
+    "R=R.keys;", Void,Void,T("one","two"),__LINE__);
+
+
+	//////////////////////////////////// .walker
+tester.testSrc(0'|var R="";|
+    0'|foreach k,v in (Dictionary.walker()) { R+=k+v }|,Void,Void,"",__LINE__);
+tester.testSrc(0'|var R="";|
+    0'|foreach k,v in (Dictionary(1,2, 3,4).makeReadOnly().walker()) { R+=k+v }|,
+    Void,Void,"1234",__LINE__);
+tester.testSrc(0'|var R=""; d:=Dictionary(1,2, 3,4).makeReadOnly();|
+    "foreach k,v in (d) { R+=k+v }", Void,Void,"1234",__LINE__);
+tester.testSrc(0'|var R=""; d:=Dictionary(1,2, 3,4).makeReadOnly(); w:=d.walker();|
+    "foreach k,v in (w) { R+=k+v }", Void,Void,"1234",__LINE__);
+tester.testSrc(0'|var R=""; d:=Dictionary(1,2, 3,4); w:=d.makeReadOnly().walker();|
+    " w.walk(99); foreach k,v in (w) { R+=k+v }", Void,Void,"",__LINE__);
+
+tester.testSrc(0'|var R="";|
+    0'|foreach k in (Dictionary("1",2,"3",4).makeReadOnly().walker(8)){ R+=k}|,
+    Void,Void,"13",__LINE__);
+tester.testSrc(0'|var R="";|
+    0'|foreach v in (Dictionary("1",2,"3",4).makeReadOnly().walker(9)){ R+=v}|,
+    Void,Void,"24",__LINE__);
+tester.testSrc(0'|var R="";|
+    0'|foreach v in (Dictionary("1",2,"3",4).makeReadOnly().howza(9).walker()){ R+=v}|,
+    Void,Void,"24",__LINE__);
+
+    			// SD
+tester.testSrc(0'|var R="";foreach kv in (SD("1",2, "3",4).walker()){R+=kv}|,
+    Void,Void,0'|L("1",2)L("3",4)|,__LINE__);
+tester.testSrc(0'|var R="";foreach k,v in (SD("1",2, "3",4).walker()){R+=k+v}|,
+    Void,Void,"1234",__LINE__);
+tester.testSrc(0'|var R="";foreach k in (SD("1",2, "3",4).walker(8)){R+=k}|,
+    Void,Void,"13",__LINE__);
+tester.testSrc(0'|var R="";foreach v in (SD("1",2, "3",4).walker(9)){R+=v}|,
+    Void,Void,"24",__LINE__);
+tester.testSrc(0'|var R="";foreach v in (SD("1",2, "3",4).howza(9).walker()){ R+=v }|,
+    Void,Void,"24",__LINE__);
+
+tester.testSrc(0'|var R=""; d:=SD("1",2, "3",4);|
+    "foreach k,v in (d) { R+=k+v }", Void,Void,"1234",__LINE__);
+tester.testSrc(0'|var R=""; d:=SD("1",2, "3",4); w:=d.walker();|
+    "foreach k,v in (w) { R+=k+v }", Void,Void,"1234",__LINE__);
+tester.testSrc(0'|var R=""; d:=SD("1",2, "3",4); w:=d.walker(); w.walk(99);|
+    "foreach k,v in (w) { R+=k+v }", Void,Void,"",__LINE__);
+tester.testSrc(0'|var R=""; d:=SD("1",2, "3",4); w:=d.walker(); w.next();|
+    "foreach k,v in (w) { R+=k+v }", Void,Void,"34",__LINE__);
+
+    			// PolyGraph
+tester.testSrc(0'|var R="";foreach kv in (PolyGraph("1","3").walker()){R+=kv}|,
+    Void,Void,0'|L("1",True)L("3",True)|,__LINE__);
+tester.testSrc(0'|var R="";foreach k,v in (PolyGraph("1","3").walker()){R+=k+v}|,
+    Void,Void,"1True3True",__LINE__);
+
+tester.testSrc(0'|var R="";foreach k in (PolyGraph("1","3").walker(8)){R+=k}|,
+    Void,Void,"13",__LINE__);
+tester.testSrc(0'|var R="";foreach v in (PolyGraph("1","3").walker(9)){R+=v}|,
+    Void,Void,"TrueTrue",__LINE__);
+
+
+	//////////////////////////////////// .keys, .values
+tester.testSrc("var R = Dictionary.keys;",Void,Void,T,__LINE__);
+tester.testSrc(0'|d:=Dictionary("one",1,"two",2); var R=d.keys.sort();|,
+	Void,Void,L("one","two"),__LINE__);
+tester.testSrc(0'|d:=Dictionary("one",1,"two",2); var R=d.values.sort();|,
+	Void,Void,L(1,2),__LINE__);
+
+tester.testSrc(0'|d:=SD("one",1,"two",2); var R=d.keys.sort();|,
+	Void,Void,L("one","two"),__LINE__);
+tester.testSrc(0'|d:=SD("one",1,"two",2); var R=d.values.sort();|,
+	Void,Void,L(1,2),__LINE__);
+
+tester.testSrc(0'|d:=PolyGraph("one","two"); var R=d.keys;|,
+	Void,Void,L("one","two"),__LINE__);
+tester.testSrc(0'|d:=PolyGraph("one","two"); var R=d.values;|,
+	Void,Void,L(True,True),__LINE__);
+
+
+tester.testSrc("d:=Dictionary(); a,b := d[5] = L(1,2); var R=(a+b);",
+    Void,Void,3,__LINE__);
+tester.testSrc("d:=Dictionary(); a,b := (d[5] = L(1,2)); var R=(a+b);",
+    Void,Void,3,__LINE__);
+
+
+	//////////////////////////////////// .copy
+tester.testSrc("d:=Compiler.Asm.typeTable.copy();"
+   "var R=(d.id != Compiler.Asm.typeTable.id);",Void,Void,True,__LINE__);
+tester.testSrc("var R; d:=Compiler.Asm.typeTable.copy();"
+   "foreach k,v in (Compiler.Asm.typeTable.walker())"
+   "   { if (d[k] != v) R=False }",Void,Void,Void,__LINE__);
+tester.testSrc("var R; d:=Compiler.Asm.typeTable.copy();"
+   "d[0]=53; R=(d[0] != Compiler.Asm.typeTable[0]);",Void,Void,True,__LINE__);
+
+
+	//////////////////////////////////// .add
+tester.testSrc("d:=Dictionary().add(T(T(1,2),T(3,4))); var R=d[3];",Void,Void,4,__LINE__);
+tester.testSrc("d:=Dictionary().add(T(1,2, 3,4)); var R=d[3];",Void,Void,4,__LINE__);
+tester.testSrc("d:=Dictionary().add(1,2, 3,4);    var R=d[3];",Void,Void,4,__LINE__);
+tester.testSrc("Dictionary.add(1,2, 3,4);",   Void,"AccessError",Void,__LINE__);
+tester.testSrc("Dictionary.add(T(1,2, 3,4));",Void,"AccessError",Void,__LINE__);
+tester.testSrc("Dictionary().makeReadOnly().add(1,2, 3,4);",
+    Void,"AccessError",Void,__LINE__);
+tester.testSrc("Dictionary.add(1,2, 3,4);",Void,"AccessError",Void,__LINE__);
+
+tester.testSrc(0'|d := Dictionary().add("hoho"); var R=d.keys;|,Void,"ValueError",4,__LINE__);
+
+
+	//////////////////////////////////// .extend
+tester.testSrc("d:=Dictionary().extend(Compiler.Asm.typeTable);"
+   "var R=(d.id != Compiler.Asm.typeTable.id);",Void,Void,True,__LINE__);
+tester.testSrc("var R; d:=Dictionary().extend(Compiler.Asm.typeTable);"
+   "foreach k,v in (Compiler.Asm.typeTable.walker())"
+   "   { if (d[k] != v) R=False }",Void,Void,Void,__LINE__);
+tester.testSrc("var R; d:=Dictionary().extend(Compiler.Asm.typeTable);"
+   "d[0]=53; R=(d[0] != Compiler.Asm.typeTable[0]);",Void,Void,True,__LINE__);
+
+tester.testSrc("d:=Dictionary().extend(T(T(1,2),T(3,4))); var R=d[3];",Void,Void,4,__LINE__);
+tester.testSrc("d:=Dictionary().extend(T(1,2, 3,4)); var R=d[3];",Void,Void,4,__LINE__);
+
+tester.testSrc("Dictionary.extend(T(1,2, 3,4));",Void,"AccessError",Void,__LINE__);
+tester.testSrc("Dictionary().makeReadOnly().extend(T(1,2, 3,4));",
+    Void,"AccessError",Void,__LINE__);
+
+
+			////////////////////////////////////////// .toString
+tester.testSrc("var R=Dictionary(1,Dictionary(2,Dictionary(3,4))).toString()",
+   Void,Void, "Dictionary(1:D(2:D(...)))",__LINE__);
+tester.testSrc("var R=Dictionary(); R[1]=R; R=R.toString()",Void,Void,
+   "Dictionary(1:D(1:D(...)))",__LINE__);
+
+
+			///////////////////////////// .pump, .filter, .reduce
+tester.testSrc(0'|d := SD("one",1,"two",2,"three",3);|
+   0'| var R=d.filter(fcn([(k,v)]){k.holds("o")});|,
+   Void,Void,T(T("one",1),T("two",2)),__LINE__);
+tester.testSrc(0'|d := SD("one",1,"two",2,"three",3).howza(8);|
+   0'| var R=d.filter(fcn(k){ k.holds("o") });|,
+   Void,Void,T("one","two"),__LINE__);
+tester.testSrc(0'|d := SD("zero",0,"two",2,"three",3).howza(9);|
+   0'| var R=d.filter();|,Void,Void,T(3,2),__LINE__);
+
+tester.testSrc(0'|d:=Dictionary("one",1,"two",2,"three",3);|
+   0'| var R=d.filter(fcn([(k,v)]){ k.holds("o") })|
+   ".sort(fcn(a,b){ a[0]>b[0] });",
+   Void,Void,T(T("two",2),T("one",1)),__LINE__);
+tester.testSrc(0'|d := Dictionary("zero",0,"two",2,"three",3).howza(9);|
+   0'| var R=d.filter().sort();|,Void,Void,T(2,3),__LINE__);
+
+tester.testSrc(0'|d := SD("one",1,"two",2,"three",3);|
+   0'| var R=d.filter(T(fcn([(k,v)]){k.holds("o")}));|,
+   Void,Void,T(T("one",1),T("two",2)),__LINE__);
+tester.testSrc(0'|d := SD("one",1,"two",2,"three",3);|
+//   0'| var R=d.filter(T(T("__sGet",0),T("holds","o")));|,
+   0'| var R=d.filter(fcn(kv){kv[0].holds("o")});|,
+   Void,Void,T(T("one",1),T("two",2)),__LINE__);
+
+tester.testSrc(0'|d := Dictionary("one",1,"two",2,"three",3);|
+   0'| var R=d.filter(T(fcn([(k,v)]){ k.holds("o") }))|
+   ".sort(fcn(a,b){ a[0]<b[0] });",
+   Void,Void,T(T("one",1),T("two",2)),__LINE__);
+
+tester.testSrc(0'|sd := SD("one",1,"two",2,"three",3);|
+   0'| d:=sd.pump(Void,fcn([(k,v)],d){d.add(v,k)}.fp1(Dictionary()));|
+   "var R=d.keys;",Void,Void,T("1","2","3"),__LINE__);
+tester.testSrc(0'|sd := SD("one",1,"two",2,"three",3).howza(8);|
+   0'|var R=sd.pump(String);|,Void,Void,"onethreetwo",__LINE__);
+tester.testSrc(0'|sd := SD("one",1,"two",2,"three",3).howza(9);|
+   0'|var R=sd.pump(String);|,Void,Void,"132",__LINE__);
+
+tester.testSrc(0'|sd:=Dictionary("one",1,"two",2,"three",3).howza(8);|
+   0'|var R=sd.pump(List).sort();|,Void,Void,T("one","three","two"),__LINE__);
+
+tester.testSrc(0'|sd := SD("one",1,"two",2,"three",3);|
+   0'| var R=sd.reduce(fcn(n,[(k,v)]){n+v},0);|,
+   Void,Void,6,__LINE__);
+tester.testSrc(0'|sd := SD("one",1,"two",2,"three",3).howza(9);|
+   0'| var R=sd.reduce('+,0);|,Void,Void,6,__LINE__);
+
+
+tester.testSrc(0'|var R="";PolyGraph("1","3").pump(Void,fcn([(k,v)]){R+=k+v});|,
+    Void,Void,"1True3True",__LINE__);
+tester.testSrc(0'|var R=PolyGraph("1","3").pump(List).flatten().concat("");|,
+    Void,Void,"1True3True",__LINE__);
+tester.testSrc(0'|var R=PolyGraph("1","3").walker().pump(List).flatten().concat("");|,
+    Void,Void,"1True3True",__LINE__);
+tester.testSrc(0'|var R=PolyGraph("1","3").walker().pump(1,List).flatten().concat("");|,
+    Void,Void,"1True",__LINE__);
+
+
+	///////////////////////////////////////////////// .appendV, .appendKV
+tester.testSrc(0'|var R=Dictionary().appendV("k",1).appendV("k",2)["k"];|,
+    Void,Void,T(1,2),__LINE__);
+tester.testSrc(0'|var R=Dictionary("k",L(1)).appendV("k",2)["k"];|,
+    Void,Void,T(1,2),__LINE__);
+tester.testSrc(0'|var R=Dictionary("k",T(1)).appendV("k",2)["k"];|,
+    Void,Void,T(1),__LINE__);
+tester.testSrc(0'|var R=Dictionary("k",1).appendV("k",2)["k"];|,
+    Void,Void,1,__LINE__);
+
+tester.testSrc(0'|var R=Dictionary().appendV(T("k",1).xplode())["k"];|,
+    Void,Void,T(1),__LINE__);
+tester.testSrc(0'|var R=Dictionary().appendKV(T("k",1))["k"];|,
+    Void,Void,T(1),__LINE__);
+
+tester.testSrc(0'|var R=Dictionary().appendKV(T("k",1)).appendKV(L("k",2))["k"];|,
+    Void,Void,T(1,2),__LINE__);
+tester.testSrc(0'|var R=Dictionary("k",L(1)).appendKV(T("k",2))["k"];|,
+    Void,Void,T(1,2),__LINE__);
+tester.testSrc(0'|var R=Dictionary("k",L(1)).appendKV(2)|,
+    Void,"TypeError",Void,__LINE__);
+
+
+
+			//////////////////////////////////////////// .incV
+tester.testSrc(0'|var R=Dictionary().incV(123).incV(123).incV(123).incV(123)[123];|,
+    Void,Void,4,__LINE__);
+tester.testSrc(0'|var R=Dictionary().incV(123,123,123,123)[123];|,
+    Void,Void,4,__LINE__);
+
+
+tester.stats();
+returnClass(tester);

@@ -1,0 +1,135 @@
+//-*-c-*-
+// update.zkl: Sync two directories
+// After an old DOS program I liked
+
+include(zkl.h.zkl);
+
+var src,dst,doit,push=True,copyFiles=True, wildPat="*";
+
+argh := Utils.Argh(
+   T("check","","src dst: Just check [the default]", fcn{ doit = False; }),
+   T("sync","","src dst: Create directories and copy files", fcn{ doit = True; }),
+   T("pull","","src dst: Pull old files from dst to src", fcn{ push = False; }),
+   T("dirs","","src dst: Just create directories", fcn{ copyFiles = False; }),
+   T("+nm","","Name glob pattern. Default *", fcn(w){ wildPat=w }),
+);
+
+argh.parse(vm.arglist);
+try
+{
+   src,dst = argh.loners;
+   src = File.glob(src,FILE.GLOB.ONLY_DIRS);
+   dst = File.glob(dst,FILE.GLOB.ONLY_DIRS);
+   if (not (src.len() == dst.len() == 1))
+   {
+      println("Src or dst not a [single] directory");
+      throw(Exception.ValueError("Bad src or dst"));
+   }
+   src = src[0]; dst = dst[0];
+}
+catch
+{
+println(__exception);
+   argh.usage(
+"update [options] src dst: Sync two directory trees",
+"Push old or missing files from src/* to dst/*",
+"Nothing is done unless --sync",
+"eg update --sync . D:/foo",
+);
+   returnClass(Void);
+}
+
+class BuildTree		// create thread to walk src directory
+{
+   fcn liftoff(treeTop,pipe) { File.globular(treeTop,wildPat,True,0,pipe); }
+   fcn init(treeTop,pipe)    { self.launch(treeTop,pipe); }
+}
+
+var [const] buffer=Data(0d524_287); // a big static buffer to push bits through
+
+reg pipe = Thread.Pipe();
+BuildTree(src,pipe); print("Scanning ",src,wildPat," ");
+reg missingDirs=L(), missingFiles=L(), oldFiles=L();
+reg n = src.len(), N=0,D=0;
+if (push)
+{
+   foreach srcName in (pipe)
+   {
+      if ((N += 1) % 200 == 0) print(".");
+
+      reg name = srcName[n,*], dstName = (dst+name);
+      if (name[-1] == "/")	// directory
+      {
+	 D+=1; 
+	 if (not File.isDir(dstName[0,-1])) missingDirs.append(name[0,-1]);
+      }
+      else			// file
+      {
+	 if (not File.exists(dstName)) missingFiles.append(name);
+	 else
+	 {
+	    reg srcDate = File.info(srcName)[2];
+	    reg dstDate = File.info(dstName)[2];
+	    if (srcDate > dstDate) oldFiles.append(name);
+	 }
+      }
+   }
+} else		// pull
+{
+   foreach srcName in (pipe)
+   {
+      if ((N += 1) % 200 == 0) print(".");
+
+      reg name = srcName[n,*], dstName = (dst+name);
+      if (name[-1] == "/") D+=1;	// ignore directories, just count
+      else if (File.exists(dstName))
+      {
+	 reg srcDate = File.info(srcName)[2];
+	 reg dstDate = File.info(dstName)[2];
+	 if (srcDate < dstDate) oldFiles.append(name);
+      }
+   }
+}
+
+println("  Scanned %,d directories, %,d files\n".fmt(D,N-D));
+if (push)
+{
+   println("Missing directories (%,d): ".fmt(missingDirs.len()));
+   missingDirs.sort().pump(Console.println);
+   println();
+   println("Missing files (%d, %,dMB): ".fmt(missingFiles.len(),
+      missingFiles.reduce( fcn(s,nm){ s + File.info(src+nm)[0] },0)/(2).pow(20) ));
+   missingFiles.sort().pump(Console.println);
+   println();
+}
+#if 0
+println("Out of date files (%,d): ".fmt(
+	oldFiles.len()),oldFiles.sort().toString(*)[2,-1]);
+#else
+println("Out of date files (%,d): ".fmt(oldFiles.len()));
+oldFiles.sort().apply2("println");
+#endif
+
+if (doit)
+{
+   missingDirs.apply2(fcn(d) { File.mkdir_p(dst+d,True) });
+   if (copyFiles)
+      if (push)
+      {
+	 missingFiles.apply2(fcn(f){ copy(src+f,dst+f); });
+	 oldFiles.apply2(    fcn(f){ copy(src+f,dst+f); });
+      }
+      else oldFiles.apply2(  fcn(f){ copy(dst+f,src+f); });
+}
+
+fcn copy(src,dst)
+{
+   println("Copy ",src," to ",dst," ... ");
+   reg data;
+//   f := File(src,"rb"); data := f.read(); f.close();
+//   f = File(dst,"wb"); f.write(data);   f.close();
+//   println("%,d bytes".fmt(data.len()));
+   fin,fout := File(src,"rb"), File(dst,"wb");
+   fin.pump(buffer,fout); fin.close(); fout.close();
+   True
+}

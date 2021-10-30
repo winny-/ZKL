@@ -1,0 +1,792 @@
+//-*-c-*-
+// Test solutions posted to Rosetta Code involving prime numbers
+// http://rosettacode.org/wiki/Category:Zkl
+
+tester := TheVault.Test.UnitTester.UnitTester(__FILE__);
+
+const{ try{ Import.lib("zklBigNum"); } catch{} }  // load links
+try{ var [const] BN=Import.lib("zklBigNum") } catch{}
+var BI=BN;
+
+#<<<#
+const PRIME_LIMIT=100_000;
+
+if(BI){		// used in the test, cache
+   var [const] primeBitMap=Data(PRIME_LIMIT).fill(0); # slop at the end (for reverse wrap around)
+   p:= BI(1);
+   while(p.nextPrime()<=PRIME_LIMIT){ primeBitMap[p]=1 } // bitmap of primes
+}
+#<<<#
+
+
+{		////////////////////////////////////////// Anti-primes
+//{{trans|Perl6}}
+fcn properDivsN(n) //--> count of proper divisors. 1-->1, wrong but OK here
+   { [1.. (n + 1)/2 + 1].reduce('wrap(p,i){ p + (n%i==0 and n!=i) }) }
+fcn antiPrimes{		// -->iterator
+   Walker.chain([2..59],[60..*,30]).tweak(fcn(c,rlast){
+      last,mx := rlast.value, properDivsN(c);
+      if(mx<=last) return(Void.Skip);
+      rlast.set(mx);
+      c
+   }.fp1(Ref(0))).push(1);	// 1 has no proper divisors
+}
+
+//println("First 20 anti-primes:\n  ",antiPrimes().walk(20).concat(" "));
+tester.testRun(fcn{ antiPrimes().walk(20) },Void,
+   L(1,2,4,6,12,24,36,48,60,120,180,240,360,720,840,1260,1680,2520,5040,7560),__LINE__);
+}
+
+
+{				//////////////////////////// Anti-primes Plus
+// OEIS A069654
+fcn countDivisors(n)
+  { [1.. n.toFloat().sqrt()] .reduce('wrap(s,i){ s + (if(0==n%i) 1 + (i!=n/i)) },0) }
+
+n:=15;		// gets big really fast
+println("The first %d anti-primes plus are:".fmt(n));
+	fcn antiTest{
+(1).walker(*).tweak(
+   fcn(n,rn){ if(rn.value==countDivisors(n)){ rn.inc(); n } else Void.Skip }.fp1(Ref(1)))
+	}()
+.walk(n).concat(" ").println();
+
+tester.testRun(antiTest().walk.fp(15),Void,
+   L(1,2,4,6,16,18,64,66,100,112,1024,1035,4096,4288,4624),__LINE__);
+}
+
+
+if(BI){	///////////////////////////////////// Chernick's Carmichael numbers
+#<<<#
+{{trans|Go}}
+{{libheader|GMP}} GNU Multiple Precision Arithmetic Library
+Using GMP (probabilistic primes), 
+because it is easy and fast to check primeness.
+#<<<#
+//var [const] BI=Import("zklBigNum");  // libGMP
+
+fcn ccFactors(n,m){	// not re-entrant
+   prod:=BI(6*m + 1);
+   if(not prod.probablyPrime())    return(False);
+   fact:=BI(12*m + 1);
+   if(not fact.probablyPrime())    return(False);
+   prod.mul(fact);
+   foreach i in ([1..n-2]){
+      fact.set((2).pow(i) *9*m + 1);
+      if(not fact.probablyPrime()) return(False);
+      prod.mul(fact);
+   }
+   prod
+}
+
+fcn ccNumbers(start,end){
+   foreach n in ([start..end]){
+      a,m := ( if(n<=4) 1  else (2).pow(n - 4) ), a;
+      while(1){
+	 if(num := ccFactors(n,m)){
+	    println("a(%d) = %,d".fmt(n,num));
+return(num);  // test
+	    break;
+	 }
+	 m+=a;
+      }
+   }
+}
+ 
+//ccNumbers(3,9);
+tester.testRun(ccNumbers.fp(3,3),Void,BI(1729),__LINE__);
+tester.testRun(ccNumbers.fp(7,7),Void,BI("24541683183872873851606952966798288052977151461406721"),__LINE__);
+tester.testRun(ccNumbers.fp(8,8),Void,BI("53487697914261966820654105730041031613370337776541835775672321"),__LINE__);
+}
+
+
+if(BI){	////////////////////////////////////////// Cuban primes
+#<<<#
+Using GMP (GNU Multiple Precision Arithmetic Library, probabilistic
+primes), because it is easy and fast to test for primeness.
+
+[[Extensible prime generator#zkl]] could be used instead.
+#<<<#
+//var [const] BI=Import("zklBigNum");  // libGMP
+
+          reg cpTest;	// test only
+
+cubans:=(1).walker(*).tweak(fcn(n){ // lazy iterator
+   p:=3*n*(n + 1) + 1;
+   BI(p).probablyPrime() and p or Void.Skip
+});
+println("First 200 cuban primes:");
+do(20){ cpTest=
+   (10).pump(String, cubans.next, "%10,d".fmt).println() }
+
+tester.testRun(cpTest.noop,Void,
+" 1,372,957 1,409,731 1,422,097 1,426,231 1,442,827 1,451,161 1,480,519 1,484,737 1,527,247 1,570,357",__LINE__);
+
+//cubans.drop(100_000 - cubans.n).value : 
+//   println("\nThe 100,000th cuban prime is: %,d".fmt(_));
+
+
+k,z := BI(2).pow(128), 10;
+println("First %d cuban primes where k = %,d:".fmt(z,k));
+foreach n in ([BI(1)..]){
+   p:=( (k + n).pow(3) - n.pow(3) )/k;
+//   if(p.probablyPrime()){ println("%,d".fmt(p)); z-=1; }
+//   if(z<=0) break;
+if(p.probablyPrime()){ cpTest=println("%,d".fmt(p)); break; }
+}
+
+tester.testRun(cpTest.noop,Void,
+"115,792,089,237,316,195,423,570,985,008,687,908,160,544,961,995,247,996,546,884,854,518,799,824,856,507",
+__LINE__);
+}
+
+
+{	////////////////////////////////////////// Extensible prime generator
+//http://stackoverflow.com/questions/2211990/how-to-implement-an-efficient-infinite-generator-of-prime-numbers-in-python/10733621#10733621
+
+fcn postponed_sieve(){            # postponed sieve, by Will Ness      
+   vm.yield(2); vm.yield(3);	  # original code David Eppstein, 
+   vm.yield(5); vm.yield(7);
+   D:=Dictionary();               #       ActiveState Recipe 2002
+   ps:=Utils.Generator(postponed_sieve); # a separate Primes Supply:
+   p:=ps.pump(2,Void);            # (3) a Prime to add to dict
+   q:=p*p;                        # (9) when its sQuare is 
+   c:=9;                          # the next Candidate
+   while(1){
+      if (not D.holds(c)){        # not a multiple of any prime seen so far:
+         if (c < q) vm.yield(c);  #   a prime, or
+	 else{   # (c==q):        #   the next prime's square:
+            add(D,c + 2*p,2*p);   #     (9+6,6 : 15,21,27,33,...)
+	    p=ps.next();          #     (5)
+	    q=p*p;                #     (25)
+	 }
+      }else{                      # 'c' is a composite:
+	 s := D.pop(c);           #   step of increment
+	 add(D,c + s,s);          #   next multiple, same step
+      }
+      c += 2;                     # next odd candidate
+   }
+}
+
+fcn add(D,x,s){                   # make no multiple keys in Dict
+   while(D.holds(x)){ x += s }    # increment by the given step
+   D[x] = s;
+}
+
+primes:=Utils.Generator(postponed_sieve);
+#<<<#
+primes.walk(20).println();   // first 20 primes
+ 
+primes.pump(List,fcn(p){  // the primes between 100 & 150
+   if (p<100) Void.Skip else if(p>150) Void.Stop else p
+}).println();
+
+primes.reduce(fcn(n,p){  // count of primes between 7700 & 8000
+   if (p<=7700) n else if(p>8000) Void.Stop else n+1
+},0).println();
+
+primes=Utils.Generator(postponed_sieve);	// new Generator
+primes.drop(0d9_999); primes.next().println();  // 10,000th prime
+
+   // or to carry on until the 100,000th:
+primes.pump(Void,'wrap(p){ primes.n<=0d100_000 and p or Void.Stop }).println();
+#<<<#
+
+tester.testRun(primes.walk.fp(20),Void,
+   L(2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71),__LINE__);
+tester.testRun(
+   primes.pump.fp(List,fcn(p){  // the primes between 100 & 150
+      if (p<100) Void.Skip else if(p>150) Void.Stop else p }),
+   Void,L(101,103,107,109,113,127,131,137,139,149),__LINE__);
+tester.testRun(
+primes.reduce(fcn(n,p){  // count of primes between 7700 & 8000
+   if (p<=7700) n else if(p>8000) Void.Stop else n+1 },0),
+   Void,30,__LINE__);
+tester.testRun(
+   primes.pump.fp(Void,'wrap(p){ primes.n<=0d10_000 and p or Void.Stop }),
+   Void,104729,__LINE__);
+tester.testRun(fcn{
+      primes:=Utils.Generator(postponed_sieve);	// new Generator
+      primes.drop(0d9_999); primes.next();  // 10,000th prime
+   },Void,104729,__LINE__);
+
+
+
+
+#<<<#  this test is in ZKL/LibSrc/BigNum/testBigNum.zkl
+//{{libheader|GMP}} GNU Multiple Precision Arithmetic Library
+Using GMP (GNU Multiple Precision Arithmetic Library, probabilistic
+primes), this is a direct drop in for the above:
+var [const] BN=Import.lib("zklBigNum");  // libGMP
+bigPrimes:=Walker(fcn(p){ p.nextPrime().copy(); }.fp(BN(1)));
+#For example:
+bigPrimes.walk(20).println();   // first 20 primes
+bigPrimes.pump(Void,'wrap(p){ bigPrimes.n<=0d10_000 and p or Void.Stop }).println();
+#<<<#
+}
+
+{	//////////////////////////////////////////////////////// Almost prime
+#<<<#
+{{trans|Ruby}}
+{{trans|J}}
+Using the prime generator from task [[Extensible prime generator#zkl]].
+Can't say I entirely understand this algorithm.  Uses list comprehension
+to calculate the outer/tensor product (p10 \u2297 ar).
+#<<<#
+
+#<<<#
+primes:=Utils.Generator(Import("sieve").postponed_sieve);
+(p10:=ar:=primes.walk(10)).println();
+do(4){
+   (ar=([[(x,y);ar;p10;'*]] : Utils.Helpers.listUnique(_).sort()[0,10])).println();
+}
+#<<<#
+
+primes:=Utils.Generator(postponed_sieve);
+p10:=ar:=primes.walk(10);
+tester.testRun(p10.noop,Void,L(2,3,5,7,11,13,17,19,23,29),__LINE__);
+tester.testRun(
+   'wrap{ (ar=([[(x,y);ar;p10;'*]] : Utils.Helpers.listUnique(_).sort()[0,10])) },
+   Void,L(4,6,9,10,14,15,21,22,25,26),__LINE__);
+}
+
+
+if(BN){		////////////////////////////////////////////// Long primes
+#<<<#
+//{{libheader|GMP}} GNU Multiple Precision Arithmetic Library
+Using GMP (GNU Multiple Precision Arithmetic Library, probabilistic
+primes), because it is easy and fast to generate primes.
+#<<<#
+//var [const] BN=Import.lib("zklBigNum");  // libGMP
+primes,p := List.createLong(7_000), BN(3);  // one big alloc vs lots of allocs
+//while(p.nextPrime()<=64_000){ primes.append(p.toInt()) } // 6412 of them, skipped 2
+while(p.nextPrime()<=64_00){ primes.append(p.toInt()) }
+primes.append(p.toInt());	// and one more so tail prime is >64_000
+
+longPrimes:=primes.filter(fcn(p){ findPeriod(p)==p-1 }); // yawn
+fcn findPeriod(n){
+   r,period := 1,0;
+   do(n){ r=(10*r)%n }
+#if 1
+   rr:=r;
+   while(True){   // reduce is more concise but 2.5 times slower
+      r=(10*r)%n;
+      period+=1;
+      if(r==rr) break;
+   }
+   period
+#else  // 2.5 times slower
+   rr:=r;
+   (w:=[0..]).reduce('wrap(r){ r=(10*r)%n; if(r==rr) Void.Stop else r },r);
+   w.n;
+#endif
+}
+
+fiveHundred:=longPrimes.filter('<(500));
+println("The long primes up to 500 are:\n",longPrimes.filter('<(500)).concat(","));
+
+tester.testRun(fiveHundred.get.fp(-10,*),Void,
+   T(367,379,383,389,419,433,461,487,491,499),__LINE__);
+
+#<<<#
+println("\nThe number of long primes up to:");
+foreach n in (T(500, 1000, 2000, 4000, 8000, 16000, 32000, 64000)){
+   println("  %5d is %d".fmt( n, longPrimes.filter1n('>(n)) ));
+}
+#<<<#
+
+tester.testRun(longPrimes.filter1n.fp('>(500)), Void,35,__LINE__);
+tester.testRun(longPrimes.filter1n.fp('>(1000)),Void,60,__LINE__);
+tester.testRun(longPrimes.filter1n.fp('>(2000)),Void,116,__LINE__);
+tester.testRun(longPrimes.filter1n.fp('>(4000)),Void,218,__LINE__);
+}
+
+
+	///////////////////////////////////////////// Parallel calculations
+class ParaCalcs{
+fcn factorize(x,y,z,etc){
+   xyzs:=vm.arglist;
+   fs:=xyzs.apply(primeFactors.strand) // queue up factorizing for x,y,...
+       .apply("noop")		  // wait for all threads to finish factoring
+       .apply(fcn{ (0).min(vm.arglist) }); // find minimum factor for x,y...
+   [0..].zip(fs).filter(fcn([(n,x)],M){ x==M }.fp1((0).max(fs))) // find max of mins
+   .apply('wrap([(n,_)]){ xyzs[n] })  // and pluck src from arglist
+}}
+
+tester.testRun(ParaCalcs.factorize.fp(12757923,12878611,12757923,15808973,15780709,197622519),
+    Void,T(12878611),__LINE__);
+
+
+
+{	//////////////////////////////// Partition an integer X into N primes
+//Using the prime generator from task [[Extensible prime generator#zkl]].
+
+   // Partition integer N into M unique primes
+fcn partitionNMP(N,M,idx=0,ps=List()){
+//   var [const] sieve=Utils.Generator(Import("sieve").postponed_sieve);
+var [const] sieve=Utils.Generator(postponed_sieve);
+   var [const] primes=List();
+   while(sieve.peek()<=N){ primes.append(sieve.next()) }
+   if(M<2){
+      z:=primes.find(N);
+      return(if(Void!=z and z>=idx) ps.append(N) else Void);
+   }
+   foreach z in ([idx..primes.len()-1]){
+      p:=primes[z];
+      if(p<=N and self.fcn(N-p,M-1,z+1,ps)) return(ps.insert(0,p));
+      if(p>N) break;
+   }
+   Void		// no solution
+}
+#<<<#
+foreach n,m in (T( T(18,2),T(19,3),T(20,4),T(2017,24),
+      T(22699,1),T(22699,2),T(22699,3),T(22699,4),T(40355,3),T(99809,1) )){
+   ps:=partitionNMP(n,m);
+   if(ps) println("Partition %d with %d prime(s): %s".fmt(n,m,ps.concat("+")));
+   else   println("Can not partition %d with %d prime(s)".fmt(n,m));
+}
+#<<<#
+
+tester.testRun(partitionNMP.fp(2,1),Void,T(2),__LINE__);
+tester.testRun(partitionNMP.fp(18,2),Void,T(5,13),__LINE__);
+tester.testRun(partitionNMP.fp(99809,1),Void,T(99809),__LINE__);
+tester.testRun(partitionNMP.fp(20,4),Void,Void,__LINE__);
+tester.testRun(partitionNMP.fp(2017,24),Void,
+   T(2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,97,1129),
+   __LINE__);
+}
+
+
+if(BI){			////////////////////////////////// Pierpont primes
+//{{trans|Go}}
+#<<<#
+{{libheader|GMP}} GNU Multiple Precision Arithmetic Library
+Using GMP's probabilistic primes makes it is easy and fast to test for primeness.
+#<<<#
+//var [const] BI=Import("zklBigNum");  // libGMP
+var [const] one=BI(1), two=BI(2), three=BI(3);
+
+fcn pierPonts(n){  //-->((bigInt first kind primes) (bigInt second))
+   pps1,pps2 := List(BI(2)), List();
+   count1, count2, s := 1, 0, List(BI(1));  // n==2_000, s-->266_379 elements
+   i2,i3,k := 0, 0, 1;
+   n2,n3,t := BI(0),BI(0),BI(0);
+   while(count1.min(count2) < n){
+      n2.set(s[i2]).mul(two);	// .mul, .add, .sub are in-place
+      n3.set(s[i3]).mul(three);
+      if(n2<n3){ t.set(n2); i2+=1; }
+      else     { t.set(n3); i3+=1; }
+      if(t > s[k-1]){
+	 s.append(t.copy());
+	 k+=1;
+	 t.add(one);
+	 if(count1<n and t.probablyPrime()){
+	    pps1.append(t.copy());
+	    count1+=1;
+	 }
+	 if(count2<n and t.sub(two).probablyPrime()){
+	    pps2.append(t.copy());
+	    count2+=1;
+	 }
+      }
+   }
+   return(pps1,pps2)
+}
+
+#<<<#
+pps1,pps2 := pierPonts(2_000);
+
+println("The first 50 Pierpont primes (first kind):");
+foreach r in (5){ pps1[r*10,10].apply("%10d".fmt).concat().println() }
+
+println("\nThe first 50 Pierpont primes (second kind):");
+foreach r in (5){ pps2[r*10,10].apply("%10d".fmt).concat().println() }
+
+foreach n in (T(250, 1_000, 2_000)){
+   println("\n%4dth Pierpont prime, first kind: ".fmt(n), pps1[n-1]);
+   println( "                      second kind: ",        pps2[n-1]);
+}
+#<<<#
+
+
+// tests:
+pps1,pps2 := pierPonts(250);
+tester.testRun(pps1[0,50].noop,Void,
+  T(2, 3, 5, 7, 13, 17, 19, 37, 73, 97, 109, 163, 193, 257, 433, 487, 577, 
+   769, 1153, 1297, 1459, 2593, 2917, 3457, 3889, 10369, 12289, 17497, 18433, 
+   39367, 52489, 65537, 139969, 147457, 209953, 331777, 472393, 629857, 746497, 
+   786433, 839809, 995329, 1179649, 1492993, 1769473, 1990657, 2654209, 
+   5038849, 5308417, 8503057),__LINE__);
+tester.testRun(pps2[0,50].noop,Void,
+  T(2, 3, 5, 7, 11, 17, 23, 31, 47, 53, 71, 107, 127, 191, 383, 431, 647, 863,
+    971, 1151, 2591, 4373, 6143, 6911, 8191, 8747, 13121, 15551, 23327, 27647,
+    62207, 73727, 131071, 139967, 165887, 294911, 314927, 442367, 472391,
+    497663, 524287, 786431, 995327, 1062881, 2519423, 10616831, 17915903,
+    18874367, 25509167, 30233087),__LINE__);
+tester.testRun(pps1.get.fp(249),Void,BI("62518864539857068333550694039553"),__LINE__);
+tester.testRun(pps2.get.fp(249),Void,BI("4111131172000956525894875083702271"),__LINE__);
+}
+
+
+
+{	//////////////////// Primes - allocate descendants to their ancestors
+//{{trans|Python}}
+//{{trans|Racket}}
+//Using [[Extensible prime generator#zkl]]
+const maxsum=99;
+ 
+//primes:=Utils.Generator(Import("sieve.zkl").postponed_sieve)
+primes:=Utils.Generator(postponed_sieve)
+        .pump(List,'wrap(p){ (p<=maxsum) and p or Void.Stop });
+
+descendants,ancestors := List()*(maxsum + 1), List()*(maxsum + 1);
+
+foreach p in (primes){
+   descendants[p].insert(0,p);
+   foreach s in ([1..descendants.len() - p - 1]){
+      descendants[s + p].merge(descendants[s].apply('*(p)));
+   }
+}
+
+    // descendants[prime] is a list that starts with prime, remove prime. 4: ???
+foreach p in (primes + 4) { descendants[p].pop(0) }
+ 
+ta,td:=0,0;
+foreach s in ([1..maxsum]){
+   foreach d in (descendants[s].filter('<=(maxsum))){
+      ancestors[d]=ancestors[s].copy() + s;
+   }
+
+#<<<#
+   println("%2d Ancestors: ".fmt(s),ancestors[s].len() and ancestors[s] or "None");
+   println("   Descendants: ", if(z:=descendants[s]) 
+				String(z.len()," : ",z) else "None");
+#<<<#
+   ta+=ancestors[s].len(); td+=descendants[s].len();
+} 
+println("Total ancestors: %,d".fmt(ta));
+println("Total descendants: %,d".fmt(td));
+
+tester.testRun(ta.noop,Void,179,__LINE__);
+tester.testRun(td.noop,Void,546986,__LINE__);
+}
+
+
+
+{    ////////////////////////////////////////////////// Prime decomposition
+// With 64 bit ints: 
+fcn primeFactors(n){  // Return a list of prime factors of n
+   acc:=fcn(n,k,acc,maxD){  // k is 2,3,5,7,9,... not optimum
+      if(n==1 or k>maxD) acc.close();
+      else{
+	 q,r:=n.divr(k);   // divr-->(quotient,remainder)
+	 if(r==0) return(self.fcn(q,k,acc.write(k),q.toFloat().sqrt()));
+	 return(self.fcn(n,k+1+k.isOdd,acc,maxD))  # both are tail recursion
+      }
+   }(n,2,Sink(List),n.toFloat().sqrt());
+   m:=acc.reduce('*,1);      // mulitply factors
+   if(n!=m) acc.append(n/m); // opps, missed last factor
+   else acc;
+}
+
+#<<<#
+foreach n in (T(5,12, 2147483648, 2199023255551, 8796093022207,
+	9007199254740991, 576460752303423487)){
+   println(n,": ",primeFactors(n).concat(", ")) 
+}
+#<<<#
+
+tester.testRun(primeFactors.fp(12),Void,T(2,2,3),__LINE__);
+tester.testRun(primeFactors.fp(2147483648),Void,T(2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2),__LINE__);
+tester.testRun(primeFactors.fp(2199023255551),Void,T(13367, 164511353),__LINE__);
+
+tester.testRun(primeFactors.fp(8796093022207),Void,T(431, 9719, 2099863),__LINE__);
+tester.testRun(primeFactors.fp(9007199254740991),Void,T(6361, 69431, 20394401),__LINE__);
+tester.testRun(primeFactors.fp(576460752303423487),Void,T(179951, 3203431780337),__LINE__);
+
+#<<<#
+Unfortunately, big ints (GMP) don't have (quite) the same interface as ints (since there is no big float, BI.toFloat() truncates to a double so BI.toFloat().sqrt() is wrong). 
+So mostly duplicate code is needed: 
+
+{{libheader|GMP}} GNU Multiple Precision Arithmetic Library
+Using GMP ( probabilistic primes), 
+because it is easy and fast to generate and test primes.
+#<<<#
+
+if(BI){
+// 9223372036854775783 biggest 64 [signed] bit prime, then 9223372036854775837
+//var [const] BI=Import("zklBigNum");
+fcn primeFactorsBI(n){  // Return a list of the prime factors of n
+   acc:=fcn(n,k,acc,maxD){  // k is primes
+      if(n==1 or k>maxD) acc.close();
+      else{
+	 q,r:=n.div2(k);   // divr-->(quotient,remainder)
+	 if(r==0) return(self.fcn(q,k,acc.write(k.copy()),q.root(2)));
+	 return(self.fcn(n, k.nextPrime(), acc,maxD)) # both are tail recursion
+      }
+   }(n,BI(2),Sink(List),n.root(2));
+   m:=acc.reduce('*,BI(1));  // mulitply factors
+   if(n!=m) acc.append(n/m); // opps, missed last factor
+   else acc;
+}
+
+#if 0
+foreach n in (T(BI("12"),
+	BI("340282366920938463463374607431768211455"))){
+   println(n,": ",factorsBI(n).concat(", ")) 
+}
+#endif
+
+
+tester.testRun(primeFactorsBI.fp(BN(12)),Void,T(2, 2, 3),__LINE__);
+tester.testRun(primeFactorsBI.fp(BN("340282366920938463463374607431768211455")),
+   Void,T(3, 5, 17, 257, 641, 65537, 274177, 6700417, 67280421310721),__LINE__);
+//tester.testRun(primeFactors.fp(BN("340282366920938463463374607431768211457")),
+//   Void,T(274177, BN("67280421310721")),__LINE__);
+}
+}
+
+
+
+{		////////////////////////////////////////// Primorial numbers
+//{{libheader|GMP}} GNU Multiple Precision Arithmetic Library
+//Using [[Extensible prime generator#zkl]] and the GMP big int library.
+
+//sieve:=Import("sieve.zkl").postponed_sieve;
+sieve:=postponed_sieve;
+primes:=Utils.Generator(sieve).walk(0d10);
+//foreach n in (10)
+//   { primes[0,n].reduce('*,1):println("primorial(%d)=%d".fmt(n,_)); }
+
+primorial:='wrap(n){ primes[0,n].reduce('*,1):"primorial(%d)=%d".fmt(n,_); };
+tester.testRun(primorial.fp(0),Void,"primorial(0)=1",__LINE__);
+tester.testRun(primorial.fp(1),Void,"primorial(1)=2",__LINE__);
+tester.testRun(primorial.fp(6),Void,"primorial(6)=30030",__LINE__);
+
+if(BN){
+#<<<#
+var [const] BN=Import.lib("zklBigNum");
+primes:=Utils.Generator(sieve).walk(0d1_000_000);
+foreach n in ([1..6]){ n=(10).pow(n);
+   primes[0,n].pump(BN(1).mul)
+   :println("primorial(%,d)=%,d digits".fmt(n,_.numDigits));
+}
+#<<<#
+tester.testRun('wrap{
+      primes:=Utils.Generator(sieve).walk(0d100);
+      n:=2; { n=(10).pow(n);
+         primes[0,n].pump(BN(1).mul)
+	 :println("primorial(%,d)=%,d digits".fmt(n,_.numDigits));
+      }
+   },Void,"primorial(100)=220 digits",__LINE__);
+}
+
+#<<<#
+Big int multiplication is done in place to minimize garbage.  Also,
+subsets of read only lists (which the list of primes is) are not copies
+(ie they are a small header that points into the original list).
+
+Strangely, it takes much longer to do one million big int
+multiplications than to generate one million primes, so it would be a
+good idea to "generate a prime, multiply, print at intervals" but I'm
+too lazy.
+#<<<#
+}
+
+
+if(BI){			////////////////////// Safe primes and unsafe primes
+#<<<#
+//{{libheader|GMP}}
+Using GMP (GNU Multiple Precision Arithmetic Library, probabilistic
+primes), because it is easy and fast to generate primes.
+
+[[Extensible prime generator#zkl]] could be used instead.
+#<<<#
+//var [const] BI=Import.lib("zklBigNum");  // libGMP
+// saving 664,578 primes (vs generating them on the fly) seems a bit overkill
+
+fcn safePrime(p){ ((p-1)/2).probablyPrime() } // p is a BigInt prime
+
+fcn safetyList(sN,nsN){
+   p,safe,notSafe := BI(2),List(),List();
+   do{ 
+      if(safePrime(p)) safe.append(p.toInt()) else notSafe.append(p.toInt()); 
+      p.nextPrime();
+   }while(safe.len()<sN or notSafe.len()<nsN);
+   println("The first %d   safe primes are: %s".fmt(sN,safe[0,sN].concat(",")));
+   println("The first %d unsafe primes are: %s".fmt(nsN,notSafe[0,nsN].concat(",")));
+//}(35,40);
+return(safe,notSafe) }
+
+#if 0	// safetyList could also be written as:
+println("The first %d  safe primes are: %s".fmt(N:=35,
+   Walker(BI(1).nextPrime)  // gyrate (vs Walker.filter) because p mutates
+     .pump(N,String,safePrime,Void.Filter,String.fp1(","))));
+println("The first %d unsafe primes are: %s".fmt(N=40,
+   Walker(BI(1).nextPrime)	// or save as List
+     .pump(N,List,safePrime,'==(False),Void.Filter,"toInt").concat(",")));
+#endif
+
+tester.testRun(fcn{ 
+   s,ns := safetyList(35,40);
+   s[0,35]==T(5,7,11,23,47,59,83,107,167,179,227,263,347,359,383,467,479,503,563,587,719,839,863,887,983,1019,1187,1283,1307,1319,1367,1439,1487,1523,1619)
+   and
+   ns[0,40]==T(2,3,13,17,19,29,31,37,41,43,53,61,67,71,73,79,89,97,101,103,109,113,127,131,137,139,149,151,157,163,173,181,191,193,197,199,211,223,229,233)
+},Void,True,__LINE__);
+
+// Time to count:
+fcn safetyCount(N,s=0,ns=0,p=BI(2)){
+   do{ 
+      if(safePrime(p)) s+=1; else ns+=1;
+      p.nextPrime()
+   }while(p<N);
+   println("The number of   safe primes below %10,d is %7,d".fmt(N,s));
+   println("The number of unsafe primes below %10,d is %7,d".fmt(N,ns));
+   return(s,ns,p);
+}
+
+#if 0
+s,ns,p := safetyCount(1_000_000);
+println();
+safetyCount(10_000_000,s,ns,p);
+#endif
+
+tester.testRun(fcn{ s,ns := safetyCount(234); ns },Void,40,__LINE__);
+}
+
+
+{		////////////////////////////////////// Sieve of Eratosthenes
+fcn sieve(limit){
+   composite:=Data(limit+1).fill(1);  // bucket of bytes set to 1 (prime)
+   (2).pump(limit.toFloat().sqrt()+1, Void,  // Void==no results, just loop
+       composite.get, Void.Filter,	// if prime, zero multiples
+      'wrap(n){ [n*n..limit,n].pump(Void,composite.set.fp1(0)) }); //composite[n*p]=0
+   (2).filter(limit-1,composite.get); // bytes still 1 are prime
+}
+//sieve(53).println();
+#<<<#
+The pump method is just a loop, passing results from action to action
+and collecting the results (ie a minimal state machine).  Pumping to
+Void means don't collect.  The Void.Filter action means if
+result.toBool() is False, skip else get the source input (pre any
+action) and pass that to the next action.  Here, the first filter checks
+the table if src is prime, if so, the third action take the prime and
+does some side effects.
+#<<<#
+
+tester.testRun(sieve.fp(53),Void,
+   L(2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53),__LINE__);
+}
+
+
+#if 0 // not sure how or if to test this
+{	////////////////////////////////////////////////// Sexy primes
+#<<<#
+//{{libheader|GMP}} GNU Multiple Precision Arithmetic Library
+Using GMP (GNU Multiple Precision Arithmetic Library, probabilistic
+primes), because it is easy and fast to generate primes.
+
+[[Extensible prime generator#zkl]] could be used instead.
+#<<<#
+var [const] BI=Import.lib("zklBigNum");  // libGMP
+const N=1_000_035, M=N+24; // M allows prime group to span N, eg N=100, (97,103)
+const OVR=6;	// 6 if prime group can NOT span N, else 0
+ps,p := Data(M+50).fill(0), BI(1); // slop at the end (for reverse wrap around)
+while(p.nextPrime()<=M){ ps[p]=1 } // bitmap of primes
+
+//ns:=(N-OVR).filter('wrap(n){ 2==(ps[n] + ps[n+6]) }); # know 2 isn't, check anyway
+ns:=(N-OVR).filter('wrap(n){ 1==ps[n]==ps[n+6] }); # know 2 isn't, check anyway
+msg(N,"sexy prime pairs",ns,5,1);
+
+ns:=[3..N-(6+OVR),2].filter('wrap(n){ 3==(ps[n] + ps[n+6] + ps[n+12]) }); # can't be even
+msg(N,"sexy triplet primes",ns,5,2);
+
+ns:=[3..N-(12+OVR),2].filter('wrap(n){ 4==(ps[n] + ps[n+6] + ps[n+12] + ps[n+18]) }); # no evens
+msg(N,"sexy quadruplet primes",ns,5,3);
+
+ns:=[3..N-(18+OVR),2].filter('wrap(n){ 5==(ps[n] + ps[n+6] + ps[n+12] + ps[n+18] + ps[n+24]) });
+msg(N,"sexy quintuplet primes",ns,1,4);
+#if 0
+println("-----------There are %d sexy prime quintuplets all components of which are less than 1,000,035. The last 5 are:".fmt(ns.len()));
+ns[-1,*].apply2(fcn(n){ print("(%d,%d,%d,%d,%d) ".fmt(n,n+6,n+12,n+18,n+24)) }); println();
+#endif
+
+ns:=(N-OVR).filter('wrap(n){ ps[n] and 0==ps[n-6]==ps[n+6] });  // include 2
+msg(N,"unsexy primes",ns,10,0);
+
+fcn msg(N,s,ps,n,g){
+   gs,m := ps.tail(n), gs.len(); // if number of prime groups is less than n
+   gs=gs.apply('wrap(n){ [0..g*6,6].apply('+(n)) })
+       .pump(String,T("concat", ",", "(", ") "));
+   println("Number of %s less than %,d is %,d".fmt(s,N,ps.len()));
+   println("The last %d %s:\n  %s\n".fmt(m, (m>1 and "are" or "is"), gs));
+}
+
+}
+#endif
+
+
+if(BI){	// Smarandache prime-digital sequence
+#<<<#
+{{libheader|GMP}} GNU Multiple Precision Arithmetic Library
+Using GMP ( probabilistic primes), 
+because it is easy and fast to generate primes.
+
+[[Extensible prime generator#zkl]] could be used instead.
+
+#<<<#
+//var [const] BI=Import("zklBigNum");  // libGMP
+
+spds:=Walker.zero().tweak(fcn(ps){
+   var [const] nps=T(0,0,1,1,0,1,0,1,0,0);  // 2,3,5,7
+   p:=ps.nextPrime().toInt();
+   if(p.split().filter( fcn(n){ 0==nps[n] }) ) return(Void.Skip);
+   p   //  733 --> (7,3,3) --> () --> good,       29 --> (2,9) --> (9) --> bad
+}.fp(BI(1)));
+
+
+println("The first 25 terms of the Smarandache prime-digital sequence are:");
+    t:=
+spds.walk(25).concat(",").println();
+
+tester.testRun(t.noop,Void,
+   "2,3,5,7,23,37,53,73,223,227,233,257,277,337,353,373,523,557,577,727,733,757,773,2237,2273",
+   __LINE__);
+
+
+
+// or
+spds:=Walker.zero().tweak(fcn(ps){
+   var [const] nps="014689".inCommon;
+   p:=ps.nextPrime().toInt();
+   if(nps(p.toString())) return(Void.Skip);
+   p   //  733 --> "" --> good,       29 --> "9" --> bad
+}.fp(BI(1)));
+
+tester.testRun(spds.walk(25).concat.fp(","),Void,
+   "2,3,5,7,23,37,53,73,223,227,233,257,277,337,353,373,523,557,577,727,733,757,773,2237,2273",
+   __LINE__);
+
+tester.testRun(spds.drop(100-25).value.noop,Void,33223,__LINE__);
+
+//println("1,000th item of this sequence is: ",spds.drop(1_000-spds.n).value);
+//tester.testRun(spds.value.noop,Void,3273527,__LINE__);
+}
+
+
+
+{	/////////////////////////////////////////////////// Smith numbers
+fcn smithNumbers(N=0d10_000){ // -->(Smith numbers to N)
+   [2..N].filter(fcn(n){ 
+      (pfs:=primeFactors(n)).len()>1 and
+      n.split().sum(0)==primeFactors(n).apply("split").flatten().sum(0) 
+   })
+}
+//sns:=smithNumbers();
+//sns.toString(*).println(" ",sns.len()," numbers");
+tester.testRun(fcn{ smithNumbers(1000)[-1] },Void,985,__LINE__);
+}
+
+
+tester.stats();
+returnClass(tester);

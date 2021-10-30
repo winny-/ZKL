@@ -1,0 +1,38 @@
+//-*-c-*-
+// find.zkl: Kinda like Unix find, find files or directories
+
+include(zkl.h.zkl);
+
+const FLAGS = FILE.GLOB.IGNORE_CASE;
+
+var recurse, fileSpec, out=Console.println;
+
+argh := Utils.Argh(
+   T("+R","R","Recurse into subdirectories, starting at <arg>",
+	fcn(arg) { recurse = arg }),
+   T("+e","e","Do something with those file names\n\t"
+              "eg zkl find -R . '*.o' -e\"File.delete(nm)\"\n\t"
+	      "nm is the name of the found file, passed into a fcn with your code",
+	      prepEval),
+);
+
+fcn prepEval(text){ 
+   code:=String("fcn f(nm){ println(nm); ",text," }");
+   println("Eval code is: ",code);
+   out=Compiler.Compiler.compileText(code).f;
+}
+
+argh.parse(vm.arglist);
+try { fileSpec = argh.loners[0]; }
+catch
+{
+   argh.usage(
+"find: A sorta like Unix find",
+"eg zkl find -R. '*.zkl', find 'Src/*.zkl', find '[ST]*/*.zkl'",
+"NOT case sensitive",
+);
+   System.exit(1);
+}
+
+if (recurse) File.globular(recurse,fileSpec,True,FLAGS,out);
+else	     File.glob(fileSpec,FLAGS).apply2(out);

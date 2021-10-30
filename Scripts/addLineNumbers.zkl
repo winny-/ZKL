@@ -1,0 +1,28 @@
+//-*-c-*
+/* zkl addLineNumbers file
+ * cat file | zkl addLineNumbers
+ * Tabs are goona mess up formating
+ */
+#<<<#
+File(vm.arglist[0]) : // grap file name from command line
+[1..].zipWith(fcn(n,t){ "%2d: %s".fmt(n,t) },_) // walker
+.pump(String).println();  // add each formated line to a string
+#<<<#
+
+var one =1,  // one: line one of file
+    drop=0;  // discard this many lines before printing
+
+argh:=Utils.Argh(
+   T("+start","s","First line number is <arg>",fcn(arg){ one=arg.toInt() }),
+   T("+discard","d","Discard <arg> lines then print",fcn(arg){ drop=arg.toInt() }),
+);
+argh.parse(vm.arglist);
+
+in:=(if(argh.loners) File(argh.loners[0]) else File.stdin);
+addLineNumbers(in,one,drop).println();
+
+fcn addLineNumbers(in,one=1,drop=False){
+   do(drop){ in.readln() }
+   [one..].zipWith(fcn(n,t){ "%5d: %s".fmt(n,t) },in)  // walker
+   .pump(File.stdout);
+}

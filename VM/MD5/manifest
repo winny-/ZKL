@@ -1,0 +1,7 @@
+# MD5 manifest
+[files]
+global.h
+Makefile               manifest               md5-announcement.txt
+md5.1                  md5.1.pdf              md5.1.txt
+md5.h                  md5c.c                 mddriver.c
+README                 rfc1321.txt            

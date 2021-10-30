@@ -1,0 +1,433 @@
+// -*-c-*-
+// Test RegExp
+
+tester := TheVault.Test.UnitTester.UnitTester(__FILE__);
+
+
+				///////////////////////////// \w \W
+tester.testSrc(0'^r:=RegExp(0'|\w|); r.search("ab c"); var R=r.matched[0];^,
+   Void,Void,T(0,1),__LINE__);
+tester.testSrc(0'^r:=RegExp(0'|\w+|); r.search("ab c"); var R=r.matched[0];^,
+   Void,Void,T(0,2),__LINE__);
+tester.testSrc(0'^r:=RegExp(0'|\w+|);r.search("_"); var R=r.matched[0];^,
+   Void,Void,T(0,1),__LINE__);
+tester.testSrc(0'^r:=RegExp(0'|\w+|); r.search("1234567890"); var R=r.matched[0];^,
+   Void,Void,T(0,10),__LINE__);
+tester.testSrc(0'^r:=RegExp(0'|\W+|); var R=r.search("1234567890",True);^,
+   Void,Void,False,__LINE__);
+tester.testSrc(0'^r:=RegExp(0'|\w+|); r.search("azAZ"); var R=r.matched[0];^,
+   Void,Void,T(0,4),__LINE__);
+tester.testSrc(0'^r:=RegExp(0'|\W+|); var R=r.search("azAZ",True);^,
+   Void,Void,False,__LINE__);
+
+tester.testSrc(0'^r:=RegExp(0'|\w+|); r.search("azAZ\r"); var R=r.matched[0];^,
+   Void,Void,T(0,4),__LINE__);
+tester.testSrc(0'^r:=RegExp(0'|\w+|); r.search("azAZ\n"); var R=r.matched[0];^,
+   Void,Void,T(0,4),__LINE__);
+tester.testSrc(0'^r:=RegExp(0'|\w+|); r.search("azAZ\r\n"); var R=r.matched[0];^,
+   Void,Void,T(0,4),__LINE__);
+tester.testSrc(0'^r:=RegExp(0'|\w+|); r.search("\razAZ\r\n",True); var R=r.matched[0];^,
+   Void,Void,T(1,4),__LINE__);
+
+
+tester.testSrc(0'^r:=RegExp(0'|[0-9]+|); r.search("1234567890"); var R=r.matched[0];^,
+   Void,Void,T(0,10),__LINE__);
+tester.testSrc(0'^r:=RegExp(0'|[a-zA-Z]+|); r.search("azAZ"); var R=r.matched[0];^,
+   Void,Void,T(0,4),__LINE__);
+
+
+#<<<#
+   							//////////// \!
+tester.testSrc(0'^r:=RegExp(0'|(.*foo)\!|); r.search("abcfoobar");^
+   "var R=r.matched[1];", Void,Void,"abcfoo",__LINE__);
+
+tester.testSrc(0'^r:=RegExp(0'|(.*foo\!)|);^, Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'^r:=RegExp(0'|abc\!d|);^, Void,"ValueError",Void,__LINE__);
+
+tester.testSrc(0'^r:=RegExp(0'`a|b\!`); r.search("abc");^
+   "var R=r.matched[0];", Void,Void,T(0,1),__LINE__);
+
+tester.testSrc(0'^r:=RegExp(0'`(a|b)\!`); r.search("abc");^
+   "var R=r.matched[1];", Void,Void,"a",__LINE__);
+tester.testSrc(0'^r:=RegExp(0'`(a|b)`); r.search("abc");^
+   "var R=r.matched[1];", Void,Void,"a",__LINE__);
+
+tester.testSrc(0'^r:=RegExp(0'`a.*\!`); r.search("abc");^
+   "var R=r.matched[0];", Void,Void,T(0,3),__LINE__);
+
+tester.testSrc(0'^r:=RegExp(0'`foo\!`); r.search("foobar");^
+   "var R=r.matched[0];", Void,Void,T(0,3),__LINE__);
+tester.testSrc(0'^r:=RegExp(0'`foo`); r.search("foobar");^
+   "var R=r.matched[0];", Void,Void,T(0,3),__LINE__);
+#<<<#
+
+
+   					//////////////////////// move
+tester.testSrc(0'~r:=RegExp(0'|A|); var R=r.search("azAZ");~,
+   Void,Void,False,__LINE__);
+tester.testSrc(0'~r:=RegExp(0'|A|); r.search("azAZ",True); var R=r.matched[0];~,
+   Void,Void,T(2,1),__LINE__);
+tester.testSrc(0'~r:=RegExp(0'|.A|); r.search("azAZ",True); var R=r.matched[0];~,
+   Void,Void,T(1,2),__LINE__);
+tester.testSrc(0'~r:=RegExp(0'|^.A|); var R=r.search("azAZ",True);~,
+   Void,Void,False,__LINE__);
+tester.testSrc(0'~r:=RegExp(0'|^.A|); r.search("zAZ",True); var R=r.matched[0];~,
+   Void,Void,T(0,2),__LINE__);
+
+
+		///////////// basic stuff
+tester.testRun(fcn { R := RegExp("(fo.*)[1-3]\\1");
+      T("fo1fo", "foo2foo", "fooo3foooooo","foo1fo").filter(R.matches).len();
+    },Void,3,__LINE__);
+tester.testRun(fcn { r := RegExp("(fo.*)-\\1");
+      T("foo-foo", "fo-fo", "fob-fob","foobar-foobar").filter(r.matches).len();
+    }, Void,4,__LINE__);
+
+
+   				//////////////////////// () 
+maxParens:=19;
+tester.testSrc(		// max () pairs
+   "var R; RegExp(\"%s\")".fmt("(1)"*maxParens), Void,Void,Void,__LINE__); 
+tester.testSrc(		// Too many () pairs
+   "var R; RegExp(\"%s\")".fmt("(1)"*(maxParens+1)), Void,"ValueError",Void,__LINE__); 
+
+
+		// .matched
+tester.testSrc(0'|var R = RegExp("abc"); R=R.matched; |,Void,Void,ROList,__LINE__);
+tester.testSrc(0'|r := RegExp("abc.*"); r.search("abcd"); var R=r.matched|,
+   Void,Void,L(L(0,4)),__LINE__);
+tester.testSrc(0'|r := RegExp("a(.)c.*"); r.search("abcd"); var R=r.matched|,
+   Void,Void,L(L(0,4),"b"),__LINE__);
+tester.testSrc(0'|r := RegExp("a(.)%s.*");|.fmt("(.)"*maxParens) + 
+   0'|r.search("abcdefghijklmnop"); var R=r.matched|,
+   Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|r := RegExp("a(.)(.)(.)(.)(.)(.)(.)(.)(.).*");|
+   0'|r.search("abcdefghijklmnop"); var R=r.matched|,
+   Void,Void,L(L(0,16),"b","c","d","e","f","g","h","i","j"),__LINE__);
+tester.testSrc(0'|r := RegExp("a(.)(.)(.)(.)(.)(.)(.)(.)(.).*");|
+   0'|r.search("abcdefghijklmnop"); var R=r.matchedNs|,
+   Void,Void,
+   T(T(0,16),T(1,1),T(2,1),T(3,1),T(4,1),T(5,1),T(6,1),T(7,1),T(8,1),T(9,1)),__LINE__);
+
+tester.testSrc(0'|r := RegExp("a(.)(.)(.)(.)(.)(.)(.)(.)(.).*");|
+   0'|r.search(Data(0,0,"abcdefghijklmnop")); var R=r.matched;|,
+   Void,Void,L(L(0,16),"b","c","d","e","f","g","h","i","j"),__LINE__);
+tester.testSrc(0'|r := RegExp("a(.)(.)(.)(.)(.)(.)(.)(.)(.).*");|
+   0'|r.search(Data(0,String,"abcdefghijklmnop")); var R=r.matched;|,
+   Void,Void,L(L(0,16),"b","c","d","e","f","g","h","i","j"),__LINE__);
+
+		// are the matched lists cleared?
+tester.testSrc(0'|r := RegExp("abc.*"); r.search("abcd"); r.matches("abcd");|
+   "var R=r.matched;",Void,Void,T,__LINE__);
+tester.testSrc(0'|r := RegExp("abc.*"); r.search("abcd"); r.matches("abcd");|
+   "var R=r.matchedNs;",Void,Void,T,__LINE__);
+
+   		// tags
+tester.testSrc(0'|r := RegExp("a(.)\\1");|
+   0'|r.search("abbdefghijklmnop"); var R=r.matched|, Void,Void,L(L(0,3),"b"),__LINE__);
+tester.testSrc(0'|r := RegExp("a(.)\\1");|
+   0'|r.search("abbdefghijklmnop"); var R=r.matchedNs|,
+   Void,Void,L(L(0,3),T(1,1)),__LINE__);
+
+tester.testSrc(0'|r:=RegExp("((1))");|
+   0'|r.search("1"); var R=r.matched|, Void,Void,L(L(0,1),"1","1"),__LINE__);
+		
+   		// words
+tester.testSrc(0'|r := RegExp("\\<a.\\>"); var R=r.search("ab");|,
+   Void,Void,True,__LINE__);
+tester.testSrc(0'|r := RegExp("\\<a.\\>"); var R=r.search("abcd");|,
+   Void,Void,False,__LINE__);
+tester.testSrc(0'|r := RegExp("\\<(a.)\\>");|
+   0'|r.search("ab,cd"); var R=r.matched|, Void,Void,L(L(0,2),"ab"),__LINE__);
+tester.testSrc(0'|r := RegExp(".+\\<(..)\\>");|
+   0'|r.search("ab,cd"); var R=r.matched|, Void,Void,L(L(0,5),"cd"),__LINE__);
+tester.testSrc(0'|r := RegExp("\\<(..)\\>");|
+   0'|r.search("ab,cd",True); var R=r.matched|, Void,Void,L(L(0,2),"ab"),__LINE__);
+tester.testSrc(0'|r := RegExp("\\<(..)\\>$");|
+   0'|r.search("ab,cd",True); var R=r.matched|, Void,Void,L(L(3,2),"cd"),__LINE__);
+
+		// sets
+tester.testSrc(0'|var R = RegExp("[abc]").search("a");|,Void,Void,True,__LINE__);
+tester.testRun(fcn { RegExp("[\n\r]").search("\n\r") },Void,True,__LINE__);
+tester.testRun(fcn { RegExp("[\n\r]").matches("\r") },Void,True,__LINE__);
+tester.testRun(fcn { RegExp("[\\]").search("\\") },Void,True,__LINE__);
+tester.testRun(fcn { RegExp("[\\n]").matches("n") } ,Void,True,__LINE__);
+tester.testRun(fcn { RegExp("[\\n]").search("\\") } ,Void,True,__LINE__);
+tester.testRun(fcn { RegExp("[n\\]").search("\\") } ,Void,True,__LINE__);
+tester.testRun(fcn { RegExp(0'"[n\]").matches("n") } ,Void,True,__LINE__);
+
+
+		// .matches
+tester.testRun(fcn { RegExp("\n").matches("\n") }, Void,True,__LINE__);
+tester.testRun(fcn { RegExp(0'"\\").matches(0'"\") }, Void,True,__LINE__);
+
+
+tester.testSrc(0'^r := RegExp(0'|($\S+) *= *(\S+)|);^
+   0'|r.search("$dst = foo"); var R=r.matched[2]|,
+   Void,Void,"foo",__LINE__);
+tester.testSrc(0'^r := RegExp(0'|($\S+) *= *(\S+)|);^
+   0'|r.search("$dst = foo"); var R=r.matchedNs|,
+   Void,Void,T(T(0,10),T(0,4),T(7,3)),__LINE__);
+
+
+   	////////////////////////////////////// look at ""
+tester.testSrc(0'^r := RegExp(0'|\s|);r.search(""); var R=r.matched;^,
+   Void,Void,T,__LINE__);
+tester.testSrc(0'^r := RegExp(0'|\S|);r.search(""); var R=r.matched;^,
+   Void,Void,T,__LINE__);
+tester.testSrc(0'^r := RegExp(0'|\s+|);r.search(""); var R=r.matched;^,
+   Void,Void,T,__LINE__);
+tester.testSrc(0'^r := RegExp(0'|\S+|);r.search(""); var R=r.matched;^,
+   Void,Void,T,__LINE__);
+tester.testSrc(0'^r := RegExp(0'|\s*|);r.search(""); var R=r.matched[0];^,
+   Void,Void,T(0,0),__LINE__);
+tester.testSrc(0'^r := RegExp(0'|\S*|);r.search(""); var R=r.matched[0];^,
+   Void,Void,T(0,0),__LINE__);
+tester.testSrc(0'^r := RegExp(0'|\S*\S*|);r.search(""); var R=r.matched[0];^,
+   Void,Void,T(0,0),__LINE__);
+
+tester.testSrc(0'^r := RegExp(0'|\d|);r.search(""); var R=r.matched;^,
+   Void,Void,T,__LINE__);
+tester.testSrc(0'^r := RegExp(0'|\D|);r.search(""); var R=r.matched;^,
+   Void,Void,T,__LINE__);
+
+tester.testSrc(0'^r := RegExp(0'|\w|);r.search(""); var R=r.matched;^,
+   Void,Void,T,__LINE__);
+tester.testSrc(0'^r := RegExp(0'|\W|);r.search(""); var R=r.matched;^,
+   Void,Void,T,__LINE__);
+
+tester.testSrc(0'!r := RegExp(0'|^|);r.search(""); var R=r.matched[0];!,
+   Void,Void,T(0,0),__LINE__);
+tester.testSrc(0'^r := RegExp(0'|$|);r.search(""); var R=r.matched[0];^,
+   Void,Void,T(0,0),__LINE__);
+
+
+   			/////////////////////////////////////////// or |
+#<<<#
+tester.testSrc(
+   0'^var R=RegExp("1|1|1|1|1|1|1|1|1|1|1|1|1|1|1|1")^,
+   Void,"ValueError",Void,__LINE__);	// Too many |'s)
+#<<<#
+
+tester.testSrc(0'^re:=RegExp(".(79.|3.|7.)");^
+   0'^re.search("Z794xy5");  var R=re.matched;^, Void,Void,T(T(0,4),"794"),__LINE__);
+tester.testSrc(0'^re:=RegExp(".(79.|3.|7.)");^
+   0'^re.search("Z34xy5");  var R=re.matched;^, Void,Void,T(T(0,3),"34"),__LINE__);
+tester.testSrc(0'^re:=RegExp(".(79.|3.|7.)");^
+   0'^re.search("Z74");  var R=re.matched;^,  Void,Void,T(T(0,3),"74"),__LINE__);
+
+tester.testSrc(0'^re:=RegExp(".(79.|3.|7.)");^
+   0'^re.search("Z79");  var R=re.matched;^,  Void,Void,T(T(0,3),"79"),__LINE__);
+tester.testSrc(0'^re:=RegExp(".(79.|3.|7.)");^
+   0'^re.search("Z45");  var R=re.matched;^, Void,Void,T,__LINE__);
+tester.testSrc(0'^re:=RegExp(".(79.|3.|7.)");^
+   0'^re.search("Z");  var R=re.matched;^, Void,Void,T,__LINE__);
+
+tester.testSrc(0'^re:=RegExp(".(79.|3.|7.)..5|6");^
+   0'^re.search("Z794xy5");  var R=re.matched;^, Void,Void,T(T(0,7),"794"),__LINE__);
+tester.testSrc(0'^re:=RegExp(".(79.|3.|7.)..(5|6)");^
+   0'^var R=re.matches("Z794xy5");^, Void,Void,True,__LINE__);
+tester.testSrc(0'^re:=RegExp(".(79.|3.|7.)..(5|6)");^
+   0'^re.search("Z794xy5");  var R=re.matched;^, Void,Void,T(T(0,7),"794","5"),__LINE__);
+tester.testSrc(0'^re:=RegExp(".(79.|3.|7.)..(5|6)");^
+   0'^re.search("Z794xy7");  var R=re.matched;^, Void,Void,T,__LINE__);
+
+tester.testSrc(
+   0'^var R=RegExp("79.|3.|7."); R.search("139350936979874",True);^
+   "R=R.matched",Void,Void,L(L(1,2)),__LINE__);
+tester.testSrc(
+   0'^var R=RegExp("79.|3.|7."); R.search("139350936979874",True);^
+   "R=R.matched",Void,Void,L(L(1,2)),__LINE__);
+tester.testSrc(
+   0'^var R=RegExp("(79.|3.|7.)"); R.search("139350936979874",True);^
+   "R=R.matched",Void,Void,L(L(1,2),"39"),__LINE__);
+
+tester.testSrc(
+   0'^var R=RegExp(".+txt$|.+log$"); R=R.matches("testThemAll.log");^,
+   Void,Void,True,__LINE__);
+tester.testSrc(
+   0'^var R=RegExp(".+log$|.+txt$"); R=R.matches("testThemAll.log");^,
+   Void,Void,True,__LINE__);
+
+tester.testSrc(
+   0'~var R=RegExp("^t.+txt$|^t.+log$"); R=R.matches("testThemAll.log");~,
+   Void,Void,True,__LINE__);
+tester.testSrc(
+   0'~var R=RegExp("^t.+log$|^t.+txt$"); R=R.matches("testThemAll.log");~,
+   Void,Void,True,__LINE__);
+
+tester.testSrc(
+   0'^var R=RegExp("(.+)log$"); R.search("testThemAll.log"); R=R.matched[1];^,
+   Void,Void,"testThemAll.",__LINE__);
+tester.testSrc(
+   0'^var R=RegExp("(.+)txt$|(.+)log$"); R.search("testThemAll.log");^
+   "R=R.matched[1];",  Void,Void,"testThemAll.",__LINE__);
+tester.testSrc(
+   0'^var R=RegExp("(.+)log$|(.+)txt$"); R.search("testThemAll.log");^
+   "R=R.matched[1];",  Void,Void,"testThemAll.",__LINE__);
+
+
+tester.testSrc(0'!r:=RegExp("((1|2))");!
+   0'|r.search("1"); var R=r.matched|, Void,Void,L(L(0,1),"1","1"),__LINE__);
+tester.testSrc(0'!r:=RegExp("((1|2))");!
+   0'|r.search("2"); var R=r.matched|, Void,Void,L(L(0,1),"2","2"),__LINE__);
+
+tester.testSrc(0'!r:=RegExp("((2)(b))");!
+   0'|r.search("2b"); var R=r.matched|, Void,Void,L(L(0,2),"2b","2","b"),__LINE__);
+
+tester.testSrc(0'!r:=RegExp("((2)|(b))");!
+   0'|r.search("2b"); var R=r.matched|, Void,Void,L(L(0,1),"2","2"),__LINE__);
+tester.testSrc(0'!r:=RegExp("((1|2)|(a|b))");!
+   0'|r.search("2b"); var R=r.matched|, Void,Void,L(L(0,1),"2","2"),__LINE__);
+tester.testSrc(0'!r:=RegExp("((2)|(b))");!
+   0'|r.search("b2"); var R=r.matched|, Void,Void,L(L(0,1),"b","b"),__LINE__);
+tester.testSrc(0'!r:=RegExp("((1|2)|(a|b))");!
+   0'|r.search("b"); var R=r.matched|, Void,Void,L(L(0,1),"b","b"),__LINE__);
+
+tester.testSrc(0'!r:=RegExp("((1|2)(a|b))");!
+   0'|r.search("1a"); var R=r.matched|, Void,Void,L(L(0,2),"1a","1","a"),__LINE__);
+tester.testSrc(0'!r:=RegExp("((1|2)(a|b))");!
+   0'|r.search("1b"); var R=r.matched|, Void,Void,L(L(0,2),"1b","1","b"),__LINE__);
+
+tester.testSrc(0'!r:=RegExp("(a|b)|c");!
+   0'|r.search("c"); var R=r.matched|, Void,Void,L(L(0,1),""),__LINE__);
+tester.testSrc(0'!r:=RegExp("((a|b))|c");!
+   0'|r.search("c"); var R=r.matched|, Void,Void,L(L(0,1),"",""),__LINE__);
+
+tester.testSrc(0'!r:=RegExp("((a|b)|c)|((d|e)|f)");!
+   0'|r.search("cf"); var R=r.matched|, Void,Void,L(L(0,1),"c",""),__LINE__);
+
+tester.testSrc(0'!r:=RegExp("((a|b)|c)((d|e)|f)");!
+   0'|r.search("cf"); var R=r.matched|, Void,Void,L(L(0,2),"c","","f",""),__LINE__);
+tester.testSrc(0'!r:=RegExp("((a|b)|c)((d|e)|f)");!
+   0'|r.search("cd"); var R=r.matched|, Void,Void,L(L(0,2),"c","","d","d"),__LINE__);
+
+tester.testSrc(0'!r:=RegExp(".*(foo)|.*(bar)");!
+   0'|r.search("hohofoosam"); var R=r.matched[1]|, Void,Void,"foo",__LINE__);
+tester.testSrc(0'!r:=RegExp(".*(bar|foo)");!
+   0'|r.search("hohofoosam"); var R=r.matched[1]|, Void,"IndexError",Void,__LINE__);
+tester.testSrc(0'!r:=RegExp(".*(bar)|.*(foo)");!
+   0'|r.search("hohofoosam"); var R=r.matched[1]|, Void,Void,"foo",__LINE__);
+tester.testSrc(0'!r:=RegExp("(foo|bar)");!
+   0'|r.search("hohofoosam",True); var R=r.matched[1]|, Void,Void,"foo",__LINE__);
+
+#if 0
+tester.testSrc(0'!r:=RegExp("a|(b)");!  // !!! tag 1 not seen, not set
+   0'|r.search("a"); var R=r.matched|, Void,Void,L(L(0,1),""),__LINE__);
+#endif
+
+
+   				//////////////////////////// one or none: \?
+tester.testSrc(0'!r:=RegExp(0'~(colou\?r)~);!
+   0'|r.search("colour"); var R=r.matched[1]|, Void,Void,"colour",__LINE__);
+tester.testSrc(0'!r:=RegExp(0'~(colou\?r)~);!
+   0'|r.search("color"); var R=r.matched[1]|, Void,Void,"color",__LINE__);
+
+tester.testSrc(0'!r:=RegExp(0'~(a\?.)~);!
+   0'|r.search("cde"); var R=r.matched[1]|, Void,Void,"c",__LINE__);
+
+tester.testSrc(0'!r:=RegExp(0'~([ab]\?[de])~);!
+   0'|r.search("ae"); var R=r.matched[1]|, Void,Void,"ae",__LINE__);
+tester.testSrc(0'!r:=RegExp(0'~([ab]\?[de])~);!
+   0'|r.search("ee"); var R=r.matched[1]|, Void,Void,"e",__LINE__);
+tester.testSrc(0'!r:=RegExp(0'~([ab]\?[de]\?)~);!
+   0'|r.search("abc"); var R=r.matched[1]|, Void,Void,"a",__LINE__);
+tester.testSrc(0'!r:=RegExp(0'~([ab]\?[de]\?.)~);!
+   0'|r.search("abcd"); var R=r.matched[1]|, Void,Void,"ab",__LINE__);
+tester.testSrc(0'!r:=RegExp(0'~(.[ab]\?[de]\?.)~);!
+   0'|r.search("xabcd"); var R=r.matched[1]|, Void,Void,"xab",__LINE__);
+
+
+tester.testSrc(0'!r:=RegExp(0'~(a\?.|b\?.)~);!
+   0'|r.search("ade"); var R=r.matched[1]|, Void,Void,"ad",__LINE__);
+tester.testSrc(0'!r:=RegExp(0'~(a|b\?.)~);!
+   0'|r.search("ae"); var R=r.matched[1]|, Void,Void,"a",__LINE__);
+tester.testSrc(0'!r:=RegExp(0'~(a|b\?.)~);!
+   0'|r.search("xyz"); var R=r.matched[1]|, Void,Void,"x",__LINE__);
+tester.testSrc(0'!r:=RegExp(0'~(a|b\?.)~);!
+   0'|r.search("byz"); var R=r.matched[1]|, Void,Void,"by",__LINE__);
+
+tester.testSrc(0'!r:=RegExp(0'~(a|b\?d|e)~);!
+   0'|r.search("def"); var R=r.matched[1]|, Void,Void,"d",__LINE__);
+tester.testSrc(0'!r:=RegExp(0'~(a|b\?d|e)~);!
+   0'|r.search("ef"); var R=r.matched[1]|, Void,Void,"e",__LINE__);
+
+tester.testSrc(0'!r:=RegExp(0'~(a\?\?)~);!
+   0'|r.search("abc"); var R=r.matched[1]|, Void,Void,"a",__LINE__);
+
+
+
+   				//////////////////////// .replace
+tester.testSrc(0'^var R=RegExp(".*(foo)|.*(bar)");^
+   0'^R=R.replace("That is a foo bird", fcn(m){ m.toUpper() })^,
+   Void,Void,"That is a FOO bird",__LINE__);
+tester.testSrc(0'^var R=RegExp(".*(bar)|.*(foo)");^
+   0'^R=R.replace("That is a foo bird", fcn(m){ m.toUpper() })^,
+   Void,Void,"That is a FOO bird",__LINE__);
+tester.testSrc(0'^var R=RegExp(".*(foo)");^
+   0'^R=R.replace("That is a foo bird", fcn(m){ m.toUpper() })^,
+   Void,Void,"That is a FOO bird",__LINE__);
+
+tester.testSrc(0'^var R=RegExp(".*foo");^
+   0'^R=R.replace("That is a foo bird", fcn(m){ m.toUpper() })^,
+   Void,Void,"That is a foo bird",__LINE__);
+
+tester.testSrc(0'^var R=RegExp(".*(foo)");^
+   0'^R=R.replace("That is a foo bird foo", fcn(m){ m.toUpper() })^,
+   Void,Void,"That is a FOO bird FOO",__LINE__);
+tester.testSrc(0'^var R=RegExp(".*(foo)");^
+   0'^R=R.replace("That is a foo bird foo", fcn(m){ m.toUpper() },1)^,
+   Void,Void,"That is a FOO bird foo",__LINE__);
+tester.testSrc(0'^var R=RegExp(".*(foo)");^
+   0'^R=R.replace("That is a foo bird", fcn(m){ m.toUpper() },5)^,
+   Void,Void,"That is a FOO bird",__LINE__);
+
+tester.testSrc(0'^var R=RegExp(".* (\\w+) bird");^
+   0'^R=R.replace("That is a foo bird", fcn(m){ m.toUpper() },5)^,
+   Void,Void,"That is a FOO bird",__LINE__);
+
+
+
+		//// manual example
+#if 0
+tester.testSrc(
+   0'^var R=RegExp("79.|3.|7.|.").glob("139350936979874",List().append)^,
+   Void,Void,L("1","39","35","0","9","36","9","798","74"),__LINE__);
+tester.testSrc(
+   0'^var R=RegExp("79.|3.|7.").glob("139350936979874",List())^,
+   Void,Void,L("39","35","36","798","74"),__LINE__);
+#endif
+tester.testSrc(
+   0'^var R=RegExp("79.|3.|7.").pump("139350936979874",List)^,
+   Void,Void,L("39","35","36","798","74"),__LINE__);
+tester.testSrc(
+   0'^var R=RegExp("79.|3.|7.").pump("139350936979874",3,List)^,
+   Void,Void,L("39","35","36"),__LINE__);
+tester.testSrc(
+   0'^var R=RegExp("\\$(..)\\$").pump("foo$ab$bar$cd$santa",List)^,
+   Void,Void,L("ab","cd"),__LINE__);
+
+
+#if 0
+tester.testSrc(
+   0'^var R=RegExp("\\$(..)\\$").glob("935$ab$0936$cd$979874",List())^,
+   Void,Void,L("ab","cd"),__LINE__);
+#endif
+
+tester.testSrc(
+   0'^var R=RegExp("\\$(..)\\$").pump("935$ab$0936$cd$979874",List)^,
+   Void,Void,L("ab","cd"),__LINE__);
+
+tester.testSrc(0'^var R=RegExp("2+").dfa^,Void,Void,Void,__LINE__);
+#<<<#
+	CHR 2
+CLOSURE
+	CHR 2
+END
+END
+#<<<#
+
+
+
+tester.stats();
+returnClass(tester);

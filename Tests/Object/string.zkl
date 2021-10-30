@@ -1,0 +1,990 @@
+// -*-c-*-
+// Test String
+
+tester := TheVault.Test.UnitTester.UnitTester(__FILE__);
+
+var lorem =  // test text
+#<<<
+"Lorem ipsum dolor sit amet, consectetur adipiscing elit.  Nunc ut luctus
+velit, non maximus lectus.  Integer nec sapien risus.  Morbi iaculis
+eget dolor sit amet scelerisque.  Sed efficitur interdum placerat.  Nam
+";
+#<<<
+
+
+		/////////////////////////////////////// \? quote chars
+tester.testSrc(0'|var R = ("\b").toAsc();|, Void,Void,8,__LINE__);
+tester.testSrc(0'|var R = ("\t").toAsc();|, Void,Void,9,__LINE__);
+tester.testSrc(0'|var R = ("\n").toAsc();|, Void,Void,10,__LINE__);
+tester.testSrc(0'|var R = ("\r").toAsc();|, Void,Void,13,__LINE__);
+tester.testSrc(0'|var R = ("\f").toAsc();|, Void,Void,12,__LINE__);
+tester.testSrc(0'|var R = ("\e").toAsc();|, Void,Void,27,__LINE__);
+
+tester.testRun(fcn { "\b".toAsc() },Void,8,__LINE__);
+tester.testRun(fcn { "\t".toAsc() },Void,9,__LINE__);
+tester.testRun(fcn { "\n".toAsc() },Void,10,__LINE__);
+tester.testRun(fcn { "\r".toAsc() },Void,13,__LINE__);
+tester.testRun(fcn { "\f".toAsc() },Void,12,__LINE__);
+tester.testRun(fcn { "\e".toAsc() },Void,27,__LINE__);
+
+		///////////////// hex
+tester.testSrc(0'"a\x9","SyntaxError",Void,Void,__LINE__);
+tester.testSrc(0'"a\x","SyntaxError",Void,Void,__LINE__);
+tester.testSrc(0'"a\","SyntaxError",Void,Void,__LINE__);
+tester.testSrc(0'"a\xXX","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R = 0'|a\Xab|",Void,Void,"aXab",__LINE__);
+tester.testSrc("var R = 0'|a\x00b|",Void,Void,"ab",__LINE__);
+tester.testRun(fcn { "\x09".toAsc() },Void,9,__LINE__);
+tester.testRun(fcn { "\x00".toAsc() },Void,0,__LINE__);
+tester.testRun(fcn { "".toAsc() },Void,0,__LINE__);
+tester.testRun(fcn { "\xff".toAsc() },Void,255,__LINE__);
+tester.testRun(fcn { "\xFF".toAsc() },Void,255,__LINE__);
+tester.testRun(fcn { "\x0a".toAsc() },Void,10,__LINE__);
+tester.testRun(fcn { "\x0A".toAsc() },Void,10,__LINE__);
+tester.testRun(fcn { "a\x09b" },Void,"a	b",__LINE__);
+
+
+		///////////////////// UTF-8 encoding
+tester.testSrc(0'|var R="\u2013".len(8)|,Void,Void,1,__LINE__);
+//tester.testSrc(0'|var R="\u2013".toData().bytes()|,Void,Void,T(0xe2,0x80,0x93,0),__LINE__);
+tester.testSrc(0'|class C{ const{ var k=Data(0,String,"\u2013") } fcn f{ k } }|
+    0'|var R=C.f().bytes()|,Void,Void,T(0xe2,0x80,0x93,0),__LINE__);
+
+    	// http://utf8everywhere.org/
+tester.testSrc(0'|var R="\U3243F;".len();|,Void,Void,4,__LINE__);
+tester.testSrc(0'|var R="\U3243F;".len(8);|,Void,Void,1,__LINE__);
+tester.testSrc(0'|var R="\U3243F;".len(-8);|,Void,Void,1,__LINE__);
+tester.testSrc(0'|var R=Data(Void,"\U3243F;").bytes();|,
+    Void,Void,L(0xf0, 0xb2, 0x90, 0xbf),__LINE__);
+
+
+tester.testSrc(0'|var R=("Vigen\Ue8;re cipher" == "Vigenère cipher");|,
+   Void,Void,True,__LINE__);
+
+// http://www.cl.cam.ac.uk/~mgk25/ucs/examples/UTF-8-test.txt
+
+tester.testSrc(0'|"\u"|,"SyntaxError",Void,Void,__LINE__);
+tester.testSrc(0'|"\u0"|,"SyntaxError",Void,Void,__LINE__);
+tester.testSrc(0'|"\u00"|,"SyntaxError",Void,Void,__LINE__);
+tester.testSrc(0'|"\u000"|,"SyntaxError",Void,Void,__LINE__);
+tester.testSrc(0'|"\u000x"|,"SyntaxError",Void,Void,__LINE__);
+//tester.testSrc(0'|"\U10000;"|,"SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc(0'|"\UD7FF0000;"|,"SyntaxError",Void,Void,__LINE__);
+//tester.testSrc(0'|"\U0000E000;"|,"SyntaxError",Void,Void,__LINE__);
+//tester.testSrc(0'|"\U0000FFFD;"|,"SyntaxError",Void,Void,__LINE__);
+//tester.testSrc(0'|"\U0010FFFF;"|,"SyntaxError",Void,Void,__LINE__);
+//tester.testSrc(0'|"\U00110000;"|,"SyntaxError",Void,Void,__LINE__);
+
+//tester.testSrc(0'|var R="\U00000080;".len()|,"SyntaxError",Void,2,__LINE__);
+//tester.testSrc(0'|var R="\U00000800;".len()|,"SyntaxError",Void,3,__LINE__);
+//tester.testSrc(0'|var R="\U00010000;".len()|,"SyntaxError",Void,4,__LINE__);
+tester.testSrc(0'|var R="\U00200000;".len()|,"SyntaxError",Void,5,__LINE__);
+tester.testSrc(0'|var R="\U04000000;".len()|,"SyntaxError",Void,6,__LINE__);
+
+tester.testSrc(0'|var R="\U0000007F;".len()|,"SyntaxError",Void,1,__LINE__);
+tester.testSrc(0'|var R="\U000007FF;".len()|,"SyntaxError",Void,2,__LINE__);
+tester.testSrc(0'|var R="\U0000FFFc;".len()|,"SyntaxError",Void,3,__LINE__);
+tester.testSrc(0'|var R="\U001FFFFF;".len()|,"SyntaxError",Void,4,__LINE__);
+tester.testSrc(0'|var R="\U03FFFFFF;".len()|,"SyntaxError",Void,5,__LINE__);
+tester.testSrc(0'|var R="\U7FFFFFFF;".len()|,"SyntaxError",Void,6,__LINE__);
+
+tester.testSrc(0'|var R="\U00D7FF;".apply(fcn(x){ x.toAsc().toString(16) })|,
+    Void,Void,"ed9fbf",__LINE__);
+tester.testSrc(0'|var R="\U20AC;".apply(fcn(x){ x.toAsc().toString(16) })|,
+    Void,Void,"e282ac",__LINE__);
+tester.testSrc(0'|var R="\U00FFFD;".apply(fcn(x){ x.toAsc().toString(16) })|,
+    Void,Void,"efbfbd",__LINE__);
+tester.testSrc(0'|var R="\U10FFFF;".apply(fcn(x){ x.toAsc().toString(16) })|,
+    Void,Void,"f48fbfbf",__LINE__);
+tester.testSrc(0'|var R="\U24B62;".apply(fcn(x){ x.toAsc().toString(16) })|,
+    Void,Void,"f0a4ada2",__LINE__);
+
+	/////////  Single UTF-16 surrogates
+tester.testSrc(0'|"\uD800"|,"SyntaxError",Void,Void,__LINE__);
+tester.testSrc(0'|"\uDb77"|,"SyntaxError",Void,Void,__LINE__);
+tester.testSrc(0'|"\uDB80"|,"SyntaxError",Void,Void,__LINE__);
+tester.testSrc(0'|"\uDBFF"|,"SyntaxError",Void,Void,__LINE__);
+tester.testSrc(0'|"\uDC00"|,"SyntaxError",Void,Void,__LINE__);
+tester.testSrc(0'|"\uDF80"|,"SyntaxError",Void,Void,__LINE__);
+tester.testSrc(0'|"\uDFFF"|,"SyntaxError",Void,Void,__LINE__);
+
+	////// illegal for whatever reason
+tester.testSrc(0'|"\ufffe"|,"SyntaxError",Void,Void,__LINE__); // ef,bf,be
+tester.testSrc(0'|"\uffff"|,"SyntaxError",Void,Void,__LINE__); // ef,bf,bf
+
+tester.testSrc(0'|var R = "\u00a2"; R = R[0].toAsc()*0x100 + R[1].toAsc()|,
+    Void,Void,0xC2A2,__LINE__);
+tester.testSrc(0'|var R = "\u20AC";|
+    "R = R[0].toAsc()*0x10000 + R[1].toAsc()*0x100 + R[2].toAsc()",
+    Void,Void,0xE282AC,__LINE__);
+tester.testSrc(0'|var R = "\u0041\u2262\u0391\u002e";|
+    0'|R = R.split("").pump(List,"toAsc")|,
+    Void,Void,T(0x41,0xe2,0x89,0xA2,0xce,0x91,0x2e),__LINE__);
+tester.testSrc(0'|var R = "\uD55C\uAD6D\uC5B4";|
+    0'|R = R.split("").pump(List,"toAsc")|,
+    Void,Void,T(0xED,0x95,0x9C,0xEA,0xB5,0xAD,0xEC,0x96,0xB4),__LINE__);
+tester.testSrc(0'|var R = "\u65E5\u672C\u8A9E";|
+    0'|R = R.walker().pump(List,"toAsc")|,
+    Void,Void,T(0xE6,0x97,0xA5,0xE6,0x9C,0xAC,0xE8,0xAA,0x9E),__LINE__);
+
+tester.testSrc(0'|var R = "\U41;\U2262;\U391;\U2E;";|
+    0'|R = R.split("").pump(List,"toAsc")|,
+    Void,Void,T(0x41,0xe2,0x89,0xA2,0xce,0x91,0x2e),__LINE__);
+tester.testSrc(0'|var R="\U0024;\U00A2;\U20AC;\U24B62;".len(8);|,
+    Void,Void,4,__LINE__);
+
+tester.testSrc(0'|var R = "\ufeff\u00A2 \u20ac".len() |,Void,Void,9,__LINE__);
+tester.testSrc(0'|var R = "\ufeff\u00A2 \u20ac".len(8)|,Void,Void,4,__LINE__);
+tester.testSrc(0'|var R="\xE2\x82\xAC".len(8);|,Void,Void,1,__LINE__);
+tester.testSrc(0'|var R="\x24\xc2\xa2\xE2\x82\xAC\xF0\xA4\xAD\xA2".len(8);|,
+    Void,Void,4,__LINE__);
+
+tester.testSrc(0'|var R = "\U3c0;".len(8) |,Void,Void,1,__LINE__); // pi
+
+
+		///////////////////// UTF-8 decoding
+tester.testSrc(0'|"\x80".len(8)|,Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|"\xbf".len(8)|,Void,"ValueError",Void,__LINE__);
+
+tester.testSrc(0'|"\xfe".len(8)|,Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|"\xff".len(8)|,Void,"ValueError",Void,__LINE__);
+
+tester.testSrc(0'|"\xdf ".len(8)|,Void,"ValueError",Void,__LINE__);
+
+tester.testSrc(0'|"\xc1\x80".len(8)|,Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|"\xC0\xae".len(8)|,Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|"\xc0".len(8)|,Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|"\x80".len(8)|,Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|"\xC0".len(8)|,Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|"\xC1".len(8)|,Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|"\xff\xb1\xb1\xb1\xb1\xb1\xb1\xb1".len(8)|,Void,"ValueError",Void,__LINE__);
+
+	///////////////// overlongs
+//"\xF0\x82\x82\xAC".len(8) over long is invald form of E2 82 AC
+tester.testSrc(0'|"\xF0\x82\x82\xAC".len(8)|,Void,"ValueError",Void,__LINE__);
+
+tester.testSrc(0'|"\xc0\x80".len(8)|,Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|"\xe0\x80\x80".len(8)|,Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|"\xf0\x80\x80\x80".len(8)|,Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|"\xf8\x80\x80\x80\x80".len(8)|,Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|"\xfc\x80\x80\x80\x80\x80".len(8)|,Void,"ValueError",Void,__LINE__);
+
+tester.testSrc(0'|"\xfc\x80\x80\x80\x80\xaf".len(8)|,Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|"\xf8\x80\x80\x80\xaf".len(8)|,Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|"\xf0\x80\x80\xaf".len(8)|,Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|"\xe0\x80\xaf".len(8)|,Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|"\xc0\xaf".len(8)|,Void,"ValueError",Void,__LINE__);
+
+tester.testSrc(0'|"\xfc\x83\xbf\xbf\xbf\xbf".len(8)|,Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|"\xf8\x87\xbf\xbf\xbf".len(8)|,Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|"\xf0\x8f\xbf\xbf".len(8)|,Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|"\xe0\x9f\xbf".len(8)|,Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|"\c1\xbf".len(8)|,Void,"ValueError",Void,__LINE__);
+
+	////////////////  Single UTF-16 surrogates  
+tester.testSrc(0'|"\xed\xa0\x80".len(8)|,Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|"\xed\xad\xbf".len(8)|,Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|"\xed\xae\x80".len(8)|,Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|"\xed\xaf\xbf".len(8)|,Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|"\xed\xb0\x80".len(8)|,Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|"\xed\xbe\x80".len(8)|,Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|"\xed\xbf\xbf".len(8)|,Void,"ValueError",Void,__LINE__);
+
+	/////////////// Paired UTF-16 surrogates
+tester.testSrc(0'|"\xed\xa0\x80\xed\xb0\x80".len(8)|,Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|"\xed\xa0\x80\xed\xbf\xbf".len(8)|,Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|"\xed\xad\xbf\xed\xb0\x80".len(8)|,Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|"\xed\xad\xbf\xed\xbf\xbf".len(8)|,Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|"\xed\xae\x80\xed\xb0\x80".len(8)|,Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|"\xed\xae\x80\xed\xbf\xbf".len(8)|,Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|"\xed\xaf\xbf\xed\xb0\x80".len(8)|,Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|"\xed\xaf\xbf\xed\xbf\xbf".len(8)|,Void,"ValueError",Void,__LINE__);
+
+tester.testSrc(0'|"\xef\xbf\xbe".len(8)|,Void,"ValueError",Void,__LINE__); //U+fffe
+tester.testSrc(0'|"\xef\xbf\xbf".len(8)|,Void,"ValueError",Void,__LINE__); //U+ffff
+
+
+	//////////////////////////////////////// .find and .rfind
+tester.testSrc("var R = (\"123\").find(\"1\");", Void,Void,0,__LINE__);
+tester.testSrc("var R = (\"123\").rfind(\"1\");",Void,Void,0,__LINE__);
+tester.testSrc("var R = (\"123\").find(\"3\");", Void,Void,2,__LINE__);
+tester.testSrc("var R = (\"123\").rfind(\"3\");",Void,Void,2,__LINE__);
+tester.testSrc("var R = (\"12.3..\").find(\"..\");", Void,Void,4,__LINE__);
+tester.testSrc("var R = (\"12.3..\").rfind(\"..\");", Void,Void,4,__LINE__);
+tester.testSrc("var R = (\"..12.3..\").find(\"..\");", Void,Void,0,__LINE__);
+tester.testSrc(0'|var R = "..12.3..".rfind("..");|, Void,Void,6,__LINE__);
+tester.testSrc("var R = (\".1.2...3..\").find(\"..\");", Void,Void,4,__LINE__);
+tester.testSrc("var R = (\"..1.2...3.\").rfind(\"..\");", Void,Void,6,__LINE__);
+
+tester.testSrc(0'|var R = "..12.3..".rfind("..",0);|, Void,Void,0,__LINE__);
+tester.testSrc(0'|var R = "..12.3..".rfind("..",1);|, Void,Void,0,__LINE__);
+tester.testSrc(0'|var R = "..12.3..".rfind("..",2);|, Void,Void,0,__LINE__);
+tester.testSrc(0'|var R = "..12.3..".rfind("..",5);|, Void,Void,0,__LINE__);
+tester.testSrc(0'|var R = "..12.3..".rfind("..",6);|, Void,Void,6,__LINE__);
+tester.testSrc(0'|var R = "..12.3..".rfind("..",7);|, Void,Void,6,__LINE__);
+tester.testSrc(0'|var R = "..12.3..".rfind("..",8);|, Void,Void,6,__LINE__);
+tester.testSrc(0'|var R = "..12.3..".rfind("..",*);|, Void,Void,6,__LINE__);
+tester.testSrc(0'|var R = "..".rfind("..",0);|, Void,Void,0,__LINE__);
+	// manual
+tester.testSrc(0'|var R = "..X..".rfind("..",-2);|, Void,Void,3,__LINE__);
+tester.testSrc(0'|var R = "..X..".rfind("..",3);|,  Void,Void,3,__LINE__);
+tester.testSrc(0'|var R = "..".rfind("..",0);|, Void,Void,0,__LINE__);
+tester.testSrc(0'|var R = "..".rfind("..",1) ;|, Void,Void,0,__LINE__);
+
+
+tester.testSrc("var R = (\"..12.3..\").find(\".*\");",Void,Void,Void,__LINE__);
+tester.testSrc("var R = (\"..12.3..\").find(\".*\");",Void,Void,Void,__LINE__);
+
+tester.testSrc("var R = (\"123\").find(\"1\",1);",Void,Void,Void,__LINE__);
+tester.testSrc("var R = (\"123\").find(\"3\",1);",Void,Void,2,__LINE__);
+tester.testSrc("var R = (\"123\").find(\"2\",0);",Void,Void,1,__LINE__);
+tester.testSrc("var R = (\"123\").find(\"23\",2);",Void,Void,Void,__LINE__);
+tester.testSrc("var R = (\"123\").find(\"23\",1,*);",Void,Void,1,__LINE__);
+tester.testSrc("var R = (\"123\").find(\"23\",1,1);",Void,Void,Void,__LINE__);
+tester.testSrc(0'|var R = "123123123".find("12",1);|,Void,Void,3,__LINE__);
+
+tester.testSrc("var R = (\"123\").find(\"1234\");",Void,Void,Void,__LINE__);
+tester.testSrc("var R = (\"123\").find(\"1234\",1,1);",Void,Void,Void,__LINE__);
+tester.testSrc("var R = (\"123\").find(\"1234\",1);",Void,Void,Void,__LINE__);
+
+tester.testSrc("var R = \"1234567\".find(\"23\",0,2);",Void,Void,Void,__LINE__);
+tester.testSrc("var R = \"1234567\".find(\"23\",0,3);",Void,Void,1,__LINE__);
+tester.testSrc("var R = \"1234567\".find(\"23\",1,2);",Void,Void,1,__LINE__);
+
+tester.testSrc(0'|var R = ("123").find("3",100);|,Void,Void,Void,__LINE__);
+tester.testSrc(0'|var R = ("123").find("3",100,200);|,Void,Void,Void,__LINE__);
+
+
+			////////////////// .inCommon
+tester.testSrc(0'|var R = "123".inCommon("34");|,Void,Void,"3",__LINE__);
+tester.testSrc(0'|var R = "123".inCommon("");|,Void,Void,"",__LINE__);
+tester.testSrc(0'|var R = "".inCommon("34");|,Void,Void,"",__LINE__);
+tester.testSrc(0'|var R = "1".inCommon("34");|,Void,Void,"",__LINE__);
+tester.testSrc(0'|var R = "1234567890".inCommon("34","5","6");|,
+	Void,Void,"3456",__LINE__);
+tester.testSrc(0'|var R = "foo\nbar\n".inCommon("\n");|,Void,Void,"\n\n",Void,Void,Void,__LINE__);
+
+// C Uninitialized value bug (actually signed char index bug)
+tester.testSrc(0'|var R = "\u00e8".inCommon("");|,Void,Void,"",Void,Void,Void,__LINE__);
+tester.testSrc(0'|var R = "\u00e8".inCommon("\UE8;");|,Void,Void,"\Ue8;",Void,Void,Void,__LINE__);
+
+
+
+			////////////////// .unique
+tester.testSrc(0'|var R = "123".unique();|,Void,Void,"123",__LINE__);
+tester.testSrc(0'|var R = "this is a test"; R -= R.unique();|,Void,Void,"",__LINE__);
+tester.testSrc(0'|var R = "".unique();|,Void,Void,"",__LINE__);
+tester.testSrc(0'|var R = "foo\nbar\n".inCommon("\n").unique();|,
+    Void,Void,"\n",__LINE__);
+
+			////////////////// .reverse
+tester.testSrc(0'|var R = "".reverse();|,Void,Void,"",__LINE__);
+tester.testSrc(0'|var R = "1".reverse();|,Void,Void,"1",__LINE__);
+tester.testSrc(0'|var R = "12".reverse();|,Void,Void,"21",__LINE__);
+tester.testSrc(0'|var R = "123".reverse();|,Void,Void,"321",__LINE__);
+tester.testSrc(0'|var R = "1234".reverse();|,Void,Void,"4321",__LINE__);
+
+
+			/////////////////////////////////////// opSub, minus
+tester.testSrc(0'|var R = ("123" - "34");|,Void,Void,"12",__LINE__);
+tester.testSrc(0'|var R = ("123345" - "34");|,Void,Void,"125",__LINE__);
+tester.testSrc(0'|var R = ("12345" - "");|,Void,Void,"12345",__LINE__);
+tester.testSrc(0'|var R = ("12345" - 1);|,Void,"TypeError",Void,__LINE__);
+
+
+			////////////////////////////////////////////// .del
+tester.testSrc(0'|var R = "12345".del(0);|,Void,Void,"2345",__LINE__);
+tester.testSrc(0'|var R = "12345".del(1);|,Void,Void,"1345",__LINE__);
+tester.testSrc(0'|var R = "12345".del(0,10);|,Void,Void,"",__LINE__);
+tester.testSrc(0'|var R = "12345".del(0,4);|,Void,Void,"5",__LINE__);
+tester.testSrc(0'|var R = "12345".del(4,1);|,Void,Void,"1234",__LINE__);
+tester.testSrc(0'|var R = "12345".del(-3,*);|,Void,Void,"12",__LINE__);
+tester.testSrc(0'|var R = "".del(0);|,Void,"IndexError",Void,__LINE__);
+tester.testSrc(0'|var R = "1".del(0);|,Void,Void,"",__LINE__);
+
+
+			///////////////////////////// .matches, .glob
+tester.testSrc(0'|var R = "x".matches("X",0);|,  Void,Void,False,__LINE__);
+tester.testSrc(0'|var R = "x".matches("X",1);|,  Void,Void,True,__LINE__);
+tester.testSrc(0'|var R = "X".matches("x",0);|,  Void,Void,False,__LINE__);
+tester.testSrc(0'|var R = "X".matches("x",1);|,  Void,Void,True,__LINE__);
+tester.testSrc(0'|var R = "x".matches("[X]",1);|, Void,Void,False,__LINE__);
+tester.testSrc(0'|var R = "X".matches("[x]",1);|, Void,Void,False,__LINE__);
+
+tester.testSrc(0'|var R = "1abc".matches("[0-9]*");|,
+	Void,Void,True,__LINE__);
+tester.testSrc(0'|var R = "!".matches("[!+-]");|, Void,Void,True,__LINE__);
+tester.testSrc(0'|var R = "-".matches("[!+-]");|, Void,Void,True,__LINE__);
+tester.testSrc(0'|var R = ".".matches("[!+-]");|, Void,Void,False,__LINE__);
+tester.testSrc(0'|var R = ".".matches("[-]");|, Void,Void,False,__LINE__);
+tester.testSrc(0'|var R = "-".matches("[-]");|, Void,Void,True,__LINE__);
+tester.testSrc(0'|var R = "a".matches("[a-z]");|, Void,Void,True,__LINE__);
+tester.testSrc(0'|var R = "b".matches("[a-]");|, Void,Void,False,__LINE__);
+tester.testSrc(0'|var R = "a".matches("[b-y]");|, Void,Void,False,__LINE__);
+tester.testSrc(0'|var R = "z".matches("[b-y]");|, Void,Void,False,__LINE__);
+tester.testSrc(0'|var R = "ab".matches("[a-z]");|, Void,Void,False,__LINE__);
+tester.testSrc(0'|var R = "ab".matches("[a-z]*");|, Void,Void,True,__LINE__);
+
+tester.testSrc(0'|var R = "[a-z]*".glob("ab");|,   Void,Void,True,__LINE__);
+tester.testSrc(0'|var R = "[a-z]*".glob("ab",0);|, Void,Void,True,__LINE__);
+tester.testSrc(0'|var R = "[A-Z]*".glob("ab",0);|, Void,Void,False,__LINE__);
+tester.testSrc(0'|var R = "[A-Z]*".glob("AB",0);|, Void,Void,True,__LINE__);
+
+tester.testSrc(0'|foo:="".matches.unbind().fp1("[A-Z]*");|
+   0'|var R=foo("AB",0);|, Void,Void,True,__LINE__);
+tester.testSrc(0'|foo:="".glob.unbind();|
+   0'|var R=foo("[A-Z]*","AB",0);|, Void,Void,True,__LINE__);
+
+
+tester.testSrc(0'|var R = "a".matches("[]");|, Void,Void,False,__LINE__);
+tester.testSrc(0'|var R = "a".matches("[");|, Void,Void,False,__LINE__);
+tester.testSrc(0'|var R = "[".matches("[[]");|, Void,Void,True,__LINE__);
+tester.testSrc(0'|var R = "a".matches("[[a]");|, Void,Void,True,__LINE__);
+tester.testSrc(0'|var R = "]".matches("]");|, Void,Void,True,__LINE__);
+tester.testSrc(0'|var R = "]".matches("[]]");|, Void,Void,True,__LINE__);
+tester.testSrc(0'|var R = "]".matches("[]-]");|, Void,Void,True,__LINE__);
+tester.testSrc(0'|var R = "-".matches("[]-]");|, Void,Void,True,__LINE__);
+tester.testSrc(0'|var R = "-".matches("[]abc-]");|, Void,Void,True,__LINE__);
+tester.testSrc(0'|var R = "a".matches("[]abc-]");|, Void,Void,True,__LINE__);
+tester.testSrc(0'|var R = "c".matches("[]abc-]");|, Void,Void,True,__LINE__);
+tester.testSrc(0'|var R = "d".matches("[]abc-]");|, Void,Void,False,__LINE__);
+tester.testSrc(0'|var R = |
+	0'|"-adobe-courier-bold-o-normal--12-120-75-75-m-70-iso8859-1"|
+	0'|.matches("-*-*-*-*-*-*-12-*-*-*-m-*-*-*");|, Void,Void,True,__LINE__);
+tester.testSrc(0'|var R = |
+	0'|"-adobe-courier-bold-o-normal--12-120-75-75-X-70-iso8859-1"|
+	0'|.matches("-*-*-*-*-*-*-12-*-*-*-m-*-*-*");|, Void,Void,False,__LINE__);
+
+	//// and now, ozan s. yigit's glob test cases
+globbers := L(
+//    Pattern		Result  Text
+//    -------		------  ----
+   L("*",		True,	"a"),
+   L("*",		True,	"abc"),
+   L("?",		True,	"a"),
+   L("[",		False,	"a"),
+   L("[-z-]",		True,	"-"),		// different from oz
+   L("[a-z-]",		True,	"a"),		// different from oz
+   L("[-]abc",		True,	"-abc"),
+   L("[-abc]?",		False,	"dd"),
+   L("[-abc]?",		True,	"-b"),
+   L("[a-c][a-c][a-c]",	True,	"abc"),
+   L("[]",		False,	"a"),
+   L("[]!-z]abc",	True,	"^abc"),	// different from oz
+   L("[]]abc",		True,	"]abc"),
+   L("[]abc[a]",	True,	"a"),
+   L("[]abc[de]",	True,	"["),
+   L("[]abc[de]",	True,	"]"),
+   L("[]abc[de]",	True,	"d"),
+   L("[^a-z]",		False,	"a"),
+   L("[^a-z]",		True,	"A"),
+   L("[a-z]",		True,	"a"),
+   L("[ab",		False,	"a"),
+   L("[abc]??[def]",	False,	"abca"),
+   L("[abc]??[def]",	False,	"abcg"),
+   L("[abc]??[def]",	True,	"abcd"),
+   L("[b-",		False,	"ar"),
+   L("[z-a]",		False,	"a"),		// different from oz
+   L("[z-a]",		True,	"z"),
+   L(0'"\\?\\?\\*!\\[abc\\]",True,	"??*![abc]"),
+   L("ab[a-z]?a*b",	False,	"abCdaxxxxb"),
+   L("ab[a-z]?a*b",	False,	"abc"),
+   L("ab[a-z]?a*b",	True,	"abcdab"),
+   L("ab[a-z]?a*b",	True,	"abcdaxxxxb"),
+   L("xxx",		True,	"xxx"),
+
+   	// and some of my own
+   L("[]-]",		True,	"]"),
+   L("[]-]",		True,	"-"),
+
+   L("[^]-]",		True,	"a"),
+   L("[^]-]",		False,	"]"),
+   L("[^]-]",		False,	"-"),
+
+   L("[-z]*",		False,	"a"),
+   L("[-z]*",		True,	"-"),
+   L("[-z]*",		True,	"z"),
+   L("[a-]",		True,	"a"),
+   L("[a-]",		True,	"-"),
+   L("[a-]",		False,	"b"),
+
+   L("[a-]*",		True,	"ab"),
+   L("[a-]*",		False,	"bb"),
+   L("[a-]*",		True,	"ab"),
+   L("[a-]*",		True,	"-b"),
+
+   L("[a-z[]?",		True,	"[a"),
+);
+
+foreach glob in (globbers)
+{
+   gt := 0'|var R = "%s".matches("%s")|.fmt(glob[2],glob[0]);
+   tester.testSrc(gt,Void,Void,glob[1],__LINE__);
+//   println(gt);
+}
+
+
+				/////////////////////// .apply, .pump
+tester.testSrc("var R = \"\".apply()",Void,"MissingArg",Void,__LINE__);
+tester.testSrc("var R = \"\".apply(Void)",Void,Void,"",__LINE__);
+tester.testSrc("var R = \"\".pump(String)",Void,Void,"",__LINE__);
+
+tester.testSrc("var R = \"123\".apply(fcn(c){(c.toAsc()+1).toChar()})",
+    Void,Void,"234",__LINE__);
+tester.testSrc("var R = \"123\".apply(fcn(x,y){(x.toAsc()+y).toChar()},3)",
+    Void,Void,"456",__LINE__);
+tester.testSrc("var R = \"123\".apply(fcn(x,y){(x.toAsc()+y).toChar()},3)",
+    Void,Void,"456",__LINE__);
+tester.testSrc("var R = \"123\".apply(fcn(x,y,z=1){(x.toAsc()+y+z).toChar()},3)",
+    Void,Void,"567",__LINE__);
+tester.testSrc("var R;"
+    0'|R="abc".apply(fcn(c){if (c!="b") c.toUpper() else Void.Skip});|,
+    Void,Void,"AC",__LINE__);
+
+tester.testSrc(0'|var R="".pump(String,"toAsc","toString");|,Void,Void,"",__LINE__);
+tester.testSrc(0'|var R="12a".pump(String,"toAsc","toString");|,
+   Void,Void,"495097",__LINE__);
+tester.testSrc(0'|var R="12a".pump(String,"toAsc");|,Void,Void,"495097",__LINE__);
+tester.testSrc(0'|var R="12a".apply(fcn(c){ c.toAsc().toString()[0] });|,
+   Void,Void,"459",__LINE__);
+
+tester.testSrc(0'|var R="123".apply(Void);|,Void,Void,"123",__LINE__);
+
+tester.testSrc(0'|var R="123".pump(Void,fcn(c){ (c.toAsc()+1).toChar() },|
+    0'|fcn(c,ref){ ref.set(String(ref.value,c)) }.fp1(Ref(""))).value;|,
+    Void,Void,"234",__LINE__);
+tester.testSrc(0'|var R=|
+    0'|"123".pump(String,fcn(c){ (c.toAsc()+1).toChar() });|,
+    Void,Void,"234",__LINE__);
+tester.testSrc(0'|var R="123".pump(Void,fcn(c){ (c.toAsc()+1).toChar() },|
+    0'|fcn(c,d){d.append(c)}.fp1(Data())).text;|,
+    Void,Void,"234",__LINE__);
+tester.testSrc(0'|d:=Data();"123".pump(Void,fcn(c){ (c.toAsc()+1).toChar() },|
+    0'|d.append); var R=d.text;|, Void,Void,"234",__LINE__);
+tester.testSrc(0'|var R="123".pump(Void,fcn(c){( c.toAsc()+1).toChar() },|
+    0'|Data().append).text;|, Void,Void,"234",__LINE__);
+
+tester.testSrc(0'|var R="123".pump(String,T("toString",16));|,
+    Void,Void,"123",__LINE__);
+
+tester.testSrc(0'|var R="1233333345".pump(3,String)|,Void,Void,"123",__LINE__);
+tester.testSrc(0'|var R="1233333345".pump(3,String,|
+    0'|fcn(c){ if(c=="3") Void.Skip else c });|,Void,Void,"124",__LINE__);
+
+tester.testSrc(0'|var R="12345".pump(List,T(Void.Read,2,False),String)|,
+   Void,Void,T("123","45"),__LINE__);
+
+tester.testSrc(0'|var R; w:="abc".walker(); w.pump(Void); R=w.pump(List);|,
+    Void,Void,T,__LINE__);
+tester.testSrc(0'|var R; w:="abc".walker(); w.walk(99); R=w.pump(List);|,
+    Void,Void,T,__LINE__);
+
+tester.testSrc(0'|var R="abc".apply(fcn(c){c.toAsc()});|,
+    Void,Void,"979899",__LINE__);
+tester.testSrc(0'|var R="abc".apply(fcn(c){ (c.toAsc()+1).toChar() });|,
+    Void,Void,"bcd",__LINE__);
+
+		/////////////// bad corrupter bug
+tester.testSrc(0'|var R = L();|
+    0'|"ab".apply(fcn(a,out){out(a);out("-");""},R.append);|
+    "do(2) { GarbageMan.collect(); }",Void,Void,T("a","-","b","-"),__LINE__);
+
+
+			/////////////////////////// .filter
+tester.testSrc(
+    0'|var R="This is a test".filter("Tt".holds)|, Void,Void,"Ttt",__LINE__);
+tester.testSrc(
+    0'|var R="This is a test".filter(fcn(c){ (not c.isSpace()) })|,
+    Void,Void,"Thisisatest",__LINE__);
+tester.testSrc(
+    0'|var R="This is a test".pump(String,fcn(x){ "Tt".holds(x) },Void.Filter)|,
+    Void,Void,"Ttt",__LINE__);
+tester.testSrc("var R=\"This \t is  a test\""
+    0'|.pump(String,fcn(x){ (not x.isSpace()) },Void.Filter)|,
+    Void,Void,"Thisisatest",__LINE__);
+tester.testSrc(0'|var R="foo\nbar\n".pump(String,"\n".holds,Void.Filter);|, 
+    Void,Void,"\n\n",__LINE__);
+tester.testSrc(0'|var R="foo bar ".pump(List," ".holds,Void.Filter);|, 
+    Void,Void,T(" "," "),__LINE__);
+
+
+			/////////////////////////////// *
+tester.testSrc("var R = \"X\" * 3",Void,Void,"XXX",__LINE__);
+tester.testSrc("var R = \"X\" * 3.5",Void,"TypeError",Void,__LINE__);
+tester.testSrc("var R = \"X\" * 1",Void,Void,"X",__LINE__);
+tester.testSrc("var R = \"X\" * 0",Void,Void,"",__LINE__);
+tester.testSrc("var R = \"X\" * -10",Void,Void,"",__LINE__);
+
+
+			/////////////////////////////// -
+tester.testSrc("var R = \"X\" - \"1\"",Void,Void,"X",__LINE__);
+tester.testSrc("var R = \"1\" - \"1\"",Void,Void,"",__LINE__);
+tester.testSrc("var R = \"1X\" - \"1\"",Void,Void,"X",__LINE__);
+tester.testSrc("var R = \"1X11111111111Y\" - \"1\"",Void,Void,"XY",__LINE__);
+tester.testSrc("var R = \"1X11111111111Y\" - \"11\"",Void,Void,"XY",__LINE__);
+tester.testSrc("var R = \"1X1111X111111Y\" - \"1X\"",Void,Void,"Y",__LINE__);
+tester.testSrc("var R = \"123456\" - (3.5).toString()",Void,Void,"1246",__LINE__);
+
+
+			/////////////////////////////// +
+tester.testSrc("var R = \"X\" + 1",Void,Void,"X1",__LINE__);
+
+
+			/////////////////////////////// <, <=, >, >=
+tester.testSrc("var R = \"X\" < \"x\"",Void,Void,True,__LINE__);
+tester.testSrc("var R = \"x\" < \"X\"",Void,Void,False,__LINE__);
+tester.testSrc("var R = \"X\" < \"X\"",Void,Void,False,__LINE__);
+tester.testSrc("var R = \"abc\" < \"abcd\"",Void,Void,True,__LINE__);
+
+tester.testSrc("var R = \"X\" <= \"X\"",Void,Void,True,__LINE__);
+
+tester.testSrc("var R = \"X\" >  \"X\"",Void,Void,False,__LINE__);
+tester.testSrc("var R = \"X\" >= \"X\"",Void,Void,True,__LINE__);
+
+
+			////////////////////////////// .fits
+tester.testSrc(0'|var R = "foo".prefix("foobar")|,Void,Void,3,__LINE__);
+tester.testSrc(0'|var R = "foobar".prefix("foo")|,Void,Void,3,__LINE__);
+tester.testSrc(0'|var R = "foo".prefix("barfoo")|,Void,Void,0,__LINE__);
+tester.testSrc(0'|var R = "xfoo".prefix("foo")|,Void,Void,0,__LINE__);
+tester.testSrc(0'|var R = "".prefix("foo")|,Void,Void,0,__LINE__);
+tester.testSrc(0'|var R = "foo".prefix("foobar","fud")|,Void,Void,1,__LINE__);
+tester.testSrc(0'|var R = "foo".prefix("foobar","fud","")|,Void,Void,0,__LINE__);
+
+tester.testSrc(0'|var R="interspecies".prefix("interstelar","interstate")|,Void,Void,6,__LINE__);
+tester.testSrc(0'|var R="throne".prefix("throne")|,Void,Void,6,__LINE__);
+tester.testSrc(0'|var R="throne".prefix("dungeon")|,Void,Void,0,__LINE__);
+tester.testSrc(0'|var R="cheese".prefix("cheese")|,Void,Void,6,__LINE__);
+tester.testSrc(0'|var R="".prefix("")|,Void,Void,0,__LINE__);
+tester.testSrc(0'|var R="prefix".prefix("suffix")|,Void,Void,0,__LINE__);
+
+
+			/////////////////////////////// .split
+tester.testSrc("var R = \"   1 2    4  5 \".split()",
+   Void,Void,L("1","2","4","5"),__LINE__);
+tester.testSrc("var R = \"1 2    4  56\".split(Void)",
+   Void,Void,L("1","2","4","56"),__LINE__);
+tester.testSrc("var R = \"1 2    4  5 \".split(\" \")",
+   Void,Void,L("1","2","","","","4","","5",""),__LINE__);
+tester.testSrc("var R = \"  1   2 3 4 5\".split(Void,2)",
+   Void,Void,L("1","2","3 4 5"),__LINE__);
+tester.testSrc(0'|var R = ".1.2.3..4.5".split(".")|,
+   Void,Void,L("","1","2","3","","4","5"),__LINE__);
+tester.testSrc(0'|var R = "".split(".")|, Void,Void,L(""),__LINE__);
+tester.testSrc(0'|var R = "123".split(".")|, Void,Void,L("123"),__LINE__);
+tester.testSrc(0'|var R = "123".split("")|, Void,Void,L("1","2","3"),__LINE__);
+tester.testSrc(0'|var R = "123".split("",1)|, Void,Void,L("1"),__LINE__);
+
+tester.testSrc(0'|var R = "1234".split("").reverse().concat("")|,
+    Void,Void,"4321",__LINE__);
+
+tester.testSrc(0'|var R = "123".split("1",-1)|, Void,Void,L("123"),__LINE__);
+
+
+			/////////////////////////////// .create
+tester.testSrc("var R = \"\".create(1,2,3,4,5,6,7,8,9,0)",
+    Void,Void,"1234567890",__LINE__);
+tester.testSrc("var R = \"\".create()",Void,Void,"",__LINE__);
+tester.testSrc("var R = \"\".create(1,2,3.4,\"five\",L(6))",
+    Void,Void,"123.4fiveL(6)",__LINE__);
+
+
+			////////////////////// raw strings
+tester.testSrc("var R = 0''123'",Void,Void,"123",__LINE__);
+tester.testSrc("var R = 0'X123X",Void,Void,"123",__LINE__);
+tester.testSrc("var R = 0'\"123\"",Void,Void,"123",__LINE__);
+tester.testSrc("var R = 0'XX",Void,Void,"",__LINE__);
+tester.testSrc("var R = 0'X123","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R = 0'\\123\\","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R = 0'","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R = 0'X","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R = 0'   ","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R = 0'","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R = 0'Xxxxx","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("var R = 0'X\\nX",Void,Void,"\\n",__LINE__);
+tester.testSrc(0'|var R = 0'X\nX|,Void,Void,"\\n",__LINE__);
+tester.testSrc(0'|var R = 0'X\nX|,Void,Void,0'|\n|,__LINE__);
+tester.testSrc("var R = 0'Xa\\X",Void,Void,"a\\",__LINE__);
+
+tester.testSrc(0'|var R = 0'X\nX "\n"|,Void,Void,"\\n\n",__LINE__);
+tester.testSrc(0'|var R = "a" 0'X\nX|,Void,Void,"a\\n",__LINE__);
+
+tester.testSrc("00'XX","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("a:=5;00'XX","SyntaxError",Void,Void,__LINE__);
+tester.testSrc("a:=5;var R=0'XX",Void,Void,"",__LINE__);
+
+tester.testSrc("var R = \"0'X123X\"",Void,Void,"0'X123X",__LINE__);
+tester.testSrc("var R = 0123",Void,Void,123,__LINE__);
+tester.testSrc("var R = 120'|foo|","SyntaxError",Void,Void,__LINE__);
+
+tester.testSrc("var R = (0'$A\\tB is $ \"A\\tB\")",Void,Void,"A\\tB is A\tB",__LINE__);
+
+
+			////////////////// .reduce
+tester.testSrc("var R = 0'||.reduce(1)",Void,Void,Void,__LINE__);
+//tester.testSrc(0'|var R = "123".reduce(1)|,Void,"TypeError",Void,__LINE__);
+tester.testSrc(0'|var R = "123".reduce(1)|,Void,Void,1,__LINE__);
+tester.testSrc(0'|var R = "".reduce(fcn{})|,Void,Void,Void,__LINE__);
+tester.testSrc("var R = 0'|4|.reduce(fcn{})",Void,Void,"4",__LINE__);
+tester.testSrc("var R = \"\".reduce(fcn{},4)",Void,Void,4,__LINE__);
+tester.testSrc("var R = 0'|123|.reduce(fcn(s,c){c+s})",Void,Void,"321",__LINE__);
+tester.testSrc(0'|var R = "a\nb".reduce(|
+    0'|fcn(s,c) { "%s%02x".fmt(s,c.toAsc()) },"");|,
+    Void,Void,"610a62",__LINE__);
+tester.testSrc("var R = 0'|This is a test|.reduce("
+    "fcn(r,c){ if (not r.holds(c)) r += c; r})",Void,Void,"This ate",__LINE__);
+tester.testSrc("var R = \"abc\".reduce(fcn(a,b) { a })",Void,Void,"a",__LINE__);
+tester.testSrc("var R = \"abc\".reduce(fcn(a,b) { b })",Void,Void,"c",__LINE__);
+
+
+			///////////////////// ConstStrings
+tester.testSrc("var R = \"abc\".type",Void,Void,"ConstString",__LINE__);
+tester.testSrc("var R = \"abc\"; do(5) { GarbageMan.collect(); } R",
+    Void,Void,"abc",__LINE__);	// make sure container is marked
+
+
+    			//////////////////////// .walker
+tester.testSrc(0'|var R = "abc".walker().walk(99)|,Void,Void,L("a","b","c"),__LINE__);
+tester.testSrc(0'|var R = "abc".walker(0).walk(99)|,Void,Void,L(97,98,99),__LINE__);
+tester.testSrc(0'|var R = "a\nc".walker(1).walk(99)|,Void,Void,L("a\n","c"),__LINE__);
+tester.testSrc(0'|var R = "a\nc".walker(2).walk(99)|,Void,Void,L("a\nc"),__LINE__);
+tester.testSrc(0'|var R = "abc".walker(3).walk(99)|,Void,Void,L("a","b","c"),__LINE__);
+
+tester.testSrc(0'|var R; w:="".walker(); R=w.walk(99);|,
+    Void,"TheEnd",T,__LINE__);
+tester.testSrc(0'|var R; w:="".walker(); R=w.pump(List);|,
+    Void,Void,T,__LINE__);
+tester.testSrc(0'|var R; w:="abc".walker(); w.walk(99); R=w.walk(99);|,
+    Void,"TheEnd",T,__LINE__);
+tester.testSrc(0'|var R; w:="abc".walker(); w.next(); R=w.walk(99);|,
+    Void,Void,T("b","c"),__LINE__);
+
+tester.testSrc(0'|var R = "abc\ndef".walker(1).walk(99)|,
+    Void,Void,L("abc\n","def"),__LINE__);
+tester.testSrc(0'|var R = "abc\ndef".walker(2).walk(99)|,
+    Void,Void,L("abc\ndef"),__LINE__);
+
+	// emptyKData
+tester.testSrc("\"\".walker( ).next()",Void,"TheEnd",Void,__LINE__);
+tester.testSrc("\"\".walker(0).next()",Void,"TheEnd",Void,__LINE__);
+tester.testSrc("\"\".walker(1).next()",Void,"TheEnd",Void,__LINE__);
+tester.testSrc("\"\".walker(2).next()",Void,"TheEnd",Void,__LINE__);
+tester.testSrc("\"\".walker(3).next()",Void,"TheEnd",Void,__LINE__);
+
+tester.testRun(fcn{ f:=lorem; f.walker(0).walk(11).apply("toChar").concat(); },
+    Void,"Lorem ipsum",__LINE__);
+tester.testRun(fcn{ f:=lorem; f.walker(1).walk(1).concat(); },Void,
+    "Lorem ipsum dolor sit amet, consectetur adipiscing elit.  Nunc ut luctus\n",
+    __LINE__);
+tester.testRun(fcn{ f:=lorem; f.walker(11).walk(1).concat(); }, Void,
+    "Lorem ipsum dolor sit amet, consectetur adipiscing elit.  Nunc ut luctus",
+    __LINE__);
+tester.testRun(fcn{ f:=lorem; f.walker(3).walk(11).concat(); },
+    Void,"Lorem ipsum",__LINE__);
+
+
+    			///////////////////////////// ==, !=
+tester.testSrc("var R = (\"1\" == 1);",Void,Void,False,__LINE__);
+tester.testSrc("var R = (\"True\" == True);",Void,Void,False,__LINE__);
+
+tester.testSrc("var R = (\"1\" != 1);",Void,Void,True,__LINE__);
+tester.testSrc("var R = (\"True\" != True);",Void,Void,True,__LINE__);
+
+ 
+    			//////////////////////// .toInt
+tester.testSrc(0'|var R = "1e2".toInt();|,Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|var R = " 1".toInt();|,Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|var R = "1 ".toInt();|,Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|var R = "1x".toInt();|,Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|var R = "-".toInt();|,Void,"ValueError",Void,__LINE__);
+
+
+    			//////////////////////// .toFloat
+tester.testSrc(0'|var R = "1e2".toFloat();|,Void,Void,100.0,__LINE__);
+tester.testSrc(0'|var R = " 1".toFloat();|,Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|var R = "1 ".toFloat();|,Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|var R = "1x".toFloat();|,Void,"ValueError",Void,__LINE__);
+tester.testSrc(0'|var R = "-".toFloat();|,Void,"ValueError",Void,__LINE__);
+
+
+    			//////////////////////// .replace
+tester.testSrc(0'|var R = ("a".replace("",""));|,Void,Void,"a",__LINE__);
+tester.testSrc(0'|var R = ("a".replace("a","b"));|,Void,Void,"b",__LINE__);
+tester.testSrc(0'|var R = ("foobar".replace("foo",""));|,Void,Void,"bar",__LINE__);
+tester.testSrc(0'|var R = ("foobar".replace("bar",""));|,Void,Void,"foo",__LINE__);
+tester.testSrc(0'|var R = ("1223".replace("2","4"));|,Void,Void,"1443",__LINE__);
+tester.testSrc(0'|var R = ("123".replace("123",""));|,Void,Void,"",__LINE__);
+tester.testSrc(0'|var R = ("123".replace("5","6"));|,Void,Void,"123",__LINE__);
+
+tester.testSrc(0'|var R = ("1223".replace("2","4",1));|,Void,Void,"1423",__LINE__);
+tester.testSrc(0'|var R = ("1223".replace("2","4",0));|,Void,Void,"1223",__LINE__);
+tester.testSrc(0'|var R = ("1223".replace("2","4",-1));|,Void,Void,"1223",__LINE__);
+tester.testSrc(0'|var R = ("this is a test".replace("t","T",1));|,
+	Void,Void,"This is a test",__LINE__);
+
+    // opps
+tester.testSrc(0'|var R = ("".replace("",""));|,Void,Void,"",__LINE__);
+tester.testSrc(0'|var R = ("".replace("","23"));|,Void,Void,"",__LINE__);
+tester.testSrc(0'|var R = ("".replace("12",""));|,Void,Void,"",__LINE__);
+
+
+    			//////////////////////// .toUpper, .toLower
+tester.testSrc(0'|var R = "1e2".toUpper();|,Void,Void,"1E2",__LINE__);
+tester.testSrc(0'|var R = "AbC!".toLower();|,Void,Void,"abc!",__LINE__);
+
+
+					//////////////////////// .translate
+tester.testSrc(
+#<<<
+0'|
+cs:=["a".."z"].pump(String);  // "abcd...z"
+srcTable:=String(cs,cs.toUpper());
+dstTable:=String(cs[13,*],cs[0,13]);
+dstTable =String(dstTable,dstTable.toUpper());
+a,b:="Hello World!",a.translate(srcTable,dstTable);
+var R=b;|
+#<<<
+,Void,Void,"Uryyb Jbeyq!",__LINE__);
+
+	// from Rosetta Code: Base58Check encoding
+src:="0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuv";
+dst:="123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+tester.testRun("OkobppXBkab".translate.fp(src,dst),
+   Void,"RosettaCode",__LINE__);
+
+
+			/////////////////////// [], .__sGet, .get(), .charAt()
+tester.testSrc(0'|var R = "abc"[0];|,Void,Void,"a",__LINE__);
+tester.testSrc(0'|var R = "abc"[0];|,Void,Void,"a",__LINE__);
+tester.testSrc(0'|var R = "abc"[1];|,Void,Void,"b",__LINE__);
+tester.testSrc(0'|var R = "abc"[2];|,Void,Void,"c",__LINE__);
+tester.testSrc(0'|var R = "abc"[3];|,Void,"IndexError",Void,__LINE__);
+tester.testSrc(0'|var R = "abc"[4];|,Void,"IndexError",Void,__LINE__);
+tester.testSrc(0'|var R = "abc"[987654321];|,Void,"IndexError",Void,__LINE__);
+tester.testSrc(0'|var R = "abc"[0x7fffffff];|,Void,"IndexError",Void,__LINE__);
+	// Works (wrong) if Offset_t is int32_t
+tester.testSrc(0'|var R = "abc"[0xffffffff];|,Void,"IndexError",Void,__LINE__);
+
+tester.testSrc(0'|var R = "abc"[-1];|,Void,Void,"c",__LINE__);
+tester.testSrc(0'|var R = "abc"[-2];|,Void,Void,"b",__LINE__);
+tester.testSrc(0'|var R = "abc"[-3];|,Void,Void,"a",__LINE__);
+tester.testSrc(0'|var R = "abc"[-4];|,Void,"IndexError",Void,__LINE__);
+tester.testSrc(0'|var R = "abc"[-987654321];|,Void,"IndexError",Void,__LINE__);
+
+tester.testSrc(0'|var R = "abc"[100,-100];|,Void,Void,"",__LINE__);
+tester.testSrc(0'|var R = "abc"[100,1];|,Void,Void,"",__LINE__);
+tester.testSrc(0'|var R = "abc"[100,-1];|,Void,Void,"",__LINE__);
+tester.testSrc(0'|var R = "abc"[0,-1];|,Void,Void,"ab",__LINE__);
+tester.testSrc(0'|var R = "abc"[0,-100];|,Void,Void,"",__LINE__);
+
+tester.testSrc(0'|var R = "abc"[0,0];|,Void,Void,"",__LINE__);
+tester.testSrc(0'|var R = "abc"[0,-1];|,Void,Void,"ab",__LINE__);
+tester.testSrc(0'|var R = "abc"[0,-2];|,Void,Void,"a",__LINE__);
+tester.testSrc(0'|var R = "abc"[0,-3];|,Void,Void,"",__LINE__);
+tester.testSrc(0'|var R = "abc"[0,-4];|,Void,Void,"",__LINE__);
+tester.testSrc(0'|var R = "abc"[1,-1];|,Void,Void,"b",__LINE__);
+
+tester.testSrc(0'|var R = "abc"[-100,*];|,Void,Void,"",__LINE__);
+tester.testSrc(0'|var R = "abc"[-3,1];|,Void,Void,"a",__LINE__);
+tester.testSrc(0'|var R = "abc"[-2,1];|,Void,Void,"b",__LINE__);
+tester.testSrc(0'|var R = "abc"[-1,1];|,Void,Void,"c",__LINE__);
+tester.testSrc(0'|var R = ""   [-1,1];|,Void,Void,"",__LINE__);
+tester.testSrc(0'|var R = "abc"[-987654321,987654321];|,Void,Void,"",__LINE__);
+tester.testSrc(0'|var R = "abc"[0,-987654321];|,Void,Void,"",__LINE__);
+tester.testSrc(0'|var R = "abc"[0,987654321];|,Void,Void,"abc",__LINE__);
+tester.testSrc(0'|var R = "abc"[0,0];|,Void,Void,"",__LINE__);
+
+
+			///////////////////////////////////////////// .tail
+tester.testSrc(0'|var R="".tail(0);|,Void,Void,"",__LINE__);
+tester.testSrc(0'|var R="".tail(1);|,Void,Void,"",__LINE__);
+
+tester.testSrc(0'|var R="abc".tail(0);|,Void,Void,"",__LINE__);
+tester.testSrc(0'|var R="abc".tail(1);|,Void,Void,"c",__LINE__);
+tester.testSrc(0'|var R="abc".tail(2);|,Void,Void,"bc",__LINE__);
+tester.testSrc(0'|var R="abc".tail(3);|,Void,Void,"abc",__LINE__);
+tester.testSrc(0'|var R="abc".tail(4);|,Void,Void,"abc",__LINE__);
+tester.testSrc(0'|var R="abc".tail(-4);|,Void,Void,"abc",__LINE__);
+
+tester.testSrc(0'|var R="abc".tail(2).tail(1);|,Void,Void,"c",__LINE__);
+
+tester.testSrc(0'|var s="abc", id=s.id; tail:=s.tail(3); var R=(tail.id==id);|,
+   Void,Void,True,__LINE__);
+tester.testSrc(0'|var s="abc", id=s.id; tail:=s.tail(4); var R=(tail.id==id);|,
+   Void,Void,True,__LINE__);
+tester.testSrc(0'|var s="abc", id=s.id; tail:=s.tail(-4); var R=(tail.id==id);|,
+   Void,Void,True,__LINE__);
+
+
+			///////////////////////////////////////////// .set
+tester.testSrc(0'|var R = "abc".set(0,1,"z");|,Void,Void,"zbc",__LINE__);
+tester.testSrc(0'|var R = "abc".set(0,1,"");|,Void,Void,"bc",__LINE__);
+tester.testSrc(0'|var R = "abcde".set(1,2,"z");|,Void,Void,"azde",__LINE__);
+tester.testSrc(0'|var R = "abcde".set(0,*,"");|,Void,Void,"",__LINE__);
+tester.testSrc(0'|var R = "abcde".set(0,*,"z");|,Void,Void,"z",__LINE__);
+tester.testSrc(0'|var R = "abc".set(0,-1,"z");|,Void,Void,"zc",__LINE__);
+tester.testSrc(0'|var R = "abc".set(0,-2,"z");|,Void,Void,"zbc",__LINE__);
+tester.testSrc(0'|var R = "abc".set(-1,1,"z");|,Void,Void,"abz",__LINE__);
+tester.testSrc(0'|var R = "abc".set(-2,1,"z");|,Void,Void,"azc",__LINE__);
+tester.testSrc(0'|var R = "abc".set(1,100,"z");|,Void,Void,"az",__LINE__);
+tester.testSrc(0'|var R = "abc".set(1,0,"z");|,Void,Void,"abc",__LINE__);
+
+
+			///////////////////////////////////////////// .toData
+tester.testSrc(0'|var R = "abc".toData().text;|,Void,Void,"abc",__LINE__);
+tester.testSrc(0'|var R = "abc".toData().len();|,Void,Void,3,__LINE__);
+tester.testSrc(0'|var R = "abc".toData().mode();|,Void,Void,Int,__LINE__);
+tester.testSrc(0'|var R = "abc".toData(String).mode();|,Void,Void,String,__LINE__);
+
+
+			///////////////////////////////////////////// .text
+tester.testSrc(0'|var R = "abc".text;|,Void,Void,"abc",__LINE__);
+
+
+			///////////////////////////////////////////// .strip
+tester.testSrc(0'|var R = " ".strip();|,Void,Void,"",__LINE__);
+tester.testSrc(0'|var R = "   ".strip();|,Void,Void,"",__LINE__);
+tester.testSrc(0'|var R = "  \n  ".strip();|,Void,Void,"",__LINE__);
+tester.testSrc(0'|var R = "abc".strip();|,Void,Void,"abc",__LINE__);
+tester.testSrc(0'|var R = "\rabc\n".strip();|,Void,Void,"abc",__LINE__);
+tester.testSrc(0'|var R = "".strip();|,Void,Void,"",__LINE__);
+tester.testSrc(0'|var R = "3".strip();|,Void,Void,"3",__LINE__);
+tester.testSrc(0'|var R = "   3  ".strip();|,Void,Void,"3",__LINE__);
+tester.testSrc(0'|var R = " a b c ".strip();|,Void,Void,"a b c",__LINE__);
+
+tester.testSrc(0'|var R = " a b c ".strip(-1);|,Void,Void,"a b c ",__LINE__);
+tester.testSrc(0'|var R = " a b c ".strip(0);|,Void,Void,"a b c",__LINE__);
+tester.testSrc(0'|var R = " a b c ".strip(1);|,Void,Void," a b c",__LINE__);
+
+tester.testSrc(0'|var R = "a b c ".strip(-1);|,Void,Void,"a b c ",__LINE__);
+tester.testSrc(0'|var R = " a b c".strip(1);|,Void,Void," a b c",__LINE__);
+
+tester.testSrc(0'|var R = "   a b c ".strip(-1);|,Void,Void,"a b c ",__LINE__);
+tester.testSrc(0'|var R = "   a b c    ".strip(1);|,Void,Void,"   a b c",__LINE__);
+
+tester.testSrc(0'|var R = " ".strip(-1);|,Void,Void,"",__LINE__);
+tester.testSrc(0'|var R = " ".strip(1);|,Void,Void,"",__LINE__);
+tester.testSrc(0'|var R = "   ".strip(-1);|,Void,Void,"",__LINE__);
+tester.testSrc(0'|var R = "   ".strip(1);|,Void,Void,"",__LINE__);
+
+tester.testSrc(0'|var R = "".strip(-1);|,Void,Void,"",__LINE__);
+tester.testSrc(0'|var R = "".strip(1);|,Void,Void,"",__LINE__);
+
+tester.testSrc(0'|var R="\n".walker(11).walk(1).concat();|,Void,Void,"",__LINE__);
+tester.testSrc(0'|var R="".walker(11).pump(String);|,Void,Void,"",__LINE__);
+
+
+			///////////////////////////////////////////// .span
+tester.testSrc(0'|var R="abc".span();|,Void,"MissingArg",Void,__LINE__);
+tester.testSrc(0'|var R="ab)()c".span("(",")");|,Void,Void,Void,__LINE__);
+tester.testSrc(0'|var R="(ab)()c".span("(",")");|,Void,Void,T(0,4),__LINE__);
+tester.testSrc(0'|var R="(ab)()c".span("(",")",1);|,Void,Void,T(0,4),__LINE__);
+tester.testSrc(0'|var R="(ab)()c".span("(",")",0);|,Void,Void,T(0,4),__LINE__);
+
+tester.testSrc(0'|var R="".span("(",")",0);|,Void,Void,T,__LINE__);
+
+tester.testSrc(0'|var R="(foo(ab))c".span("(",")",0);|,Void,Void,T(4,4),__LINE__);
+tester.testSrc(0'|var R="(foo(ab))))c".span("(",")",0);|,Void,Void,T(4,4),__LINE__);
+
+tester.testSrc(0'|var R="(foo(ab))))c".span("(",")");|,Void,Void,T(0,9),__LINE__);
+tester.testSrc(0'|var R="(((foo(ab))c".span("(",")");|,Void,Void,Void,__LINE__);
+
+tester.testSrc(0'|var R="(((foo(ab))c".span("[",")");|,Void,Void,Void,__LINE__);
+tester.testSrc(0'|var R="(((foo(ab))c".span("[","]");|,Void,Void,T,__LINE__);
+
+tester.testSrc(0'+var R="|foo|".span("|","|");+,Void,Void,Void,__LINE__);
+
+tester.testSrc(0'|var R="(-f(-ab-)-)c".span("(-","-)");|,Void,Void,T(0,11),__LINE__);
+tester.testSrc(0'|var R="(-f(-ab-)-)c".span("(-","-)",0);|,Void,Void,T(3,6),__LINE__);
+
+tester.testSrc(0'|var R="zot(-f(-ab-)-)".span("(-","-)",1);|,Void,Void,T(3,11),__LINE__);
+tester.testSrc(0'|var R="zot(-f(-ab-)-)".span("(-","-)",0);|,Void,Void,T(6,6),__LINE__);
+
+tester.testSrc(0'|var R="zot(-f(-ab-)-".span("(-","-)",1);|,Void,Void,Void,__LINE__);
+tester.testSrc(0'|var R="zot(-f(-ab-)-a".span("(-","-)",1);|,Void,Void,Void,__LINE__);
+tester.testSrc(0'|var R="zot(-f(-ab--)-a".span("(-","-)",0);|,Void,Void,T(6,7),__LINE__);
+
+
+			/////////////////////////////////////// .tweak
+fcn urlDecode(text)
+{
+   w:=text.walker();
+   w.tweak(fcn(c,w){ if(c=="%") w.pump(2,String).toInt(16).toChar() else c }.fp1(w))
+   .pump(String);
+}
+tester.testRun(urlDecode.fp("http%3A%2F%2Ffoo.com%2Fbar"),
+    Void,"http://foo.com/bar",__LINE__);
+
+fcn urlDecode2(text)
+{
+   w:=text.walker();
+   w.tweak(fcn(c,w){ if(c=="%") w.pump(2,String).toInt(16).toChar() else c }.fp1(w))
+   .pump(String);
+}
+tester.testRun(urlDecode2.fp("http%3A%2F%2Ffoo.com%2Fbar"),
+    Void,"http://foo.com/bar",__LINE__);
+
+fcn urlDecode3(text)
+{
+   text.pump(String,
+	     fcn(c){ if(c=="%") return(Void.Read,2); return(Void.Skip,c) },
+	     fcn(_,b,c){ (b+c).toInt(16).toChar() })
+}
+tester.testRun(urlDecode3.fp("http%3A%2F%2Ffoo.com%2Fbar"),
+    Void,"http://foo.com/bar",__LINE__);
+
+
+			/////////////////////////////////////// .counts
+tester.testSrc(0'|var R="zbbccd".counts();|,
+   Void,Void,T("b",2,"c",2,"d",1,"z",1),__LINE__);
+tester.testSrc(0'|var R="".counts();|,Void,Void,T,__LINE__);
+
+tester.testSrc(0'|var R="zbbccd".counts("z");|,Void,Void,T("z",1),__LINE__);
+tester.testSrc(0'|var R="zbbccd".counts("ac");|,Void,Void,T("a",0,"c",2),__LINE__);
+tester.testSrc(0'|var R="".counts("ac");|,Void,Void,T("a",0,"c",0),__LINE__);
+
+tester.testSrc(0'|var R="test".counts().pump(List,Void.Read,ROList.create)|,
+   Void,Void,L(L("e",1),L("s",1),L("t",2)),__LINE__);
+tester.testSrc(0'|var R="test".counts().pump(List,Void.Read,List.create)|,
+   Void,Void,L(L("e",1),L("s",1),L("t",2)),__LINE__);
+tester.testSrc(0'|var R="test".counts().pump(List,Void.Read,ROList)|,
+   Void,Void,L(L("e",1),L("s",1),L("t",2)),__LINE__);
+tester.testSrc(0'|var R="test".counts().pump(List,Void.Read,List)|,
+   Void,"AssertionError",Void,__LINE__);
+
+
+			/////////////////////////////////////// .insert
+tester.testSrc(0'|var R="zbbccd".insert(0,"f","o");|,Void,Void,"fozbbccd",__LINE__);
+tester.testSrc(0'|var R="".insert(0,"f","o");|,Void,Void,"fo",__LINE__);
+tester.testSrc(0'|var R="".insert(0);|,Void,Void,"",__LINE__);
+tester.testSrc(0'|var R="hoho".insert(10,"f","o");|,Void,Void,"hohofo",__LINE__);
+tester.testSrc(0'|var R="hoho".insert(-3,"f","o");|,Void,Void,"hfooho",__LINE__);
+
+
+			/////////////////////////////////////// .zip, .zipWith
+tester.testSrc(0'|var R="abc".zip(T(1,2,3));|,Void,Void,T("a1","b2","c3"),__LINE__);
+tester.testSrc(0'|var R="abc".zip([1..]);|,Void,Void,T,__LINE__);
+tester.testSrc(0'|var R="abc".zipWith(String,[1..]);|, Void,Void,T,__LINE__);
+tester.testSrc(0'|var R="abc".walker().zip([1..]).walk(99);|,
+   Void,Void,T(T("a",1),T("b",2),T("c",3)),__LINE__);
+
+tester.testSrc(0'|var R="abc".zip(Data(Void,5,6).howza(0));|,
+   Void,Void,T("a5","b6"),__LINE__);
+
+
+			/////////////////////////////////////// Sink
+tester.testSrc(0'|var R="this is a test"; s:=Sink(String); R.pump(s);|
+   "R=s.close();", Void,Void,"this is a test",__LINE__);
+tester.testSrc(0'|var R="this is a test"; s:=Sink("abc"); R.pump(s);|
+   "R=s.close();", Void,Void,"abcthis is a test",__LINE__);
+tester.testSrc(0'|s:=Sink("abc"); s.close(); "".pump(s);|,
+   Void,"AccessError",Void,__LINE__);
+
+
+   			////////////////////////// bugs
+tester.testSrc(0'|println(\");|,"SyntaxError",Void,Void,__LINE__);
+
+
+tester.stats();
+returnClass(tester);

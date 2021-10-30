@@ -1,0 +1,1315 @@
+//-*-c-*-
+// Test solutions posted to Rosetta Code
+// http://rosettacode.org/wiki/Category:Zkl
+
+tester := TheVault.Test.UnitTester.UnitTester(__FILE__);
+
+const{ try{ Import.lib("zklBigNum"); } catch{} }  // load links
+try{ var [const] BN=Import.lib("zklBigNum") } catch{}
+
+
+{	/////////////////////////////////////////////////////// Bacon cipher
+class Bacon{
+   fcn init(_keyText){
+      var [const] keyText=_keyText.toLower(),
+        lowerLetters=["a".."z"].pump(String), 
+	upperLetters=["A".."Z"].pump(String),
+	letters=String(lowerLetters,upperLetters),
+	lc2bin=[0..].zip(lowerLetters + " .") //-->("a":"00000", ...)
+	   .pump(Dictionary(),fcn([(n,ch)]){ T(ch,"%05.2B".fmt(n)) }),
+	bin2lc=lc2bin.pump(Dictionary(),"reverse");  //-->("00000":"a", ...),
+      ;
+   }
+   fcn to5binary(msg){ //-->stream of 1s and 0s (1 means capitalize)
+      msg.toLower().pump(String,lc2bin.get.fp1(""))  //-->("abcde"|"") * length
+      .pump(Data,"toAsc",'-(0x30)).howza(0)  // "1"-->1, treat result as bytes
+   }
+   fcn encrypt(msg){
+      bin5:=to5binary(msg).walker();  // capitalization overlay of keyText
+      e:=keyText.pump(String, 'wrap(ch){
+	 if(not lowerLetters.holds(ch)) return(Void.Write); // encrypt only ASCII
+	 if(not bin5._next())           return(Void.Stop);  // end of msg
+	 (bin5.value and ch.toUpper() or ch);
+      });
+      if(not bin5.atEnd) throw(Exception.ValueError("Ran out of characters in key text"));
+      e + "...."  // pad
+   }
+   fcn decrypt(bacontext){
+      bacontext.filter(letters.holds).pump(String,T(Void.Read,4),
+        fcn{ vm.arglist.pump(String,upperLetters.holds,"toInt") : bin2lc[_] });
+   } 
+} 
+
+bacon:=Bacon(
+#<<<
+0'|All children, except one, grow up. They soon know that they will grow
+up, and the way Wendy knew was this. One day when she was two years old
+she was playing in a garden, and she plucked another flower and ran with
+it to her mother. I suppose she must have looked rather delightful, for
+Mrs. Darling put her hand to her heart and cried, "Oh, why can't you
+remain like this for ever!" This was all that passed between them on
+the subject, but henceforth Wendy knew that she must grow up. You always
+know after you are two. Two is the beginning of the end.
+ 
+Of course they lived at 14 [their house number on their street], and
+until Wendy came her mother was the chief one. She was a lovely lady,
+with a romantic mind and such a sweet mocking mouth. Her romantic
+mind was like the tiny boxes, one within the other, that come from the
+puzzling East, however many you discover there is always one more; and
+her sweet mocking mouth had one kiss on it that Wendy could never get,
+though there it was, perfectly conspicuous in the right-hand corner.|
+);
+#<<<
+
+phrase:="Rosetta code Bacon cipher example secret phrase to encode in the capitalization of peter pan";
+#<<<# 
+println("PLAINTEXT = \n%s".fmt(phrase));
+encrypted,decrypted:=bacon.encrypt(phrase), bacon.decrypt(encrypted); 
+println("ENCRYPTED = \n%s".fmt(encrypted));
+println("DECRYPTED = \n%s".fmt(decrypted));
+if(phrase.toLower()!=decrypted) throw(Exception.AssertionError("Round-tripping error"));
+#<<<# 
+
+encrypted:=bacon.encrypt(phrase);
+tester.testRun(encrypted.noop,Void,
+#<<<
+0'|All cHiLDReN, exCept One, GroW UP. thEY soon kNOw That tHey WILl groW
+Up, aNd tHE wAy wendY knew was tHis. ONE daY WhEN ShE was tWo yEars oLD
+SHe wAS PlaYinG in a GARdEn, anD shE pLUCked anoTHer fLOWEr AnD Ran WitH
+It To Her MothEr. i supPoSe shE muSt hAve LOOKeD raTHER deLIGHtfuL, for
+mrS. daRlinG puT HeR hAnd TO hER HeARt And cRied, "OH, wHy caN't yOU
+RemaiN LikE thIS fOr eVer!" thIS wAS AlL tHat PAssED BetWeeN ThEm on
+tHe subjecT, BUT hEnceForTH wendy kNeW ThAt shE MusT grow uP. yoU AlWays
+kNOW afTEr YOU aRe tWO. Two iS tHE BeGinNING of The End.
+ 
+OF coUrsE theY LIvEd aT 14 [THEir housE NuM....|
+#<<<
+,__LINE__);
+
+tester.testRun(bacon.decrypt.fp(encrypted),Void,
+"rosetta code bacon cipher example secret phrase to encode in the capitalization of peter pan"
+,Void,__LINE__);
+}
+
+
+{		/////////////////// Cartesian product of two or more lists
+#<<<#
+Cartesian product is build into iterators or can be done with nested 
+loops.
+#<<<#
+
+#<<<#
+Walker.cproduct(List(1,2),List(3,4)).walk().println();
+foreach a,b in (List(1,2),List(3,4)){ print("(%d,%d) ".fmt(a,b)) }
+println();
+#<<<#
+tester.testRun(Walker.cproduct(List(1,2),List(3,4)).walk,Void,
+   L(L(1,3),L(1,4),L(2,3),L(2,4)),__LINE__);
+
+#<<<#
+The walk method will throw an error if used on an empty iterator but the
+pump method doesn't.
+
+zkl: Walker.cproduct(List(3,4),List).walk().println();
+Exception thrown: TheEnd(Ain't no more)
+ 
+zkl: Walker.cproduct(List(3,4),List).pump(List).println();
+L()
+zkl: Walker.cproduct(List,List(3,4)).pump(List).println();
+L()
+#<<<#
+tester.testRun(Walker.cproduct(List(3,4),List).walk,"TheEnd",Void,__LINE__);
+tester.testRun(Walker.cproduct(List(3,4),List).pump.fp(List),Void,T,__LINE__);
+tester.testRun(Walker.cproduct(List,List(3,4)).pump.fp(List),Void,T,__LINE__);
+    
+
+#<<<#
+Walker.cproduct(L(1776,1789),L(7,12),L(4,14,23),L(0,1)).walk().println();
+Walker.cproduct(L(1,2,3),L(30),L(500,100)).walk().println();
+Walker.cproduct(L(1,2,3),List,L(500,100)).pump(List).println();
+#<<<#
+
+tester.testRun(
+   fcn{ Walker.cproduct(L(1776,1789),L(7,12),L(4,14,23),L(0,1)).walk().len() },
+   Void,24,__LINE__);
+tester.testRun(Walker.cproduct(L(1,2,3),L(30),L(500,100)).walk,Void,
+   T(L(1,30,500),L(1,30,100),L(2,30,500),L(2,30,100),L(3,30,500),L(3,30,100)),
+   __LINE__);
+tester.testRun(Walker.cproduct(L(1,2,3),List,L(500,100)).pump.fp(List),Void,T,__LINE__);
+}
+
+
+{	//////////////////////////////////////////////////   Damm algorithm
+fcn damm(digits){  // digits is something that supports an iterator of integers 
+   var [const] tbl=Data(0,Int,		// 10x10 byte bucket
+      0, 3, 1, 7, 5, 9, 8, 6, 4, 2,
+      7, 0, 9, 2, 1, 5, 4, 8, 6, 3,
+      4, 2, 0, 6, 8, 7, 1, 3, 5, 9,
+      1, 7, 5, 0, 9, 8, 3, 4, 2, 6,
+      6, 1, 2, 3, 0, 4, 5, 9, 7, 8,
+      3, 6, 7, 4, 2, 0, 9, 5, 8, 1,
+      5, 8, 6, 9, 7, 2, 0, 1, 3, 4,
+      8, 9, 4, 5, 3, 6, 2, 0, 1, 7,
+      9, 4, 3, 8, 6, 1, 7, 2, 0, 5,
+      2, 5, 8, 1, 4, 3, 6, 7, 9, 0);
+   0 == digits.reduce(fcn(interim,digit){ tbl[interim*10 + digit]  },0)
+}
+#<<<#
+damm(List(5,7,2,4)).println();		// True
+damm(Data(0,Int,5,7,2,7).howza(0)).println();	// stream bytes, False
+damm((112946).split()).println();	// True
+#<<<#
+
+tester.testRun(damm.fp(List(5,7,2,4)),Void,True,__LINE__);
+tester.testRun(damm.fp(Data(0,Int,5,7,2,7).howza(0)),Void,False,__LINE__);
+tester.testRun(damm.fp((112946).split()),Void,True,__LINE__);
+}
+
+
+{			///////////////////////////// Department Numbers
+#<<<#
+Note: The sum of three odd numbers is odd, so a+b+c=12 means at least one even 
+nmber (1 even, two odd or 3 even). Futher, 2a+b=12, a,b in (2,4,6) has one
+solution: a=2,b=4
+#<<<#
+
+x:=
+Utils.Helpers.pickNFrom(3,[1..7].walk())    // 35 combos
+.filter(fcn(numbers){ numbers.sum(0)==12 }) // which all sum to 12 (==5)
+.println();
+
+tester.testRun(x.noop,Void,"L(L(1,4,7),L(1,5,6),L(2,3,7),L(2,4,6),L(3,4,5))",__LINE__);
+
+
+#if 0 // nah
+//For a table with repeated solutions:
+ns:=Utils.Helpers.pickNFrom(3,[1..7].walk())   // 35 combos
+  .filter(fcn(numbers){ numbers.sum(0)==12 })  // which all sum to 12 (==5)
+  .pump(List,Utils.Helpers.permute)	// expand 5 results --> list of lists
+  .flatten()				// ( (),()..) --> ()
+  .filter(fcn([(p,_,_)]){ p.isEven });	// with even first number
+println("Police  Fire  Sanitation : ",ns.len());
+foreach pfs in (ns){ pfs.concat("\t").println() }
+
+// and finially, list comprehension:
+[[(p,f,s); [2..7,2]; [1..7]; [1..7], { (p!=s!=f) and p+f+s==12 }; 
+   { println(p,"\t",f,"\t",s) } ]];
+#endif
+
+//For a table with repeated solutions using nested loops:
+println("Police  Fire  Sanitation");
+foreach p,f,s in ([2..7,2], [1..7], [1..7])
+   { if((p!=s!=f) and p+f+s==12) println(p,"\t",f,"\t",s) }
+
+tester.testRun(
+   fcn{
+      out:=Sink(String);
+      foreach p,f,s in ([2..7,2], [1..7], [1..7])
+         { if((p!=s!=f) and p+f+s==12) out.write(p,f,s,",") }
+     out.close();
+   },Void,"237,246,264,273,417,426,435,453,462,471,615,624,642,651,",__LINE__);
+}
+
+
+{		//////////////////////////////// Diversity prediction theorem
+//{{trans|Sidef}}
+fcn avgError(m,v){ v.apply('wrap(n){ (n - m).pow(2) }).sum(0.0)/v.len() }
+ 
+fcn diversityCalc(truth,pred){  //(Float,List of Float)
+   ae,cp := avgError(truth,pred), pred.sum(0.0)/pred.len();
+   ce,pd := (cp - truth).pow(2),  avgError(cp, pred);
+   return(ae,ce,pd)
+}
+ 
+fcn diversityFormat(stats){  // ( (averageError,crowdError,diversity) )
+   T("average-error","crowd-error","diversity").zip(stats)
+   .pump(String,Void.Xplode,"%13s :%7.3f\n".fmt)
+}
+//diversityCalc(49.0, T(48.0,47.0,51.0)) : diversityFormat(_).println();
+//diversityCalc(49.0, T(48.0,47.0,51.0,42.0)) : diversityFormat(_).println();
+
+tester.testRun(fcn{ a,b,c:=diversityCalc(49.0, T(48.0,47.0,51.0));
+   a.closeTo(3.0,  0.001) and b.closeTo(0.111,0.001) and
+   c.closeTo(2.889,0.001)
+},Void,True,__LINE__);
+tester.testRun(fcn{ a,b,c:=diversityCalc(49.0, T(48.0,47.0,51.0,42.0));
+   a.closeTo(14.5,0.001) and b.closeTo(4,0.001) and
+   c.closeTo(10.5,0.001)
+},Void,True,__LINE__);
+}
+
+{	/////////////////////////////////////////////////// Egyptian division
+fcn egyptianDivmod(dividend,divisor){
+   table:=[0..].pump(List, 'wrap(n){	// (2^n,divisor*2^n)
+      r:=T( p:=(2).pow(n), s:=divisor*p); (s<=dividend) and r or Void.Stop });
+   accumulator:=0;
+   foreach p2,d in (table.reverse()){ 
+      if(dividend>=d){ accumulator+=p2; dividend-=d; }
+   }
+   return(accumulator,dividend);
+}
+#<<<#
+foreach dividend,divisor in (T(T(580,34), T(580,17), T(578,34), T(7532795332300578,235117))){
+  println("%d %% %d = %s".fmt(dividend,divisor,egyptianDivmod(dividend,divisor)));
+}
+#<<<#
+tester.testRun(egyptianDivmod.fp(580,34),Void,T(17,2),__LINE__);
+tester.testRun(egyptianDivmod.fp(580,17),Void,T(34,2),__LINE__);
+tester.testRun(egyptianDivmod.fp(578,34),Void,T(17,0),__LINE__);
+tester.testRun(egyptianDivmod.fp(7532795332300578,235117),Void,T(32038497141,81),__LINE__);
+}
+
+if(BN){    /////////////////////////////////////////////////// Hamming numbers
+//{{trans|Haskell}}
+//{{libheader|GMP}} GNU Multiple Precision Arithmetic Library
+#<<<#
+as direct a translation as I can, except using a nested for loop instead
+of list comprehension (which makes it easier to keep the count).
+#<<<#
+#-- directly find n-th Hamming number, in ~ O(n^{2/3}) time
+#-- by Will Ness, based on "top band" idea by Louis Klauder, from DDJ discussion
+#--   http://drdobbs.com/blogs/architecture-and-design/228700538
+ 
+//var [const] BN=Import.lib("zklBigNum");
+var lg3 = (3.0).log()/(2.0).log(), lg5 = (5.0).log()/(2.0).log();
+fcn logval(i,j,k){ lg5*k + lg3*j + i }
+fcn trival(i,j,k){ BN(2).pow(i) * BN(3).pow(j) * BN(5).pow(k) }
+fcn estval(n){ (6.0*lg3*lg5*n).pow(1.0/3) } #-- estimated logval, base 2
+fcn rngval(n){                                                
+   if(n > 500000) return(2.4496 , 0.0076);	#-- empirical estimation 
+   if(n > 50000)  return(2.4424 , 0.0146);	#--   correction, base 2
+   if(n > 500)	  return(2.3948 , 0.0723);	#--     (dist,width)
+   if(n > 1)	  return(2.2506 , 0.2887);	#-- around (log $ sqrt 30), 
+		  return(2.2506 , 0.5771);	#--   says WP
+}
+ 
+fcn nthHam(n){ // -> (Double, (Int, Int, Int))  #-- n: 1-based: 1,2,3...
+  d,w := rngval(n);				#-- correction dist, width
+  hi  := estval(n.toFloat()) - d;		#--   hi > logval > hi-w
+  c,b := band(hi,w);				#-- total count, the band
+  s   := b.sort(fcn(a,b){ a[0]>b[0] });		#-- sorted decreasing, result
+  m   := c - n;					#-- m 0-based from top
+  nb  := b.len();				#-- |band|
+  res := s[m];					#-- result
+ 
+  if(w >= 1) throw(Exception.Generic("Breach of contract: (w < 1):  " + w));
+  if(m <  0) throw(Exception.Generic("Not enough triples generated: " +c+n));
+  if(m >= nb)throw(Exception.Generic("Generated band is too narrow: " +m+nb));
+  return(res);
+}
+ 
+fcn band(hi,w){ //--> #-- total count, the band
+   b := Sink(List); cnt := 0;
+   foreach k in ([0 .. (hi/lg5).floor()]){        p := lg5*k;
+      foreach j in ([0 .. ((hi-p)/lg3).floor()]){ q := lg3*j + p;
+         i,frac := (hi-q).modf(); r := hi-frac;		#-- r = i + q
+	 cnt+=(i+1);					#-- total count
+	 if(frac<w) b.write(T(r,T(i,j,k)));		#-- store it, if inside band
+      }
+   }
+   return(cnt,b.close());
+}
+
+fcn printHam(n){
+   r,t:=nthHam(n); i,j,k:=t; h:=trival(i,j,k);
+   println("Hamming(%,d)-->2^%d * 3^%d * 5^%d-->\n%s".fmt(n,i,j,k,h));
+}
+
+#<<<#
+printHam(1691);            //(5,12,3), 10 digits
+printHam(0d1_000_000);     //(55,47,64), 84 digits
+printHam(0d10_000_000);    //(80,92,162), 182 digits, 80 zeros at end
+printHam(0d1_000_000_000); //(1334,335,404), 845 digits
+#<<<#
+
+tester.testRun(printHam.fp(1691),Void,
+   "Hamming(1,691)-->2^5 * 3^12 * 5^3-->\n2125764000",__LINE__);
+tester.testRun(printHam.fp(0d1_000_000),Void,
+   "Hamming(1,000,000)-->2^55 * 3^47 * 5^64-->\n"
+   "519312780448388736089589843750000000000000000000000000000000000000000000000000000000",
+   __LINE__);
+}
+
+class Kos{	///////////////////////////////////////////////////// Kosaraju
+const VISITED=0,ASSIGNED=1;
+
+fcn visit(u,G,L){	// u is ((visited,assigned), (id,edges))
+   u0:=u[0];
+   if(u0[VISITED]) return();
+   u0[VISITED]=True;
+   foreach idx in (u[1][1,*]){ visit(G[idx],G,L) } // vist out-neighbours
+   L.insert(0,u);	// prepend u to L
+}
+fcn assign(u,root,G){  // u as above, root is a list of strong components
+   u0:=u[0];
+   if(u0[ASSIGNED]) return();
+   root.append(u[1][0]);
+   u0[ASSIGNED]=True;
+   uid:=u[1][0];
+   foreach v in (G){  // traverse graph to find in-neighbours, fugly
+      n,ins := v[1][0],v[1][1,*];
+      if(ins.holds(uid)) assign(G[n],root,G); // assign in-neighbour
+   } 
+}
+fcn kosaraju(graph){  // Use Tarjan's algorithm instead of this one
+   // input: graph G = (V, Es)
+   // output: set of strongly connected components (sets of vertices)
+
+   // convert graph to ( (index,lowlink,onStack),(id,links)), ...)
+   // sorted by id
+   G:=List.createLong(graph.len(),0);
+   foreach v in (graph){ G[v[0]]=T( List(False,False),v) }
+
+   L:=List();
+   foreach u in (G){ visit(u,G,L) }
+
+   components:=List.createLong(graph.len(),List.copy,True);
+   foreach u in (L){ assign(u,components[u[1][0]],G) }
+   components=components.filter();
+
+   println("List of strongly connected components:");
+   foreach c in (components){ println(c.reverse().concat(",")) }
+
+   return(components);
+}
+}
+{
+   // graph from https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm
+   // with vertices id zero based (vs 1 based in article)
+   // ids start at zero and are consecutive (no holes), graph is unsorted
+graph:=	  // ( (id, links/Edges), ...)
+   T( T(0,1), T(2,0),     T(5,2,6), T(6,5),
+      T(1,2), T(3,1,2,4), T(4,5,3), T(7,4,7,6) );
+//kosaraju(graph);
+tester.testRun(Kos.kosaraju.fp(graph),Void,L(L(1,2,0),L(4,3),L(6,5),L(7)),__LINE__);
+}
+
+
+{		/////////////////////// Largest number divisible by its digits
+//{{trans|Perl6}}
+const magic_number=9*8*7; # 504
+const div=9876432 / magic_number * magic_number; #largest 7 digit multiple of 504 < 9876432
+ 
+fcn lndd10{
+foreach test in ([div..0,-magic_number]){
+   text:=test.toString();
+   if(text.holds("0","5"))		 continue; # skip numbers containing 0 or 5
+   if(text.unique().len()!=text.len())   continue; # skip numbers with non unique digits
+   if(test.split().filter1('%.fp(test))) continue; # skip numbers that don't divide evenly by all digits
+ 
+return(test);
+   println("Found ",test); # Found a solution, display it
+   foreach d in (test.split()){
+//   foreach d in (text){
+      println("%s / %s = %s".fmt(test,d, test/d));
+   }
+   break;
+}
+}
+tester.testRun(lndd10,Void,9867312,__LINE__);
+
+//{{trans|Haskell}}
+const bigN=0xfedcba987654321; // biggest hexadecimal number possible.
+
+fcn lndd16{
+
+lcm:=lcmNs([1..15]);	// 360360, smallest # that will divide answer
+upperLimit:=bigN - bigN%lcm; // start at a mulitple of whatever the answer is
+
+foreach test in ([upperLimit..1,-lcm]){
+   text:=test.toString(16);
+   if(15!=text.unique().len()) continue;
+return(test);
+   println(text);
+   break;
+}
+}
+fcn lcmNs(ns){ ns.reduce(fcn(m,n){ (m*n).abs()/m.gcd(n) }) }
+
+tester.testRun(lndd16,Void,0xFEDCB59726A1348,__LINE__);
+}
+
+{		//////////////////////////////////////////// Leonardo numbers
+fcn leonardoNumber(n, n1=1,n2=1,addnum=1){
+   if(n==0) return(n1);
+   if(n==1) return(n2);
+   self.fcn(n-1,n1,n2,addnum) + self.fcn(n-2,n1,n2,addnum) + addnum
+}
+
+#<<<#
+println("The first 25 Leonardo Numbers:");
+foreach n in (25){ print(leonardoNumber(n)," ") }
+println("\n");
+ 
+println("The first 25 Fibonacci Numbers:");
+foreach n in (25){ print(leonardoNumber(n, 0,1,0)," ") }
+println();
+#<<<#
+
+tester.testRun(leonardoNumber.fp(24),Void,150049,__LINE__);
+tester.testRun(leonardoNumber.fp(24, 0,1,0),Void,46368,__LINE__);
+}
+
+
+{		///////////////////////////////////// Longest Common Substring
+fcn lcd(a,b){
+   if(b.len()<a.len()){ t:=a; a=b; b=t; }
+   foreach n,m in ([a.len()..1,-1],a.len()-n+1){
+      s:=a[m,n];
+      if(b.holds(s)) return(s);
+   }
+   ""
+}
+//lcd("testing123testing","thisisatest").println();
+
+tester.testRun(lcd.fp("testing123testing","thisisatest"),Void,"test",__LINE__);
+}
+
+
+{		///////////////////////////////////// Longest string challenge
+#<<<#
+The ops used are:  remove a character from the beginning of a string,
+testing if a string is "" or not, , string concatenation, integer
+equality.
+
+To decide which of two strings is longer, a character is removed from
+each until one is empty.  If one still has text, it is longer.
+#<<<#
+fcn longer(a,b){ //-->0,1,2 (same, a longer, b longer)
+   while(a and b){a=a.del(0); b=b.del(0);}
+   if (not a and not b) return(0); // a & b same length
+   if(a) return(1); 	// a is longer
+   2			// b is longer
+}
+
+#<<<#
+text:=a:=ask("text: ").strip(); 
+while(b:=ask("text: ").strip()){
+   switch(longer(a,b)){
+      case(0){ text=String(text,"\n",b) }  // a.len()==b.len()
+      case(1){ }		// a.len>b.len()
+      case(2){ text=a=b }	// a.len>b.len()
+   } //switch
+}
+println("The longest line(s) are:\n",text);
+#<<<#
+
+tester.testRun(
+   fcn{
+      text:=a:="a";
+      foreach b in (T("bb","ccc","ddd","ee","f","ggg")){
+	 switch(longer(a,b)){
+	    case(0){ text=String(text,"\n",b) }  // a.len()==b.len()
+	    case(1){ }		// a.len>b.len()
+	    case(2){ text=a=b }	// a.len>b.len()
+	 } //switch
+      }
+      text
+   },Void,"ccc\nddd\nggg",__LINE__);
+}
+
+
+{	////////////////////////////// Execute a Markov algorithm
+fcn parseRuleSet(lines){
+   if(vm.numArgs>1) lines=vm.arglist;
+   ks,vs := List(),List();
+   foreach line in (lines){
+      if(line[0]=="#") continue;	// nuke <comment>
+      pattern,replacement := 
+          line.replace("\t"," ").split(" -> ",1).apply("strip");
+      ks.append(pattern); vs.append(replacement);
+   }
+   return(ks,vs);
+}
+
+fcn markov(text,rules){
+   ks,vs := rules; eks:=ks.enumerate();
+   do{ go:=False;
+      foreach n,k in (eks){
+	 if (Void!=text.find(k)){
+	    v:=vs[n];
+	    if (v[0,1]==".") v=v[1,*] else go=True;
+	    text=text.replace(k,v,1);
+	    break;  // restart after every rule application, unless terminating
+	 }
+      }
+   }while(go);
+   text
+}
+
+ruleSet:=parseRuleSet("# This rules file is extracted from Wikipedia:",
+   "# http://en.wikipedia.org/wiki/Markov_Algorithm",
+   "A -> apple", "B -> bag", "S -> shop", "T -> the",
+   "the shop -> my brother", "a never used -> .terminating rule");
+//ruleSet.println();
+//markov("I bought a B of As from T S.",ruleSet).println();
+
+tester.testRun(markov.fp("I bought a B of As from T S.",ruleSet),Void,
+   "I bought a bag of apples from my brother.",__LINE__);
+
+
+parseRuleSet(  // rule set in a list
+   T("# Slightly modified from the rules on Wikipedia",
+   "A\t->\tapple", "B -> bag", "S -> .shop", "T -> the",
+   "the shop -> my brother", "a never used -> .terminating rule")) :
+//markov("I bought a B of As from T S.",_).println();
+
+tester.testRun(markov.fp("I bought a B of As from T S.",_),Void,
+   "I bought a bag of apples from T shop.",__LINE__);
+
+
+ruleSet=parseRuleSet(Data(0,String,"# BNF Syntax testing rules", "A -> apple",
+   "WWWW\t-> with", "Bgage -> ->.*", "B -> bag", "->.* -> money",
+   "W -> WW", "S -> .shop", "T -> the", 
+   "the shop -> my brother", "a never used -> .terminating rule")) :
+//markov("I bought a B of As W my Bgage from T S.",_).println();
+
+tester.testRun(markov.fp("I bought a B of As W my Bgage from T S.",_),Void,
+   "I bought a bag of apples with my money from T shop.",__LINE__);
+
+//For the next two tasks, read the rule set from a file:
+//parseRuleSet(File("ruleSet4")) : markov("_1111*11111_",_).println();
+//parseRuleSet(File("ruleSet5")) : markov("000000A000000",_).println();
+
+tester.testRun(fcn{ parseRuleSet(File("Tests/ruleSet4")) : markov("_1111*11111_",_) },
+   Void,"11111111111111111111",__LINE__);
+tester.testRun(
+   fcn{ parseRuleSet(File("Tests/ruleSet5")) : markov("000000A000000",_) },
+   Void,"00011H1111000",__LINE__);
+}
+
+
+{	///////////////////////////////////////////// Multiplication tables
+fcn multiplicationTable(n){
+out:=Sink(String);
+   w,fmt := (n*n).numDigits, " %%%dd".fmt(w).fmt;  // eg " %3".fmt
+   header:=[1..n].apply(fmt).concat();	   // 1  2  3  4 ...
+   println(" x ", header, "\n   ", "-"*header.len());
+out.write(" x ", header, "\n   ", "-"*header.len(),"\n");
+   dash:=String(" "*w,"-");	// eg "   -"
+   foreach a in ([1..n]){
+      print("%2d|".fmt(a),dash*(a-1));
+      [a..n].pump(String,'*(a),fmt).println();
+out.write("%2d|".fmt(a),dash*(a-1));
+out.write([a..n].pump(String,'*(a),fmt),"\n");
+   }
+out.close()
+//}(12);
+}
+tester.testRun(multiplicationTable.fp(4),Void,
+" x   1  2  3  4\n"
+"   ------------\n"
+" 1|  1  2  3  4\n"
+" 2|  -  4  6  8\n"
+" 3|  -  -  9 12\n"
+" 4|  -  -  - 16\n",__LINE__);
+}
+
+
+{	///////////////////////////////////////////// Pythagorean quadruples
+//{{trans|ALGOL 68}}
+fcn testPQ{
+# find values of d where d^2 =/= a^2 + b^2 + c^2 for any integers a, b, c #
+# where d in [1..2200], a, b, c =/= 0                                     #
+# max number to check #
+//const max_number = 2200;
+const max_number = 500;
+const max_square = max_number * max_number;
+# table of numbers that can be the sum of two squares #
+sum_of_two_squares:=Data(max_square+1,Int).fill(0);  # 4 meg byte array
+foreach a in ([1..max_number]){
+   a2 := a * a;
+   foreach b in ([a..max_number]){
+      sum2 := ( b * b ) + a2;
+      if(sum2 <= max_square) sum_of_two_squares[ sum2 ] = True;  # True-->1
+   }
+}
+# now find d such that d^2 - c^2 is in sum of two squares #
+solution:=Data(max_number+1,Int).fill(0);	# another byte array
+foreach d in ([1..max_number]){
+   d2 := d * d;
+   foreach c in ([1..d-1]){
+      diff2 := d2 - ( c * c );	// usually increasing
+      if(sum_of_two_squares[ diff2 ]){ solution[ d ] = True; break; }
+   }
+}
+# print the numbers whose squares are not the sum of three squares #
+foreach d in ([1..max_number]){
+   if(not solution[ d ]) print(d, " ");
+}
+println();
+
+solution
+}
+}
+// 1 2 4 5 8 10 16 20 32 40 64 80 128 160 256 320 512 640 1024 1280 2048
+
+tester.testRun(fcn{ solution,r := testPQ(),List();
+   foreach d in ([1..max_number]){
+      if(not solution[ d ]) r.append(d);
+   }
+   r},Void,T(1,2,4,5,8,10,16,20,32,40,64,80,128,160,256,320),__LINE__);
+
+
+{	////////////////////////////// Sailors, coconuts and a monkey problem
+//{{trans|Python}}
+fcn monkey_coconuts(sailors=5){
+   nuts,wakes:=sailors,List();
+   while(True){
+      n0:=nuts; wakes.clear();
+      foreach sailor in (sailors + 1){
+         portion, remainder := n0.divr(sailors);
+	 wakes.append(T(n0, portion, remainder));
+	 if(portion <= 0 or remainder != (sailor != sailors).toInt()){
+	    nuts += 1;
+	    break;
+	 }
+	 n0 = n0 - portion - remainder;
+      }
+      fallthrough{ break }
+   }
+   return(nuts, wakes)
+}
+foreach sailors in ([5..6]){
+   nuts, wake_stats := monkey_coconuts(sailors);
+   println("For %d sailors the initial nut count is %,d".fmt(sailors, nuts));
+   println("On each waking, the nut count, portion taken, and monkeys share are:\n   ",
+      wake_stats.concat("\n   "));
+}
+
+tester.testRun(monkey_coconuts.fp(5),Void,
+   L(3121,L(L(3121,624,1),L(2496,499,1),L(1996,399,1),L(1596,319,1),L(1276,255,1),L(1020,204,0))),
+   __LINE__);
+
+
+//{{trans|C}}
+fcn total(n, nuts){
+   nuts *= n;
+   foreach k in (n){
+      if (nuts % (n-1)) return(0);
+      nuts += nuts / (n-1) + 1;
+   }
+   nuts;
+}
+ 
+#<<<#
+println("sailers: original pile, final share");
+foreach n,x in ([2..9],[1..]){
+   if(t := total(n, x)){
+      print("%d: %d\t%d\n".fmt(n, t, x));
+      break;
+   }
+}
+#<<<#
+
+tester.testRun(total.fp(2,1),Void,11,__LINE__);
+tester.testRun(total.fp(3,2),Void,25,__LINE__);
+tester.testRun(total.fp(4,60),Void,765,__LINE__);
+
+tester.testRun(total.fp(4,1),Void,0,__LINE__);
+tester.testRun(total.fp(4,20),Void,0,__LINE__);
+tester.testRun(total.fp(4,30),Void,0,__LINE__);
+}
+
+
+{	///////////////////////////////// Shoelace formula for polygonal area
+// By the "book":
+    // Assumes x,y points go around the polygon in one direction
+fcn areaByShoelace(points){	// ( (x,y),(x,y)...)
+   xs,ys:=Utils.Helpers.listUnzip(points); // (x,x,...), (y,y,,,)
+   ( xs.zipWith('*,ys[1,*]).sum(0) + xs[-1]*ys[0] - 
+     xs[1,*].zipWith('*,ys).sum(0) - xs[0]*ys[-1] )
+   .abs().toFloat()/2;
+}
+
+// or an iterative solution:
+fcn areaByShoelace2(points){	// ( (x,y),(x,y)...)
+   xs,ys:=Utils.Helpers.listUnzip(points); // (x,x,...), (y,y,,,)
+   N:=points.len();
+   N.reduce('wrap(s,n){ s + xs[n]*ys[(n+1)%N] - xs[(n+1)%N]*ys[n] },0)
+   .abs().toFloat()/2;
+}
+points:=T(T(3,4), T(5,11), T(12,8), T(9,5), T(5,6));
+areaByShoelace(points).println();
+areaByShoelace2(points).println();
+
+tester.testRun(areaByShoelace.fp(points),Void,30.0,__LINE__);
+tester.testRun(areaByShoelace2.fp(points),Void,30.0,__LINE__);
+}
+
+
+{	///////////////////////////////////// Sort three variables
+#<<<#
+This solution uses list assignment and list sorting.  Lists are not
+homogeneous, but sorting usually expects that.  If that is a problem,
+you can give the sort a compare function.  Numbers (real and integer)
+are homogeneous enough to sort.
+#<<<#
+
+x,y,z := "lions, tigers, and", "bears, oh my!", 0'|(from the "Wizard of OZ")|;
+	a,b,c:=x,y,z;	// test code
+x,y,z = List(x,y,z).sort();
+println(x," | ",y," | ",z);
+tester.testRun('wrap{ x==c and y==b and z==a },Void,True,__LINE__);
+
+x,y,z := 77444, -12, 0;
+	a,b,c:=x,y,z;	// test code
+x,y,z = List(x,y,z).sort();
+println(x," ",y," ",z);
+tester.testRun('wrap{ x==b and y==c and z==a },Void,True,__LINE__);
+}
+
+
+{	///////////////////////////////////// Sort using a custom comparator
+s:=T("Cat","apple","Adam","zero","Xmas","quit","Level","add","Actor","base","butter");
+r:=s.sort(fcn(a,b){ 
+	    an,bn := a.len(),b.len(); 
+            if(an==bn)(a.toLower() < b.toLower()) else (an > bn)
+	  });
+//r.pump(Console.println);
+tester.testRun(r.noop,Void,
+  T("butter","Actor","apple","Level","Adam","base","quit","Xmas","zero","add","Cat"),
+  __LINE__);
+}
+
+
+{		/////////////////////////////////////////// Stem-and-leaf plot
+//{{trans|C}}
+fcn leaf_plot(xs){
+   xs=xs.sort();
+   i:=xs[0]/10 - 1;
+   foreach j in (xs.len()){
+      d:=xs[j]/10;
+      while(d>i){ print("%s%3d |".fmt(j and "\n" or "", i+=1)); }
+      print(" %d".fmt(xs[j] % 10));
+   }
+   println();
+}
+
+fcn leaf_plot2(xs,out){
+   xs=xs.sort();
+   i:=xs[0]/10 - 1;
+   foreach j in (xs.len()){
+      d:=xs[j]/10;
+      while(d>i){ out.write("%s%3d |".fmt(j and "\n" or "", i+=1)); }
+      out.write(" %d".fmt(xs[j] % 10));
+   }
+   out.writeln();
+}
+
+data:=T(
+    12, 127,  28,  42,  39, 113,  42,  18,  44, 118,  44,  37, 113, 124,
+    37,  48, 127,  36,  29,  31, 125, 139, 131, 115, 105, 132, 104, 123,
+    35, 113, 122,  42, 117, 119,  58, 109,  23, 105,  63,  27,  44, 105,
+    99,  41, 128, 121, 116, 125,  32,  61,  37, 127,  29, 113, 121,  58,
+   114, 126,  53, 114,  96,  25, 109,   7,  31, 141,  46,  13,  27,  43,
+   117, 116,  27,   7,  68,  40,  31, 115, 124,  42, 128,  52,  71, 118,
+   117,  38,  27, 106,  33, 117, 116, 111,  40, 119,  47, 105,  57, 122,
+   109, 124, 115,  43, 120,  43,  27,  27,  18,  28,  48, 125, 107, 114,
+    34, 133,  45, 120,  30, 127,  31, 116, 146 );
+ 
+//leaf_plot(data);
+
+tester.testRun('wrap{ leaf_plot2(data,Data()).text },Void,
+#<<<
+"  0 | 7 7
+  1 | 2 3 8 8
+  2 | 3 5 7 7 7 7 7 7 8 8 9 9
+  3 | 0 1 1 1 1 2 3 4 5 6 7 7 7 8 9
+  4 | 0 0 1 2 2 2 2 3 3 3 4 4 4 5 6 7 8 8
+  5 | 2 3 7 8 8
+  6 | 1 3 8
+  7 | 1
+  8 |
+  9 | 6 9
+ 10 | 4 5 5 5 5 6 7 9 9 9
+ 11 | 1 3 3 3 3 4 4 4 5 5 5 6 6 6 6 7 7 7 7 8 8 9 9
+ 12 | 0 0 1 1 2 2 3 4 4 4 5 5 5 6 7 7 7 7 8 8
+ 13 | 1 2 3 9
+ 14 | 1 6
+",__LINE__);
+#<<<
+}
+
+
+{		//////////////////////////////////////////// String append
+//zkl strings are immutable, but byte blobs are mutable.
+s:="foo";
+//s.append("bar"); //-->new string "foobar", var s unchanged
+//s+="bar";        //-->new string "foobar", var s modifed to new value
+ 
+tester.testRun(s.append.fp("bar"),Void,"foobar",__LINE__);
+tester.testRun('wrap{ s+="bar" },Void,"foobar",__LINE__);
+
+
+s=Data(Void,"foo");	// byte blob/character blob/text editor buffer
+s.append("bar");  // or s+="bar"
+s.text; //-->"foobar"   
+
+tester.testRun(s.text.noop,Void,"foobar",__LINE__);
+s=s.clear("foo");
+s+="bar";
+tester.testRun(s.text.noop,Void,"foobar",__LINE__);
+}
+
+
+{		//////////////////////////////////////////////// String case
+s:="alphaBETA";
+//s.toLower(); //--> "alphabeta"
+//s.toUpper(); //--> "ALPHABETA"
+tester.testRun(s.toLower,Void,"alphabeta",__LINE__);
+tester.testRun(s.toUpper,Void,"ALPHABETA",__LINE__);
+}
+
+
+{		////////////////////////////////////////// String concatenation
+s:="Hello";
+s2:=s+", world!"; s2.println(); //-->Hello, world!
+s3:=String(s," ",s2); s3.println(); //-->Hello Hello, world!
+
+tester.testRun(s2.noop ,Void,"Hello, world!",__LINE__);
+tester.testRun(s3.noop ,Void,"Hello Hello, world!",__LINE__);
+}
+
+
+{		////////////////////////////////////////// String concatenation
+"Mary had a X lamb.".replace("X","big");
+tester.testRun("Mary had a X lamb.".replace.fp("X","big"),Void,
+   "Mary had a big lamb.",__LINE__);
+#<<<#
+Generates a new string.  For more info, refer to manual in the downloads
+section of [http://zenkinetic.com/ zenkinetic.com zkl page]
+#<<<#
+}
+
+
+{		////////////////////////////////////////// String length
+#<<<#
+Although zkl handles 8 bit ASCII natively, it also knows UTF-8 up to 6
+bytes.  In a string, "\uabcd" (hex) and "\U???;" encode 2 and n byte
+UTF-8 Unicode characters.  It does not handle UTF-16 or 4 byte Unicode.
+It also knows about the bad spots in UTF-8 (such as overlongs).
+
+If your terminal/editor deals with UTF-8 (mine doesn't), you don't need
+to use the escapes, just put the unicode characters in quotes (ie the
+editor inserts UTF bytes, which are non zero).
+#<<<#
+
+// Character Length
+"abc".len(); //-->3
+"\ufeff\u00A2 \u20ac".len(); //-->9 "BOM� \u20ac"
+
+tester.testRun("abc".len,Void,3,__LINE__);
+tester.testRun("\ufeff\u00A2 \u20ac".len,Void,9,__LINE__);
+
+//Byte Length
+"abc".len(); //-->3
+"\ufeff\u00A2 \u20ac".len(); //-->9
+Data(0,Int,"\ufeff\u00A2 \u20ac"); //-->Data(9) (bytes)
+"J\u0332o\u0332s\u0332e\u0301\u0332".len();  //-->14
+"\U1D518;\U1D52B;\U1D526;\U1D520;\U1D52C;\U1D521;\U1D522;".len(); //-->28
+
+tester.testRun("abc".len,Void,3,__LINE__);
+tester.testRun("\ufeff\u00A2 \u20ac".len,Void,9,__LINE__);
+tester.testRun("J\u0332o\u0332s\u0332e\u0301\u0332".len,Void,14,__LINE__);
+tester.testRun("\U1D518;\U1D52B;\U1D526;\U1D520;\U1D52C;\U1D521;\U1D522;".len,
+   Void,28,__LINE__);
+
+// Character Length
+#<<<#
+UTF-8 characters are counted, modifiers (such as underscore) are counted
+as separate characters.
+#<<<#
+"abc".len(8); //-->3
+"\ufeff\u00A2 \u20ac".len(8); //-->4 "BOM¢ €"
+"\U1000;".len(8);  //-->Exception thrown: ValueError(Invalid UTF-8 string)
+//"\uD800"; //-->SyntaxError : Line 2: Bad Unicode constant (\uD800-\uDFFF)
+"J\u0332o\u0332s\u0332e\u0301\u0332".len(8); //-->9 "J̲o̲s̲é̲"
+"\U1D518;\U1D52B;\U1D526;\U1D520;\U1D52C;\U1D521;\U1D522;".len(8); //-->7 "𝔘𝔫𝔦𝔠𝔬𝔡𝔢"
+
+
+tester.testRun("abc".len.fp(8),Void,3,__LINE__);
+tester.testRun("\ufeff\u00A2 \u20ac".len.fp(8),Void,4,__LINE__);
+tester.testSrc("\\" + "uD800","SyntaxError",Void,Void,__LINE__);
+tester.testRun("\U1D518;\U1D52B;\U1D526;\U1D520;\U1D52C;\U1D521;\U1D522;".len.fp(8),
+   Void,7,__LINE__);
+}
+
+
+{		////////////////////////////////////////// String matching
+fcn f(text,p){ if(text.find(p)==0) println("Yep") else println("Nope") }
+f("foobar","foo"); //--> Yep
+f("foobar","bar"); //--> Nope
+
+tester.testRun(f.fp("foobar","foo"),Void,"Yep",__LINE__);
+tester.testRun(f.fp("foobar","bar"),Void,"Nope",__LINE__);
+///////////
+
+fcn f2(text,p){
+   if(Void!=(n:=text.find(p))) println("Contained @",n) else println("Nope") 
+}
+f2("foobar","ob");   //--> Contained @2
+f2("foobar","food"); //--> Nope
+
+tester.testRun(f2.fp("foobar","ob"),Void,"Contained @2",__LINE__);
+tester.testRun(f2.fp("foobar","food"),Void,"Nope",__LINE__);
+///////////
+
+fcn f3(text,p){ 
+   if( Void!=(n:=text.rfind(p)) and n+p.len()==text.len() )
+      println("tail gunner") else println("Nope")
+}
+f3("foobar","r"); f("foobar","ar"); //--> tail gunners
+f3("foobar","ob");  //--> Nope
+f3("foobarfoobar","bar"); //--> tail gunner
+
+tester.testRun(f3.fp("foobar","r"),Void,"tail gunner",__LINE__);
+tester.testRun(f3.fp("foobar","ar"),Void,"tail gunner",__LINE__);
+tester.testRun(f3.fp("foobar","ob"),Void,"Nope",__LINE__);
+tester.testRun(f3.fp("foobarfoobar","bar"),Void,"tail gunner",__LINE__);
+}
+
+
+{		////////////////////////////////// Strip comments from a string
+fcn strip(text,c){  // if c in text, remove it and following text
+   if (Void!=(n:=text.find(c))) text=text[0,n];
+   text.strip()		// remove leading and trailing white space
+}
+fcn stripper(text,a,b,c,etc){ // strip a,b,c,etc from text
+   foreach c in (vm.arglist[1,*]){ text=strip(text,c) }
+   text
+}
+
+tester.testRun(fcn{ String(">", strip(" apples, pears # and bananas","#"), "<") },
+   Void,">apples, pears<",__LINE__);
+tester.testRun(fcn{ String(">", stripper(" apples, pears ; and # bananas","#",";"), "<") },
+   Void,">apples, pears<",__LINE__);
+
+
+//Or, if you want the all-in-one stripper:
+fcn stripper2(text,a,b,c,etc){
+   vm.arglist[1,*].reduce('wrap(text,c){ 
+      if (Void!=(n:=text.find(c))) text[0,n] else text
+   },text)
+   .strip()
+}
+
+tester.testRun(fcn{ String(">", stripper2(" apples, pears ; and # bananas","#",";"), "<") },
+   Void,">apples, pears<",__LINE__);
+
+#<<<#
+String(">", strip(" apples, pears # and bananas","#"), "<").println();
+>apples, pears<
+
+String(">", stripper(" apples, pears ; and # bananas","#",";"), "<").println();
+>apples, pears<
+#<<<#
+}
+
+
+{class SubstitutionCipher{	/////////////////////// Substitution Cipher
+
+   // 92 characters: " !"#$%&" ... "xyz{|}", doesn't include "~"
+   const KEY="]kYV}(!7P$n5_0i R:?jOWtF/=-pe'AD&@r6%ZXs\"v*N"
+             "[#wSl9zq2^+g;LoB`aGh{3.HIu4fbK)mU8|dMET><,Qc\\C1yxJ";
+   fcn encode(s){ s.apply(fcn(c){ try{ KEY[c.toAsc()-32] }catch{ c } }) }
+   fcn decode(s){ s.apply(fcn(c){ try{ (KEY.index(c)+32).toChar() }catch{ c } }) }
+}
+text:="This is a test.";
+encoded:=SubstitutionCipher.encode(text);
+//println(  "Encoded: ",encoded);
+//println("\nDecoded: ",SubstitutionCipher.decode(encoded));
+
+tester.testRun(encoded.noop,Void,"2bK>]K>]3]<u><i",__LINE__);
+tester.testRun(SubstitutionCipher.decode.fp(encoded),Void,text,__LINE__);
+}
+
+
+{		///////////////////////////////////////////////////// Tarjan
+class Tarjan{
+   // input: graph G = (V, Es)
+   // output: set of strongly connected components (sets of vertices)
+   // Ick: class holds global state for strongConnect(), otherwise inert
+   const INDEX=0, LOW_LINK=1, ON_STACK=2;
+   fcn init(graph){
+      var index=0, stack=List(), components=List(), 
+          G=List.createLong(graph.len(),0);
+
+      // convert graph to ( (index,lowlink,onStack),(id,links)), ...)
+      // sorted by id
+      foreach v in (graph){ G[v[0]]=T( L(Void,Void,False),v) }
+
+      foreach v in (G){ if(v[0][INDEX]==Void) strongConnect(v) }
+
+      println("List of strongly connected components:");
+      foreach c in (components){ println(c.reverse().concat(",")) }
+
+      returnClass(components);	// over-ride return of class instance
+   }
+   fcn strongConnect(v){  // v is ( (index,lowlink,onStack), (id,links) )
+      // Set the depth index for v to the smallest unused index
+      v0:=v[0]; v0[INDEX]=v0[LOW_LINK]=index;
+      index+=1;
+      v0[ON_STACK]=True;
+      stack.push(v);
+
+       // Consider successors of v
+      foreach idx in (v[1][1,*]){  // links of v to other vs
+         w,w0 := G[idx],w[0];	// well, that is pretty vile
+	 if(w[0][INDEX]==Void){
+	    strongConnect(w); // Successor w not yet visited; recurse on it
+	    v0[LOW_LINK]=v0[LOW_LINK].min(w0[LOW_LINK]);
+	 }
+	 else if(w0[ON_STACK])
+	    // Successor w is in stack S and hence in the current SCC
+	    v0[LOW_LINK]=v0[LOW_LINK].min(w0[INDEX]);
+      }
+      // If v is a root node, pop the stack and generate an SCC
+      if(v0[LOW_LINK]==v0[INDEX]){
+         strong:=List();  // start a new strongly connected component
+	 do{
+	    w,w0 := stack.pop(), w[0];
+	    w0[ON_STACK]=False;
+	    strong.append(w[1][0]); // add w to strongly connected component
+	 }while(w.id!=v.id);
+	 components.append(strong); // output strongly connected component
+      }
+   }
+}//Tarjan
+
+   // graph from https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm
+   // with vertices id zero based (vs 1 based in article)
+   // ids start at zero and are consecutive (no holes), graph is unsorted
+graph:=	  // ( (id, links/Edges), ...)
+   T( T(0,1), T(2,0),     T(5,2,6), T(6,5),
+      T(1,2), T(3,1,2,4), T(4,5,3), T(7,4,7,6) );
+//Tarjan(graph);
+
+tester.testRun(Tarjan.fp(graph),Void,L(L(0,1,2),L(5,6),L(3,4),L(7)),__LINE__);
+}
+
+
+	//////////////////////////////////////// Vigenère cipher/Cryptanalysis
+{	//////////////////////////////////////// Vigen�re cipher/Cryptanalysis
+//{{trans|Python}}
+var[const] uppercase=["A".."Z"].pump(String),
+   english_frequences=T( // A..Z
+        0.08167, 0.01492, 0.02782, 0.04253, 0.12702, 0.02228, 0.02015,
+        0.06094, 0.06966, 0.00153, 0.00772, 0.04025, 0.02406, 0.06749,
+        0.07507, 0.01929, 0.00095, 0.05987, 0.06327, 0.09056, 0.02758,
+        0.00978, 0.02360, 0.00150, 0.01974, 0.00074);
+ 
+fcn vigenere_decrypt(target_freqs, input){ // ( (float,...), string)
+   nchars,ordA   := uppercase.len(),"A".toAsc();
+   sorted_targets:=target_freqs.sort();
+ 
+   frequency:='wrap(input){  // (n,n,n,n,...), n is ASCII index ("A"==65)
+      result:=uppercase.pump(List(),List.fp1(0)); // ( ("A",0),("B",0) ...)
+      foreach c in (input){ result[c - ordA][1] += 1 }
+      result   // --> mutable list of mutable lists ( ("A",Int)...("Z",Int) )
+   };
+   correlation:='wrap(input){  // (n,n,n,n,...), n is ASCII index ("A"==65)
+      result,freq:=0.0, frequency(input);
+      freq.sort(fcn([(_,a)],[(_,b)]){ a<b });  // sort letters by frequency
+      foreach i,f in (freq.enumerate()){ result+=sorted_targets[i]*f[1] }
+      result	// -->Float
+   };
+ 
+   cleaned:=input.toUpper().pump(List,uppercase.holds,Void.Filter,"toAsc");
+ 
+   best_len,best_corr := 0,-100.0;
+    # Assume that if there are less than 20 characters
+    # per column, the key's too long to guess
+   foreach i in ([2..cleaned.len()/20]){
+      pieces:=(i).pump(List,List.copy);		// ( (),() ... )
+      foreach c in (cleaned){ pieces[__cWalker.idx%i].append(c) }
+ 
+        # The correlation seems to increase for smaller
+        # pieces/longer keys, so weigh against them a little
+      corr:=-0.5*i + pieces.apply(correlation).sum(0.0);
+      if(corr>best_corr) best_len,best_corr=i,corr;
+   }
+   if(best_len==0) return("Text is too short to analyze", "");
+ 
+   pieces:=best_len.pump(List,List.copy);
+   foreach c in (cleaned){ pieces[__cWalker.idx%best_len].append(c) }
+ 
+   key,freqs := "",pieces.apply(frequency);
+   foreach fr in (freqs){
+      fr.sort(fcn([(_,a)],[(_,b)]){ a>b });  // reverse sort by freq
+      m,max_corr := 0,0.0;
+      foreach j in (nchars){
+         corr,c := 0.0,ordA + j;
+	 foreach frc in (fr){
+	    d:=(frc[0].toAsc() - c + nchars) % nchars;
+ 	    corr+=target_freqs[d]*frc[1];
+	    if(corr>max_corr) m,max_corr=j,corr;
+	 }
+      }
+      key+=(m + ordA).toChar();
+   }
+ 
+   cleaned.enumerate().apply('wrap([(i,c])){
+      ( (c - (key[i%best_len]).toAsc() + nchars)%nchars + ordA ).toChar()
+   }).concat() : 
+   T(key,_);
+}
+
+encryptedText:=
+#<<<
+"MOMUD EKAPV TQEFM OEVHP AJMII CDCTI FGYAG JSPXY ALUYM NSMYH
+VUXJE LEPXJ FXGCM JHKDZ RYICU HYPUS PGIGM OIYHF WHTCQ KMLRD
+ITLXZ LJFVQ GHOLW CUHLO MDSOE KTALU VYLNZ RFGBX PHVGA LWQIS
+FGRPH JOOFW GUBYI LAPLA LCAFA AMKLG CETDW VOELJ IKGJB XPHVG
+ALWQC SNWBU BYHCU HKOCE XJEYK BQKVY KIIEH GRLGH XEOLW AWFOJ
+ILOVV RHPKD WIHKN ATUHN VRYAQ DIVHX FHRZV QWMWV LGSHN NLVZS
+JLAKI FHXUF XJLXM TBLQV RXXHR FZXGV LRAJI EXPRV OSMNP KEPDT
+LPRWM JAZPK LQUZA ALGZX GVLKL GJTUI ITDSU REZXJ ERXZS HMPST
+MTEOE PAPJH SMFNB YVQUZ AALGA YDNMP AQOWT UHDBV TSMUE UIMVH
+QGVRW AEFSP EMPVE PKXZY WLKJA GWALT VYYOB YIXOK IHPDS EVLEV
+RVSGB JOGYW FHKBL GLXYA MVKIS KIEHY IMAPX UOISK PVAGN MZHPW
+TTZPV XFCCD TUHJH WLAPF YULTB UXJLN SIJVV YOVDJ SOLXG TGRVO
+SFRII CTMKO JFCQF KTINQ BWVHG TENLH HOGCS PSFPV GJOKM SIFPR
+ZPAAS ATPTZ FTPPD PORRF TAXZP KALQA WMIUD BWNCT LEFKO ZQDLX
+BUXJL ASIMR PNMBF ZCYLV WAPVF QRHZV ZGZEF KBYIO OFXYE VOWGB
+BXVCB XBAWG LQKCM ICRRX MACUO IKHQU AJEGL OIJHH XPVZW JEWBA
+FWAML ZZRXJ EKAHV FASMU LVVUT TGK";
+#<<<
+key,decoded:=vigenere_decrypt(english_frequences,encryptedText);
+//println("Key:", key);
+//println("Decoded text:", decoded);
+
+tester.testRun(key.noop,Void,"THECHESHIRECAT",__LINE__);
+tester.testRun(decoded.get.fp(0,38),Void,
+   "THISWASTHEPOEMTHATALICEREADJABBERWOCKY",__LINE__);
+}
+
+
+{	////////////////////////////////////////////// Word break problem
+fcn wordBreak(str,words){	// words is string of space seperated words
+   words=words.split(" ");	// to list of words
+   r:=fcn(str,words,sink){	// recursive search, easy to collect answer
+      foreach word in (words){
+	 if(not str) return(True);  // consumed string ie matched everything
+	 if(str.find(word)==0){     // word starts str, 0 so answer is ordered
+	    z:=word.len();
+	    if(self.fcn(str.del(0,z),words,sink)) return(sink.write(word));
+	 }
+      }
+      False		// can't make forward progress, back out & retry
+   }(str,words,List());		// run the lambda
+   if(False==r) return("not possible");
+   r.reverse().concat(" ")
+}
+
+#<<<#
+foreach text in (T("abcd","abbc","abcbcd","acdbc","abcdd")){
+   println(text,": ",wordBreak(text,"a bc abc cd b"))
+}
+#<<<#
+ws:="a bc abc cd b";
+tester.testRun(wordBreak.fp("abcd",ws),Void,"a b cd",__LINE__);
+tester.testRun(wordBreak.fp("abbc",ws),Void,"a b bc",__LINE__);
+tester.testRun(wordBreak.fp("abcbcd",ws),Void,"a bc b cd",__LINE__);
+tester.testRun(wordBreak.fp("acdbc",ws),Void,"a cd bc",__LINE__);
+tester.testRun(wordBreak.fp("abcdd",ws),Void,"not possible",__LINE__);
+}
+
+
+{	/////////////////////////////////////////////////////// Word count
+fcn wordCount1{
+
+// zkl bbb ~/Documents/Les\ Miserables.txt 10
+fname,count := vm.arglist;	// grab cammand line args
+
+   // words may have leading or trailing "_", ie "the" and "_the"
+File(fname).pump(Void,"toLower",  // read the file line by line and hash words
+   RegExp("[a-z]+").pump.fp1(Dictionary().incV))  // line-->(word:count,..)
+.toList().copy().sort(fcn(a,b){ b[1]<a[1] })[0,count.toInt()] // hash-->list
+//.apply("concat",",").concat("\n").println();
+.pump(String,Void.Xplode,"%s,%s\n".fmt).println();
+
+}
+
+fcn wordCount2{
+
+// zkl bbb ~/Documents/Les\ Miserables.txt 10
+fname,count := vm.arglist;	// grab cammand line args
+
+   // words may have leading or trailing "_", ie "the" and "_the"
+RegExp("[a-z]+").pump(  // read entire file and hash words in it
+   File(fname).read().text.toLower(),Dictionary().incV)
+.toList().copy().sort(fcn(a,b){ b[1]<a[1] })[0,count.toInt()]
+//.apply("concat",",").concat("\n").println();
+.pump(String,Void.Xplode,"%s,%s\n".fmt).println();
+
+}
+
+fcn wordCount3{
+
+// zkl bbb ~/Documents/Les\ Miserables.txt 10
+fname,count := vm.arglist;	// grab cammand line args
+
+   // words may have leading or trailing "_", ie "the" and "_the"
+p:=Thread.Pipe();
+fcn(fname,p){ try{ File(fname).pump(p,"toLower") }catch{} p.close(); }.launch(fname,p);
+
+p.pump(Void,RegExp("[a-z]+").pump.fp1(Dictionary().incV))  // line-->(word:count,..)
+.toList().copy().sort(fcn(a,b){ b[1]<a[1] })[0,count.toInt()] // hash-->list
+.pump(String,Void.Xplode,"%s,%s\n".fmt).println();
+
+}
+
+//??? Dictionary keys in different order Linux/64 vs Win10/32, word size diff?
+//Linux/64: "sed,8\nquis,6\nnunc,6\nsit,5\n"
+//Win10/32: "sed,8\nnunc,6\nquis,6\namet,5\m"
+ans:="sed,8\nquis,6\nnunc,6\nsit,5\namet,5".replace("\n",",").split(",")
+	.toDictionary();
+checkWC:='wrap(str){
+   foreach p in (str().split("\n").filter()){
+      str,n:=p.split(",");
+      if(ans[str]!=n) return("%s: %s ? %s".fmt(str,n,ans[str]));
+   }
+   True
+};
+tester.testRun(checkWC.fp(wordCount1.fp("Tests/lorem_ipsum.txt",4)),Void,True,__LINE__);
+tester.testRun(checkWC.fp(wordCount2.fp("Tests/lorem_ipsum.txt",4)),Void,True,__LINE__);
+tester.testRun(checkWC.fp(wordCount3.fp("Tests/lorem_ipsum.txt",4)),Void,True,__LINE__);
+}
+
+
+
+{	//////////////////////////////////// Write float arrays to a text file
+fcn writeFloatArraysToFile(filename, xs,xprecision, ys,yprecision){
+//   f  :=File(filename,"w");
+f:=Data();
+   fmt:="%%.%dg\t%%.%dg".fmt(xprecision,yprecision).fmt;  // "%.3g\t%.5g".fmt
+   foreach x,y in (xs.zip(ys)){ f.writeln(fmt(x,y)); }
+//   xs.zip(ys).pump(f.writeln, Void.Xplode, fmt);
+   f.close();
+}
+
+xs,ys := T(1.0, 2.0, 3.0, 1e11), xs.apply("sqrt");
+xprecision,yprecision := 3,5;
+//writeFloatArraysToFile("floatArray.txt", xs,xprecision, ys,yprecision);
+
+r:=Data(Void,
+#<<<
+"1	1
+2	1.4142
+3	1.7321
+1e+11	3.1623e+05
+");
+#<<<
+
+tester.testRun(
+   writeFloatArraysToFile.fp("floatArray.txt", xs,xprecision, ys,yprecision),
+   Void,r,__LINE__);
+}
+
+
+
+
+
+tester.stats();
+returnClass(tester);
